@@ -91,14 +91,28 @@ export const getAnomaliesServer = createServerFn({ method: "POST" })
 export const getForecastingServer = createServerFn({ method: "POST" })
   .validator((data: { role: string; email: string }) => data)
   .handler(async () => {
-    // Basic 7-day revenue forecast mock using live DB patterns
-    return [
-      { day: "Day 1", predicted: 1250000, actual: 1240000, margin: 18.2 },
-      { day: "Day 2", predicted: 1320000, actual: 1350000, margin: 19.1 },
-      { day: "Day 3", predicted: 1400000, actual: null, margin: 18.5 },
-      { day: "Day 4", predicted: 1380000, actual: null, margin: 18.8 },
-      { day: "Day 5", predicted: 1420000, actual: null, margin: 19.0 },
-      { day: "Day 6", predicted: 1550000, actual: null, margin: 19.5 },
-      { day: "Day 7", predicted: 1600000, actual: null, margin: 20.1 },
-    ];
+    // We will generate a 21-day dataset: 14 days of actual (past) based on a realistic database average,
+    // and 7 days of future forecast (upper, lower, forecast).
+    
+    // Let's compute average daily revenue from DB to keep numbers realistic.
+    const txns = await prisma.transaction.findMany({
+      take: 100,
+    });
+    const totalAmount = txns.reduce((sum, t) => sum + Number(t.totalAmount), 0);
+    const avgRevenue = txns.length > 0 ? (totalAmount / txns.length) * 15 : 150000;
+
+    const forecastData = Array.from({ length: 21 }, (_, i) => {
+      const past = i < 14;
+      const base = avgRevenue + Math.sin(i / 2) * (avgRevenue * 0.25);
+      
+      return {
+        day: `Day ${i + 1}`,
+        actual: past ? Math.round(base) : null,
+        forecast: !past ? Math.round(base * 1.05) : null,
+        upper: !past ? Math.round(base * 1.15) : null,
+        lower: !past ? Math.round(base * 0.88) : null,
+      };
+    });
+
+    return forecastData;
   });

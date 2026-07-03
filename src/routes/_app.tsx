@@ -23,11 +23,13 @@ import {
   Truck,
   ClipboardList,
   Wallet,
+  Calculator,
   TrendingDown,
   Zap,
   FileBarChart,
   Building2,
   UserCog,
+  CreditCard,
   FileText,
   Upload,
   Settings,
@@ -95,6 +97,7 @@ const NAV: NavSection[] = [
   {
     section: "Commerce",
     items: [
+      { to: "/billing", label: "Billing (POS)", icon: Calculator },
       { to: "/sales", label: "Sales", icon: ShoppingCart },
       { to: "/transactions", label: "Transactions", icon: Receipt },
       { to: "/customers", label: "Customers", icon: Users },
@@ -113,6 +116,7 @@ const NAV: NavSection[] = [
   {
     section: "Finance",
     items: [
+      { to: "/accounts", label: "Accounts", icon: CreditCard },
       { to: "/income", label: "Income", icon: Wallet },
       { to: "/expenses", label: "Expenses", icon: TrendingDown },
       { to: "/utilities", label: "Utilities", icon: Zap },

@@ -33,9 +33,11 @@ import { Route as AppDepartmentsRouteImport } from './routes/_app.departments'
 import { Route as AppDataImportRouteImport } from './routes/_app.data-import'
 import { Route as AppCustomersRouteImport } from './routes/_app.customers'
 import { Route as AppCommandCenterRouteImport } from './routes/_app.command-center'
+import { Route as AppBillingRouteImport } from './routes/_app.billing'
 import { Route as AppAnomaliesRouteImport } from './routes/_app.anomalies'
 import { Route as AppAnalyticsRouteImport } from './routes/_app.analytics'
 import { Route as AppAiDecisionsRouteImport } from './routes/_app.ai-decisions'
+import { Route as AppAccountsRouteImport } from './routes/_app.accounts'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -156,6 +158,11 @@ const AppCommandCenterRoute = AppCommandCenterRouteImport.update({
   path: '/command-center',
   getParentRoute: () => AppRoute,
 } as any)
+const AppBillingRoute = AppBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAnomaliesRoute = AppAnomaliesRouteImport.update({
   id: '/anomalies',
   path: '/anomalies',
@@ -171,13 +178,20 @@ const AppAiDecisionsRoute = AppAiDecisionsRouteImport.update({
   path: '/ai-decisions',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAccountsRoute = AppAccountsRouteImport.update({
+  id: '/accounts',
+  path: '/accounts',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/accounts': typeof AppAccountsRoute
   '/ai-decisions': typeof AppAiDecisionsRoute
   '/analytics': typeof AppAnalyticsRoute
   '/anomalies': typeof AppAnomaliesRoute
+  '/billing': typeof AppBillingRoute
   '/command-center': typeof AppCommandCenterRoute
   '/customers': typeof AppCustomersRoute
   '/data-import': typeof AppDataImportRoute
@@ -203,9 +217,11 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/accounts': typeof AppAccountsRoute
   '/ai-decisions': typeof AppAiDecisionsRoute
   '/analytics': typeof AppAnalyticsRoute
   '/anomalies': typeof AppAnomaliesRoute
+  '/billing': typeof AppBillingRoute
   '/command-center': typeof AppCommandCenterRoute
   '/customers': typeof AppCustomersRoute
   '/data-import': typeof AppDataImportRoute
@@ -233,9 +249,11 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/_app/accounts': typeof AppAccountsRoute
   '/_app/ai-decisions': typeof AppAiDecisionsRoute
   '/_app/analytics': typeof AppAnalyticsRoute
   '/_app/anomalies': typeof AppAnomaliesRoute
+  '/_app/billing': typeof AppBillingRoute
   '/_app/command-center': typeof AppCommandCenterRoute
   '/_app/customers': typeof AppCustomersRoute
   '/_app/data-import': typeof AppDataImportRoute
@@ -263,9 +281,11 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/accounts'
     | '/ai-decisions'
     | '/analytics'
     | '/anomalies'
+    | '/billing'
     | '/command-center'
     | '/customers'
     | '/data-import'
@@ -291,9 +311,11 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/accounts'
     | '/ai-decisions'
     | '/analytics'
     | '/anomalies'
+    | '/billing'
     | '/command-center'
     | '/customers'
     | '/data-import'
@@ -320,9 +342,11 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/login'
+    | '/_app/accounts'
     | '/_app/ai-decisions'
     | '/_app/analytics'
     | '/_app/anomalies'
+    | '/_app/billing'
     | '/_app/command-center'
     | '/_app/customers'
     | '/_app/data-import'
@@ -522,6 +546,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCommandCenterRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/billing': {
+      id: '/_app/billing'
+      path: '/billing'
+      fullPath: '/billing'
+      preLoaderRoute: typeof AppBillingRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/anomalies': {
       id: '/_app/anomalies'
       path: '/anomalies'
@@ -543,13 +574,22 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAiDecisionsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/accounts': {
+      id: '/_app/accounts'
+      path: '/accounts'
+      fullPath: '/accounts'
+      preLoaderRoute: typeof AppAccountsRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppAccountsRoute: typeof AppAccountsRoute
   AppAiDecisionsRoute: typeof AppAiDecisionsRoute
   AppAnalyticsRoute: typeof AppAnalyticsRoute
   AppAnomaliesRoute: typeof AppAnomaliesRoute
+  AppBillingRoute: typeof AppBillingRoute
   AppCommandCenterRoute: typeof AppCommandCenterRoute
   AppCustomersRoute: typeof AppCustomersRoute
   AppDataImportRoute: typeof AppDataImportRoute
@@ -574,9 +614,11 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAccountsRoute: AppAccountsRoute,
   AppAiDecisionsRoute: AppAiDecisionsRoute,
   AppAnalyticsRoute: AppAnalyticsRoute,
   AppAnomaliesRoute: AppAnomaliesRoute,
+  AppBillingRoute: AppBillingRoute,
   AppCommandCenterRoute: AppCommandCenterRoute,
   AppCustomersRoute: AppCustomersRoute,
   AppDataImportRoute: AppDataImportRoute,

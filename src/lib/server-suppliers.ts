@@ -7,18 +7,16 @@ export const getSuppliers = createServerFn({ method: "GET" })
       where: { status: { not: "Archived" } },
       include: {
         purchaseOrders: true,
-        supplierProducts: {
-          include: {
-            product: {
-              include: {
-                category: true,
-              },
-            },
-          },
-        },
+        supplierProducts: true,
       },
       orderBy: { name: "asc" },
     });
+
+    const products = await prisma.product.findMany({
+      include: { category: true }
+    });
+    
+    const productMap = new Map(products.map(p => [p.id, p]));
 
     return suppliers.map((s) => {
       const receivedPOs = s.purchaseOrders.filter((po) => po.status === "Received" || po.status === "Partially_Received");
@@ -40,11 +38,15 @@ export const getSuppliers = createServerFn({ method: "GET" })
 
       const score = Math.round(onTime + quality - riskScore / 2);
 
+      const firstProductId = s.supplierProducts[0]?.productId;
+      const associatedProduct = firstProductId ? productMap.get(firstProductId) : null;
+      const category = associatedProduct?.category?.name || "General";
+
       return {
         id: s.id,
         supplierCode: s.supplierCode,
         name: s.name,
-        category: s.supplierProducts[0]?.product?.category?.name || "General",
+        category,
         contact: s.contactPerson,
         spend,
         pending,
@@ -74,8 +76,8 @@ export const addSupplier = createServerFn({ method: "POST" })
     emailUser: string;
   }) => data)
   .handler(async ({ data: payload }) => {
-    // RBAC: Manager can add if they have access to suppliers
-    if (payload.role !== "Owner" && payload.role !== "Admin" && payload.role !== "Manager") {
+    const role = payload.role.toLowerCase();
+    if (role !== "owner" && role !== "admin" && role !== "manager") {
       throw new Error("Unauthorized");
     }
 
@@ -127,8 +129,8 @@ export const editSupplierServer = createServerFn({ method: "POST" })
     role: string;
     emailUser: string;
   }) => data)
-  .handler(async ({ data: payload }) => {
-    if (payload.role !== "Owner" && payload.role !== "Admin") {
+    const role = payload.role.toLowerCase();
+    if (role !== "owner" && role !== "admin") {
       throw new Error("Only Owner and Admin can edit suppliers");
     }
 
@@ -162,8 +164,8 @@ export const editSupplierServer = createServerFn({ method: "POST" })
 
 export const archiveSupplierServer = createServerFn({ method: "POST" })
   .validator((data: { id: string, role: string, emailUser: string }) => data)
-  .handler(async ({ data: payload }) => {
-    if (payload.role !== "Owner" && payload.role !== "Admin") {
+    const role = payload.role.toLowerCase();
+    if (role !== "owner" && role !== "admin") {
       throw new Error("Only Owner and Admin can archive suppliers");
     }
 

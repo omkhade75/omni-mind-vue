@@ -12,9 +12,11 @@ import {
   YAxis,
 } from "recharts";
 import { FORECAST } from "@/lib/mock-data";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Loader2 } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { getForecastingServer } from "@/lib/server-analytics";
 
 export const Route = createFileRoute("/_app/forecasting")({
   head: () => ({
@@ -38,8 +40,27 @@ const SCENARIOS = [
 ];
 
 function Forecasting() {
+  const { user } = useAuth();
   const [scenario, setScenario] = useState("Normal");
   const [horizon, setHorizon] = useState("7d");
+  const [forecastData, setForecastData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      try {
+        const payload = { data: { role: user?.role || "owner", email: user?.email || "" } };
+        const res = await getForecastingServer(payload);
+        setForecastData(res);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [user]);
 
   return (
     <div className="space-y-6">
@@ -82,10 +103,15 @@ function Forecasting() {
       </div>
 
       <SectionCard title="Revenue Forecast" subtitle={`${horizon} · scenario: ${scenario}`}>
-        <div className="h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={FORECAST}>
-              <CartesianGrid stroke="var(--color-hairline)" vertical={false} />
+        <div className="h-72 relative">
+          {loading ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-sidebar/50">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={forecastData}>
+                <CartesianGrid stroke="var(--color-hairline)" vertical={false} />
               <XAxis dataKey="day" tickLine={false} axisLine={false} />
               <YAxis
                 tickLine={false}
@@ -123,8 +149,9 @@ function Forecasting() {
                 strokeDasharray="5 4"
                 dot={false}
               />
-            </LineChart>
-          </ResponsiveContainer>
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs">
