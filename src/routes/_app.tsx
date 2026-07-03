@@ -38,6 +38,8 @@ import {
   LogOut,
   ChevronRight,
   Circle,
+  Menu,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
@@ -125,6 +127,7 @@ function AppShell() {
   const { user, loading, logout } = useAuth();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = useRouterState({ select: (s: any) => s.location.pathname });
 
   const {
@@ -213,27 +216,51 @@ function AppShell() {
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
+      {/* Mobile sidebar overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside
         className={cn(
-          "sticky top-0 z-30 flex h-screen shrink-0 flex-col border-r border-hairline bg-sidebar transition-[width] duration-200",
-          collapsed ? "w-[68px]" : "w-[248px]",
+          "fixed top-0 left-0 z-50 flex h-screen shrink-0 flex-col bg-sidebar transition-all duration-300",
+          "border-r-2 border-r-primary/30",
+          // Desktop
+          "lg:sticky lg:translate-x-0",
+          collapsed ? "lg:w-[68px]" : "lg:w-[260px]",
+          // Mobile
+          mobileOpen ? "w-[280px] translate-x-0 shadow-2xl shadow-primary/10" : "-translate-x-full lg:translate-x-0",
         )}
       >
-        <div className="hairline-b flex items-center gap-2 px-4 py-4">
-          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg gradient-primary">
+        {/* Subtle gradient overlay on sidebar for premium feel */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-violet/5" />
+
+        <div className="relative hairline-b flex items-center gap-3 px-4 py-5">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg gradient-primary shadow-md shadow-primary/20">
             <Sparkles className="h-4 w-4 text-primary-foreground" />
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold tracking-tight">OmniMind AI</p>
-              <p className="truncate text-[10px] text-muted-foreground">{MALL.name}</p>
+              <p className="truncate text-base font-bold tracking-tight">{"OmniMind AI"}</p>
+              <p className="truncate text-[11px] text-muted-foreground">{MALL.name}</p>
             </div>
           )}
+          {/* Close mobile menu */}
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="ml-auto rounded-md p-1.5 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground lg:hidden"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          {/* Collapse toggle (desktop only) */}
           <button
             onClick={() => setCollapsed((c) => !c)}
             className={cn(
-              "ml-auto rounded-md p-1 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",
+              "ml-auto rounded-md p-1 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground hidden lg:block",
               collapsed && "mx-auto ml-0",
             )}
             aria-label="Toggle sidebar"
@@ -244,11 +271,11 @@ function AppShell() {
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-2 py-3">
+        <nav className="relative flex-1 overflow-y-auto px-2 py-4">
           {filteredNAV.map((section) => (
-            <div key={section.section} className="mb-3">
+            <div key={section.section} className="mb-4">
               {!collapsed && (
-                <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.16em] text-primary/70">
                   {section.section}
                 </p>
               )}
@@ -259,19 +286,20 @@ function AppShell() {
                     <li key={item.to}>
                       <Link
                         to={item.to as never}
+                        onClick={() => setMobileOpen(false)}
                         className={cn(
-                          "group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors",
+                          "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
                           active
-                            ? "bg-primary/12 text-foreground"
+                            ? "bg-primary/15 text-foreground shadow-sm"
                             : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-foreground",
                         )}
                       >
                         {active && (
-                          <span className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-r gradient-primary" />
+                          <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r gradient-primary" />
                         )}
                         <item.icon
                           className={cn(
-                            "h-4 w-4 shrink-0",
+                            "h-[18px] w-[18px] shrink-0",
                             active
                               ? "text-primary"
                               : "text-muted-foreground group-hover:text-foreground",
@@ -287,9 +315,9 @@ function AppShell() {
           ))}
         </nav>
 
-        <div className="hairline-t p-3">
-          <div className={cn("flex items-center gap-2", collapsed && "justify-center")}>
-            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-violet text-xs font-semibold text-primary-foreground">
+        <div className="relative hairline-t p-4">
+          <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-violet text-sm font-bold text-primary-foreground shadow-md shadow-primary/20">
               {user?.name
                 .split(" ")
                 .map((p) => p[0])
@@ -298,8 +326,8 @@ function AppShell() {
             </div>
             {!collapsed && (
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-semibold">{user?.name}</p>
-                <p className="truncate text-[10px] uppercase tracking-wider text-primary">
+                <p className="truncate text-sm font-bold">{user?.name}</p>
+                <p className="truncate text-[11px] font-semibold uppercase tracking-wider text-primary">
                   {user?.role}
                 </p>
               </div>
@@ -310,7 +338,7 @@ function AppShell() {
                   await logout();
                   navigate({ to: "/login" });
                 }}
-                className="rounded-md p-1.5 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                className="rounded-md p-2 text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-colors"
                 aria-label="Sign out"
               >
                 <LogOut className="h-4 w-4" />
@@ -325,6 +353,14 @@ function AppShell() {
         {/* Top bar */}
         <header className="sticky top-0 z-20 hairline-b glass">
           <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
+            {/* Mobile hamburger */}
+            <button
+              onClick={() => setMobileOpen(true)}
+              className="rounded-md p-1.5 text-muted-foreground hover:text-foreground lg:hidden"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+
             <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
               <span>OmniMind</span>
               <ChevronRight className="h-3 w-3" />
