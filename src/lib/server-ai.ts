@@ -1,4 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
+import { prisma } from "./server/prisma";
+import { fmtINR } from "./mock-data";
 
 export interface AIResponseContract {
   answer: string;
@@ -42,7 +44,8 @@ export const askOmniMindServer = createServerFn({ method: "POST" })
     const groqKey = process.env.GROQ_API_KEY || "";
 
     if (!geminiKey && !groqKey) {
-      throw new Error("Neither GEMINI_API_KEY nor GROQ_API_KEY is configured on the server.");
+      // PRISMA DYNAMIC FALLBACK LOGIC
+      return await executePrismaFallback(data.query, data.intent);
     }
 
     const systemPrompt = `You are OmniMind AI, the Autonomous Mall Decision Operating System for GrandSquare Mall, Pune.
@@ -313,3 +316,72 @@ Return a structured JSON output matching the requested schema. Ensure recommende
       throw err;
     }
   });
+
+async function executePrismaFallback(query: string, intent: string): Promise<AIResponseContract> {
+  const q = query.toLowerCase();
+
+  // 1. Payment Intent
+  if (intent === "payments" || q.includes("pay") || q.includes("owe") || q.includes("pending")) {
+    const suppliers = await prisma.supplier.findMany({
+      include: { purchaseOrders: true }
+    });
+
+    let totalPending = 0;
+    const unpaidSuppliers = [];
+
+    for (const s of suppliers) {
+      const pendingPOs = s.purchaseOrders.filter(po => po.status !== "Received");
+      const pendingSum = pendingPOs.reduce((sum, po) => sum + Number(po.totalAmount), 0);
+      if (pendingSum > 0) {
+        totalPending += pendingSum;
+        unpaidSuppliers.push({ name: s.name, amount: pendingSum, id: s.id });
+      }
+    }
+
+    if (unpaidSuppliers.length === 0) {
+      return {
+        answer: "There are currently no pending payments to any suppliers! All purchase orders have been fully received and settled.",
+        summary: "Zero pending payments.",
+        evidence: [],
+        reasoning: ["Queried Supplier database and found 0 open purchase orders."],
+        recommendedActions: [],
+        risks: [],
+        confidence: 1.0,
+      };
+    }
+
+    // Sort by highest amount
+    unpaidSuppliers.sort((a, b) => b.amount - a.amount);
+
+    return {
+      answer: `We currently have ${fmtINR(totalPending)} in pending payments across ${unpaidSuppliers.length} suppliers. The largest outstanding balance is with ${unpaidSuppliers[0].name} (${fmtINR(unpaidSuppliers[0].amount)}).`,
+      summary: `${fmtINR(totalPending)} total pending payables.`,
+      evidence: unpaidSuppliers.slice(0, 3).map(s => ({
+        label: s.name,
+        value: fmtINR(s.amount),
+        sourceType: "supplier",
+        sourceId: s.id,
+      })),
+      reasoning: [
+        `Database scan identified ${unpaidSuppliers.length} suppliers with Purchase Orders in Draft, Sent, or Ordered status.`,
+        "Supplier SLA dictates payment upon full receipt of goods."
+      ],
+      recommendedActions: [
+        {
+          title: `Review ${unpaidSuppliers[0].name} POs`,
+          description: `Review open purchase orders for our highest payable supplier.`,
+          priority: "high",
+          actionType: "OPEN_SUPPLIER",
+          entityId: unpaidSuppliers[0].id,
+        }
+      ],
+      risks: [
+        { title: "Cash Flow Obligation", severity: "medium" }
+      ],
+      confidence: 1.0,
+    };
+  }
+
+  // Generic DB summary fallback
+  throw new Error("No specific Prisma DB fallback for this intent. Falling back to local intelligence on client.");
+}
