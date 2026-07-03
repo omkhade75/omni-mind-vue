@@ -38,7 +38,9 @@ import { PageHeader, SectionCard, StatusPill } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { FORECAST, HEATMAP, HOURLY_DEMAND, fmtINR, fmtNum } from "@/lib/mock-data";
 import { useAuth } from "@/lib/auth-context";
-import { useBusinessData } from "@/lib/business-context";
+import { useBusinessData, type KpiItem } from "@/lib/business-context";
+import { getCommandCenterServer } from "@/lib/server-analytics";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/_app/command-center")({
   head: () => ({
@@ -71,7 +73,6 @@ function CommandCenter() {
   const greeting = greetingFor(new Date());
 
   const {
-    kpis,
     timeSeriesData,
     departmentRevenue,
     scopedRecommendations,
@@ -79,6 +80,22 @@ function CommandCenter() {
     transactions,
     activeDate,
   } = useBusinessData();
+
+  const [liveKpis, setLiveKpis] = useState<KpiItem[]>([]);
+  
+  useEffect(() => {
+    async function load() {
+      const res = await getCommandCenterServer({ data: { role: user?.role || "owner", email: user?.email || "", activeDate } });
+      setLiveKpis([
+        { key: "revenue", label: "Gross Revenue", value: res.grossRevenue, delta: 8.4 },
+        { key: "profit", label: "Net Profit", value: res.netProfit, delta: 4.1 },
+        { key: "orders", label: "Total Orders", value: res.orders, delta: 6.2 },
+        { key: "expenses", label: "Total Expenses", value: res.expenses, delta: 5.4 },
+      ]);
+    }
+    load();
+  }, [activeDate, user]);
+
   const [chartResolution, setChartResolution] = useState<"Hourly" | "Daily" | "Weekly" | "Monthly">(
     "Daily",
   );
@@ -180,7 +197,7 @@ function CommandCenter() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {kpis.map((k) => (
+        {liveKpis.length > 0 ? liveKpis.map((k) => (
           <KpiCard
             key={k.key}
             label={k.label}
@@ -194,7 +211,9 @@ function CommandCenter() {
                 : "inr-compact"
             }
           />
-        ))}
+        )) : (
+          <div className="col-span-4 text-center text-muted-foreground p-4">Loading KPIs from database...</div>
+        )}
       </div>
 
       {/* Executive brief */}
