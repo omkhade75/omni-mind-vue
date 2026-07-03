@@ -174,13 +174,17 @@ function AppShell() {
   // Click outside to close notification dropdown
   useEffect(() => {
     if (!notifOpen) return;
-    const handleClick = (e: MouseEvent) => {
+    const handleClick = (e: MouseEvent | TouchEvent) => {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
         setNotifOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    document.addEventListener("touchstart", handleClick);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("touchstart", handleClick);
+    };
   }, [notifOpen]);
 
   const searchResults = useMemo(() => {
@@ -528,7 +532,7 @@ function AppShell() {
                 </Button>
 
                 {notifOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-[360px] sm:w-[400px] max-h-[480px] overflow-hidden rounded-xl border border-hairline bg-popover shadow-2xl z-50 flex flex-col">
+                  <div className="absolute right-0 top-full mt-2 w-[calc(100vw-32px)] max-w-[360px] sm:max-w-[400px] max-h-[80vh] sm:max-h-[480px] overflow-hidden rounded-xl border border-hairline bg-popover shadow-2xl z-50 flex flex-col">
                     {/* Header */}
                     <div className="flex items-center justify-between px-4 py-3 hairline-b">
                       <div>
