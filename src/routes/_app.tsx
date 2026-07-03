@@ -136,6 +136,13 @@ function AppShell() {
   const notifRef = useRef<HTMLDivElement>(null);
   const pathname = useRouterState({ select: (s: any) => s.location.pathname });
 
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate({ to: "/login", replace: true });
+    }
+  }, [loading, user, navigate]);
+
   const {
     activeProductId,
     activeCustomerId,
