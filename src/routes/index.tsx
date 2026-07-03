@@ -53,39 +53,39 @@ function LandingPage() {
       {/* Background effects */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         {/* Ambient glows */}
-        <div className="absolute -left-40 top-0 h-[520px] w-[520px] animate-pulse-slow rounded-full bg-primary/20 blur-[120px]" />
-        <div className="absolute -right-40 bottom-0 h-[520px] w-[520px] animate-pulse-slow rounded-full bg-violet/20 blur-[120px]" />
-        <div className="absolute left-1/2 top-1/3 h-[400px] w-[400px] -translate-x-1/2 animate-pulse-slow rounded-full bg-cyan/15 blur-[100px]" />
+        <div className="absolute -left-40 top-0 h-[520px] w-[520px] animate-pulse-slow rounded-full bg-primary/25 blur-[120px]" />
+        <div className="absolute -right-40 bottom-0 h-[520px] w-[520px] animate-pulse-slow rounded-full bg-violet/25 blur-[120px]" />
+        <div className="absolute left-1/2 top-1/3 h-[400px] w-[400px] -translate-x-1/2 animate-pulse-slow rounded-full bg-cyan/20 blur-[100px]" />
         
         {/* Grid pattern */}
-        <div className="absolute inset-0 opacity-[0.04] [background-image:linear-gradient(var(--color-foreground)_1px,transparent_1px),linear-gradient(90deg,var(--color-foreground)_1px,transparent_1px)] [background-size:44px_44px]" />
+        <div className="absolute inset-0 opacity-[0.06] [background-image:linear-gradient(var(--color-foreground)_1px,transparent_1px),linear-gradient(90deg,var(--color-foreground)_1px,transparent_1px)] [background-size:44px_44px]" />
 
-        {/* Floating geometric shapes (More vibrant colors) */}
-        <div className="absolute left-[15%] top-[20%] animate-float-slow opacity-80">
-          <div className="h-24 w-24 rounded-3xl border border-primary/40 bg-gradient-to-br from-primary/30 to-transparent backdrop-blur-3xl shadow-[0_0_30px_var(--color-primary)]/20" style={{ transform: 'rotate(15deg) skewX(-15deg)' }} />
+        {/* Floating geometric shapes (Bright & Luminous) */}
+        <div className="absolute left-[12%] top-[22%] animate-float-slow opacity-100">
+          <div className="h-28 w-28 rounded-3xl border border-primary/50 bg-gradient-to-br from-primary/60 to-primary/20 backdrop-blur-3xl shadow-[0_0_40px_var(--color-primary)]/40" style={{ transform: 'rotate(25deg) skewX(-10deg)' }} />
         </div>
         
-        <div className="absolute right-[12%] top-[15%] animate-float-medium opacity-80" style={{ animationDelay: '1.5s' }}>
-          <div className="h-32 w-32 rounded-full border border-violet/40 bg-gradient-to-bl from-violet/30 to-transparent backdrop-blur-3xl shadow-[0_0_30px_var(--color-violet)]/20" style={{ transform: 'scaleY(0.8) rotate(-20deg)' }} />
+        <div className="absolute right-[10%] top-[12%] animate-float-medium opacity-100" style={{ animationDelay: '1.5s' }}>
+          <div className="h-36 w-36 rounded-full border border-violet/50 bg-gradient-to-bl from-violet/50 to-violet/10 backdrop-blur-3xl shadow-[0_0_40px_var(--color-violet)]/40" style={{ transform: 'scaleY(0.85) rotate(-15deg)' }} />
         </div>
 
-        <div className="absolute left-[8%] bottom-[25%] animate-float-medium opacity-80" style={{ animationDelay: '2.5s' }}>
-          <div className="h-20 w-20 rounded-2xl border border-warning/40 bg-gradient-to-tr from-warning/30 to-transparent backdrop-blur-xl shadow-[0_0_20px_var(--color-warning)]/20" style={{ transform: 'rotate(45deg)' }} />
+        <div className="absolute left-[8%] bottom-[22%] animate-float-medium opacity-100" style={{ animationDelay: '2.5s' }}>
+          <div className="h-24 w-24 rounded-2xl border border-warning/50 bg-gradient-to-tr from-warning/60 to-warning/20 backdrop-blur-xl shadow-[0_0_35px_var(--color-warning)]/40" style={{ transform: 'rotate(40deg)' }} />
         </div>
 
-        <div className="absolute right-[22%] bottom-[20%] animate-float-slow opacity-80" style={{ animationDelay: '1s' }}>
-          <div className="h-28 w-28 rounded-full border border-success/30 bg-gradient-to-br from-success/20 to-transparent backdrop-blur-md shadow-[0_0_25px_var(--color-success)]/15" style={{ transform: 'rotate(-15deg)' }} />
+        <div className="absolute right-[20%] bottom-[18%] animate-float-slow opacity-100" style={{ animationDelay: '1s' }}>
+          <div className="h-32 w-32 rounded-full border border-success/50 bg-gradient-to-br from-success/50 to-success/10 backdrop-blur-md shadow-[0_0_40px_var(--color-success)]/30" style={{ transform: 'rotate(-25deg)' }} />
         </div>
 
-        <div className="absolute left-[45%] top-[15%] animate-float-medium opacity-70" style={{ animationDelay: '3s' }}>
-          <div className="h-16 w-16 rounded-xl border border-cyan/40 bg-gradient-to-br from-cyan/30 to-transparent backdrop-blur-md shadow-[0_0_15px_var(--color-cyan)]/20" style={{ transform: 'rotate(60deg)' }} />
+        <div className="absolute left-[40%] top-[10%] animate-float-medium opacity-100" style={{ animationDelay: '3s' }}>
+          <div className="h-16 w-16 rounded-xl border border-cyan/60 bg-gradient-to-br from-cyan/50 to-cyan/20 backdrop-blur-md shadow-[0_0_25px_var(--color-cyan)]/50" style={{ transform: 'rotate(65deg)' }} />
         </div>
 
         {/* Micro-particles / stars */}
-        <div className="absolute left-[30%] top-[40%] h-1.5 w-1.5 animate-pulse rounded-full bg-primary/80 shadow-[0_0_10px_var(--color-primary)]" />
-        <div className="absolute right-[25%] top-[35%] h-2 w-2 animate-pulse rounded-full bg-warning/80 shadow-[0_0_12px_var(--color-warning)]" style={{ animationDelay: '1s' }} />
-        <div className="absolute left-[55%] bottom-[25%] h-1.5 w-1.5 animate-pulse rounded-full bg-success/80 shadow-[0_0_8px_var(--color-success)]" style={{ animationDelay: '0.5s' }} />
-        <div className="absolute right-[40%] top-[20%] h-1 w-1 animate-pulse rounded-full bg-violet/80 shadow-[0_0_6px_var(--color-violet)]" style={{ animationDelay: '2s' }} />
+        <div className="absolute left-[30%] top-[40%] h-2 w-2 animate-pulse rounded-full bg-primary shadow-[0_0_12px_var(--color-primary)]" />
+        <div className="absolute right-[25%] top-[35%] h-2 w-2 animate-pulse rounded-full bg-warning shadow-[0_0_15px_var(--color-warning)]" style={{ animationDelay: '1s' }} />
+        <div className="absolute left-[55%] bottom-[25%] h-2 w-2 animate-pulse rounded-full bg-success shadow-[0_0_12px_var(--color-success)]" style={{ animationDelay: '0.5s' }} />
+        <div className="absolute right-[40%] top-[20%] h-1.5 w-1.5 animate-pulse rounded-full bg-violet shadow-[0_0_10px_var(--color-violet)]" style={{ animationDelay: '2s' }} />
       </div>
 
       <div className="relative z-10">
