@@ -13,8 +13,10 @@ import {
 } from "recharts";
 import { Sparkles, Zap, Droplets, AlertTriangle } from "lucide-react";
 import { useBusinessData } from "@/lib/business-context";
+import { useAuth } from "@/lib/auth-context";
 import { fmtNum, fmtINR } from "@/lib/mock-data";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { getUtilitiesServer } from "@/lib/server-utilities";
 
 export const Route = createFileRoute("/_app/utilities")({
   head: () => ({
@@ -30,19 +32,29 @@ export const Route = createFileRoute("/_app/utilities")({
 });
 
 function Utilities() {
-  const { utilities, activeDate } = useBusinessData();
+  const { activeDate } = useBusinessData();
+  const { user } = useAuth();
+  
+  const [electricityToday, setElectricityToday] = useState(12450);
+  const [waterToday, setWaterToday] = useState(8120);
+  const [dbAnomaly, setDbAnomaly] = useState(false);
 
-  const isMay5 = activeDate === "2026-05-05";
+  useEffect(() => {
+    async function load() {
+      try {
+        const payload = { data: { role: user?.role || "owner", email: user?.email || "", activeDate } };
+        const data = await getUtilitiesServer(payload);
+        setElectricityToday(data.electricityToday);
+        setWaterToday(data.waterToday);
+        setDbAnomaly(data.isAnomaly);
+      } catch (err) {
+        console.error("Failed to load utilities", err);
+      }
+    }
+    load();
+  }, [user, activeDate]);
 
-  const electricityToday = useMemo(() => {
-    const readings = utilities.filter((u) => u.date === activeDate && u.type === "Electricity");
-    return readings.reduce((sum, u) => sum + u.consumption, 0) || 12450;
-  }, [utilities, activeDate]);
-
-  const waterToday = useMemo(() => {
-    const readings = utilities.filter((u) => u.date === activeDate && u.type === "Water");
-    return readings.reduce((sum, u) => sum + u.consumption, 0) || 8120;
-  }, [utilities, activeDate]);
+  const isMay5 = activeDate === "2026-05-05" || dbAnomaly;
 
   const hourly = useMemo(() => {
     return Array.from({ length: 24 }, (_, h) => {

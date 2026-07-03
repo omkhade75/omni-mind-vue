@@ -14,8 +14,11 @@ import {
   YAxis,
 } from "recharts";
 import { useBusinessData } from "@/lib/business-context";
+import { useAuth } from "@/lib/auth-context";
 import { fmtINR } from "@/lib/mock-data";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { getExpensesServer, type ExpenseListItem } from "@/lib/server-expenses";
+import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/_app/expenses")({
   head: () => ({
@@ -32,7 +35,25 @@ export const Route = createFileRoute("/_app/expenses")({
 });
 
 function Expenses() {
-  const { scopedExpenses } = useBusinessData();
+  const { user } = useAuth();
+  const [scopedExpenses, setScopedExpenses] = useState<ExpenseListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      try {
+        const payload = { data: { role: user?.role || "owner", email: user?.email || "" } };
+        const data = await getExpensesServer(payload);
+        setScopedExpenses(data);
+      } catch (err) {
+        console.error("Failed to load expenses", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [user]);
 
   const total = useMemo(() => {
     return scopedExpenses.reduce((sum, e) => sum + e.amount, 0);
@@ -145,7 +166,12 @@ function Expenses() {
         title="Expense Log"
         subtitle={`${scopedExpenses.length} entries for current scope`}
       >
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto min-h-[300px] relative">
+          {loading ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-sidebar/50">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
           <table className="w-full min-w-[820px] text-xs">
             <thead>
               <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground border-b border-hairline pb-2">
@@ -172,10 +198,10 @@ function Expenses() {
                     <td className="py-3 font-mono text-[11px] text-muted-foreground">{e.id}</td>
                     <td className="py-3">{e.date}</td>
                     <td className="py-3 font-medium text-foreground">{e.category}</td>
-                    <td className="py-3 text-muted-foreground">{e.desc}</td>
+                    <td className="py-3 text-muted-foreground">{e.description}</td>
                     <td className="py-3 text-muted-foreground">{e.vendor}</td>
                     <td className="py-3 text-right font-semibold pr-4">{fmtINR(e.amount)}</td>
-                    <td className="py-3 pl-4 text-muted-foreground">{e.dept}</td>
+                    <td className="py-3 pl-4 text-muted-foreground">{e.departmentId || "Mall-wide"}</td>
                     <td className="py-3">
                       <StatusPill tone={e.status === "Paid" ? "success" : "warning"}>
                         {e.status}
@@ -186,6 +212,7 @@ function Expenses() {
               )}
             </tbody>
           </table>
+          )}
         </div>
       </SectionCard>
     </div>

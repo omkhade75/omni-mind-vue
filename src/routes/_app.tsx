@@ -4,6 +4,7 @@ import {
   Link,
   useNavigate,
   useRouterState,
+  redirect,
 } from "@tanstack/react-router";
 import { useEffect, useState, useRef, useMemo } from "react";
 import {
@@ -58,6 +59,15 @@ import {
 } from "@/components/details-drawers";
 
 export const Route = createFileRoute("/_app")({
+  beforeLoad: async () => {
+    const { getCurrentSessionServer } = await import("@/lib/server-auth");
+    const res = await getCurrentSessionServer();
+    if (!res.user) {
+      throw redirect({
+        to: '/login',
+      })
+    }
+  },
   component: AppShell,
 });
 
