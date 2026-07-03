@@ -129,6 +129,7 @@ export const editSupplierServer = createServerFn({ method: "POST" })
     role: string;
     emailUser: string;
   }) => data)
+  .handler(async ({ data: payload }) => {
     const role = payload.role.toLowerCase();
     if (role !== "owner" && role !== "admin") {
       throw new Error("Only Owner and Admin can edit suppliers");
@@ -164,6 +165,7 @@ export const editSupplierServer = createServerFn({ method: "POST" })
 
 export const archiveSupplierServer = createServerFn({ method: "POST" })
   .validator((data: { id: string, role: string, emailUser: string }) => data)
+  .handler(async ({ data: payload }) => {
     const role = payload.role.toLowerCase();
     if (role !== "owner" && role !== "admin") {
       throw new Error("Only Owner and Admin can archive suppliers");

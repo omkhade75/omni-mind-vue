@@ -406,7 +406,7 @@ async function executePrismaFallback(query: string, intent: string): Promise<AIR
   const orders = transactions.length;
 
   return {
-    answer: \`GrandSquare Mall is performing steadily on \${todayStr}. Total gross revenue reached \${fmtINR(grossRevenue)} with a net profit of \${fmtINR(netProfit)} across \${orders} orders.\`,
+    answer: `GrandSquare Mall is performing steadily on ${todayStr}. Total gross revenue reached ${fmtINR(grossRevenue)} with a net profit of ${fmtINR(netProfit)} across ${orders} orders.`,
     summary: "GrandSquare Mall operations are performing within normal parameters based on live PostgreSQL data.",
     evidence: [
       { label: "Gross Revenue", value: fmtINR(grossRevenue) },
