@@ -15,6 +15,7 @@ import { fmtINR, fmtNum } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import {
   Package,
@@ -722,6 +723,16 @@ export const Supplier360Drawer: React.FC<DetailDrawerProps & { supplierId: strin
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Actions */}
+          <div className="pt-4 border-t border-hairline">
+            <Link to="/purchase-orders" onClick={() => onOpenChange(false)}>
+              <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                Give Order / Create PO
+              </Button>
+            </Link>
           </div>
         </div>
       </SheetContent>
