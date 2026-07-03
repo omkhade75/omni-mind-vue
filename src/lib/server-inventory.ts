@@ -316,3 +316,47 @@ export const getInventoryMovementsServer = createServerFn({ method: "POST" })
 
     return mappedMovements;
   });
+
+export const getExpiryIntelligenceServer = createServerFn({ method: "POST" })
+  .validator((data: { role: string; email: string; activeDate?: string }) => data)
+  .handler(async ({ data }) => {
+    // We only care about products that have batches with expiryDate
+    const batches = await prisma.productBatch.findMany({
+      where: {
+        expiryDate: { not: null },
+        quantityRemaining: { gt: 0 },
+      },
+      include: {
+        product: {
+          include: { department: true }
+        },
+      }
+    });
+
+    const activeDate = data.activeDate ? new Date(data.activeDate) : new Date();
+
+    const perishable = batches.map(batch => {
+      const days = Math.ceil(
+        (batch.expiryDate!.getTime() - activeDate.getTime()) / 86400000,
+      );
+      
+      return {
+        id: batch.id,
+        productId: batch.product.id,
+        name: batch.product.name,
+        sku: batch.product.sku,
+        department: batch.product.department.name,
+        batchNumber: batch.batchNumber,
+        expiry: batch.expiryDate!.toISOString(),
+        daysToExpiry: days,
+        stock: batch.quantityRemaining,
+        cost: Number(batch.costPrice),
+        status: batch.status,
+      };
+    });
+
+    // Sort by days to expiry ascending
+    perishable.sort((a, b) => a.daysToExpiry - b.daysToExpiry);
+
+    return perishable;
+  });

@@ -2,8 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader, SectionCard, StatusPill } from "@/components/page-header";
 import { Timer, AlertTriangle, Sparkles } from "lucide-react";
 import { useBusinessData } from "@/lib/business-context";
+import { useAuth } from "@/lib/auth-context";
 import { fmtINR, fmtNum } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
+import { getExpiryIntelligenceServer } from "@/lib/server-inventory";
 
 export const Route = createFileRoute("/_app/expiry")({
   head: () => ({
@@ -19,16 +22,26 @@ export const Route = createFileRoute("/_app/expiry")({
 });
 
 function Expiry() {
-  const { scopedProducts, applyMarkdown, activeDate } = useBusinessData();
+  const { applyMarkdown } = useBusinessData();
+  const { user } = useAuth();
+  const [perishable, setPerishable] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const perishable = scopedProducts
-    .filter((p) => p.expiry)
-    .map((p) => {
-      const days = Math.ceil(
-        (new Date(p.expiry!).getTime() - new Date(activeDate).getTime()) / 86400000,
-      );
-      return { ...p, days };
-    });
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      try {
+        const payload = { data: { role: user?.role || "owner", email: user?.email || "" } };
+        const data = await getExpiryIntelligenceServer(payload);
+        setPerishable(data);
+      } catch (err) {
+        console.error("Failed to load expiry intelligence", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [user]);
 
   // Calculate metrics based on real perishable database data
   const expiringToday = perishable.filter((p) => p.days === 0).length;
@@ -141,10 +154,10 @@ function Expiry() {
                     <tr key={p.id} className="hover:bg-surface/50 transition-colors">
                       <td className="py-3 font-medium">{p.name}</td>
                       <td className="py-3 font-mono text-[11px] text-muted-foreground">
-                        BAT-{p.id.slice(-5)}-01
+                        {p.batchNumber}
                       </td>
                       <td className="py-3 text-right font-semibold">{fmtNum(p.stock)}</td>
-                      <td className="py-3 font-medium">{p.expiry}</td>
+                      <td className="py-3 font-medium">{new Date(p.expiry).toLocaleDateString()}</td>
                       <td
                         className={`py-3 text-right font-bold ${p.days <= 2 ? "text-destructive" : p.days <= 7 ? "text-warning" : ""}`}
                       >
@@ -163,8 +176,8 @@ function Expiry() {
                             className="gradient-primary text-primary-foreground font-semibold py-1 h-7 text-[10px]"
                             onClick={() => {
                               applyMarkdown(
-                                p.id,
-                                `BAT-${p.id.slice(-5)}-01`,
+                                p.productId,
+                                p.batchNumber,
                                 p.days <= 2 ? 30 : 20,
                               );
                             }}
