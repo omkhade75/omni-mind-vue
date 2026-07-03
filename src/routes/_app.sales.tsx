@@ -3,6 +3,7 @@ import { Filter, Download } from "lucide-react";
 import { PageHeader, SectionCard, StatusPill } from "@/components/page-header";
 import { KpiCard } from "@/components/kpi-card";
 import { Button } from "@/components/ui/button";
+import { useBusinessData } from "@/lib/business-context";
 import {
   Area,
   AreaChart,
@@ -12,7 +13,6 @@ import {
   Cell,
   Legend,
   Line,
-  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -20,20 +20,26 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { DEPARTMENT_REVENUE, HOURLY_DEMAND, KPIS, REVENUE_30D, TRANSACTIONS, fmtINR } from "@/lib/mock-data";
+import { fmtINR, fmtNum } from "@/lib/mock-data";
 
-export const Route = createFileRoute("/_app/sales" as never)({
+export const Route = createFileRoute("/_app/sales")({
   head: () => ({
     meta: [
       { title: "Sales Intelligence — OmniMind AI" },
-      { name: "description", content: "Sales intelligence with department, category, hourly, weekday, and payment splits." },
+      {
+        name: "description",
+        content:
+          "Sales intelligence with department, category, hourly, weekday, and payment splits.",
+      },
     ],
   }),
   component: Sales,
 });
 
 function Sales() {
-  const salesKpis = KPIS.filter((k) => ["revenue", "profit", "orders", "aov"].includes(k.key));
+  const { kpis, timeSeriesData, departmentRevenue, scopedTransactions, openCustomer360 } =
+    useBusinessData();
+  const salesKpis = kpis.filter((k) => ["revenue", "profit", "orders", "aov"].includes(k.key));
 
   return (
     <div className="space-y-6">
@@ -66,10 +72,14 @@ function Sales() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <SectionCard title="Sales vs Target" subtitle="30-day performance" className="xl:col-span-2">
+        <SectionCard
+          title="Sales vs Target"
+          subtitle="30-day performance"
+          className="xl:col-span-2"
+        >
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={REVENUE_30D}>
+              <AreaChart data={timeSeriesData}>
                 <defs>
                   <linearGradient id="s1" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.4} />
@@ -78,10 +88,30 @@ function Sales() {
                 </defs>
                 <CartesianGrid stroke="var(--color-hairline)" vertical={false} />
                 <XAxis dataKey="day" tickLine={false} axisLine={false} />
-                <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000}K`} width={48} />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v: any) => `${Number(v) / 1000}K`}
+                  width={48}
+                />
                 <Tooltip contentStyle={ttStyle} />
-                <Area type="monotone" dataKey="revenue" stroke="var(--color-primary)" strokeWidth={2} fill="url(#s1)" name="Revenue" />
-                <Line type="monotone" dataKey="prev" stroke="var(--color-muted-foreground)" strokeDasharray="4 4" strokeWidth={1.5} dot={false} name="Prev period" />
+                <Area
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="var(--color-primary)"
+                  strokeWidth={2}
+                  fill="url(#s1)"
+                  name="Revenue"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="prev"
+                  stroke="var(--color-muted-foreground)"
+                  strokeDasharray="4 4"
+                  strokeWidth={1.5}
+                  dot={false}
+                  name="Prev period"
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -122,10 +152,21 @@ function Sales() {
         <SectionCard title="Department Sales" subtitle="Current period">
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={DEPARTMENT_REVENUE.slice(0, 8)} layout="vertical">
+              <BarChart data={departmentRevenue.slice(0, 8)} layout="vertical">
                 <CartesianGrid stroke="var(--color-hairline)" horizontal={false} />
-                <XAxis type="number" tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 100000}L`} />
-                <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} width={90} />
+                <XAxis
+                  type="number"
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v: any) => `${Number(v) / 100000}L`}
+                />
+                <YAxis
+                  dataKey="name"
+                  type="category"
+                  tickLine={false}
+                  axisLine={false}
+                  width={90}
+                />
                 <Tooltip contentStyle={ttStyle} />
                 <Bar dataKey="value" fill="var(--color-primary)" radius={[0, 4, 4, 0]} />
               </BarChart>
@@ -136,7 +177,15 @@ function Sales() {
         <SectionCard title="Hourly Demand" subtitle="Peak checkout windows">
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={HOURLY_DEMAND}>
+              <AreaChart
+                data={Array.from({ length: 14 }, (_, i) => {
+                  const hour = 9 + i;
+                  return {
+                    hour: `${hour}:00`,
+                    footfall: Math.round(400 + Math.sin((hour - 12) / 3) * 300 + (hour % 2) * 50),
+                  };
+                })}
+              >
                 <defs>
                   <linearGradient id="hd" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="var(--color-cyan)" stopOpacity={0.4} />
@@ -147,40 +196,58 @@ function Sales() {
                 <XAxis dataKey="hour" tickLine={false} axisLine={false} />
                 <YAxis tickLine={false} axisLine={false} width={40} />
                 <Tooltip contentStyle={ttStyle} />
-                <Area type="monotone" dataKey="footfall" stroke="var(--color-cyan)" strokeWidth={2} fill="url(#hd)" />
+                <Area
+                  type="monotone"
+                  dataKey="footfall"
+                  stroke="var(--color-cyan)"
+                  strokeWidth={2}
+                  fill="url(#hd)"
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </SectionCard>
       </div>
 
-      <SectionCard title="Recent Transactions" subtitle={`${TRANSACTIONS.length} bills · today`}>
+      <SectionCard
+        title="Recent Transactions"
+        subtitle={`${scopedTransactions.length} bills · today`}
+      >
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-xs">
+          <table className="w-full min-w-[800px] text-xs table-fixed">
             <thead>
-              <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-                <th className="pb-2 font-medium">Txn ID</th>
-                <th className="pb-2 font-medium">Time</th>
-                <th className="pb-2 font-medium">Customer</th>
-                <th className="pb-2 font-medium">Dept</th>
-                <th className="pb-2 text-right font-medium">Items</th>
-                <th className="pb-2 text-right font-medium">Amount</th>
-                <th className="pb-2 font-medium">Payment</th>
-                <th className="pb-2 font-medium">Status</th>
+              <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground border-b border-hairline pb-2">
+                <th className="pb-3 w-[120px] font-semibold">Txn ID</th>
+                <th className="pb-3 w-[80px] font-semibold">Time</th>
+                <th className="pb-3 w-[150px] font-semibold">Customer</th>
+                <th className="pb-3 w-[120px] font-semibold">Dept</th>
+                <th className="pb-3 w-[80px] text-right font-semibold">Items</th>
+                <th className="pb-3 w-[120px] text-right font-semibold pr-4">Amount</th>
+                <th className="pb-3 w-[100px] font-semibold pl-4">Payment</th>
+                <th className="pb-3 w-[100px] font-semibold">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-hairline">
-              {TRANSACTIONS.slice(0, 12).map((t) => (
-                <tr key={t.id} className="hover:bg-surface-2/40">
-                  <td className="py-2.5 font-mono text-[11px] text-muted-foreground">{t.id}</td>
-                  <td className="py-2.5">{t.time}</td>
-                  <td className="py-2.5">{t.customer}</td>
-                  <td className="py-2.5 text-muted-foreground">{t.dept}</td>
-                  <td className="py-2.5 text-right">{t.items}</td>
-                  <td className="py-2.5 text-right font-semibold">{fmtINR(t.amount)}</td>
-                  <td className="py-2.5">{t.payment}</td>
-                  <td className="py-2.5">
-                    <StatusPill tone={t.status === "Completed" ? "success" : "warning"}>{t.status}</StatusPill>
+              {scopedTransactions.slice(0, 12).map((t) => (
+                <tr key={t.id} className="hover:bg-surface/50 transition-colors">
+                  <td className="py-3 font-mono text-[11px] text-muted-foreground">{t.id}</td>
+                  <td className="py-3">{t.time}</td>
+                  <td className="py-3">
+                    <button
+                      onClick={() => openCustomer360(t.customerId)}
+                      className="font-medium hover:text-primary transition-colors text-left hover:underline"
+                    >
+                      {t.customerName}
+                    </button>
+                  </td>
+                  <td className="py-3 text-muted-foreground">{t.dept}</td>
+                  <td className="py-3 text-right">{t.items.length}</td>
+                  <td className="py-3 text-right font-semibold pr-4">{fmtINR(t.total)}</td>
+                  <td className="py-3 pl-4 font-medium text-foreground">{t.payment}</td>
+                  <td className="py-3">
+                    <StatusPill tone={t.status === "Completed" ? "success" : "warning"}>
+                      {t.status}
+                    </StatusPill>
                   </td>
                 </tr>
               ))}

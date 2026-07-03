@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "../lib/auth-context";
+import { BusinessDataProvider } from "../lib/business-context";
 import { Toaster } from "../components/ui/sonner";
 
 function NotFoundComponent() {
@@ -87,14 +88,27 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "OmniMind AI — Mall Intelligence & Decision OS" },
       {
         property: "og:description",
-        content: "From mall data to intelligent decisions. Analytics, forecasting, and AI decisions for modern malls.",
+        content:
+          "From mall data to intelligent decisions. Analytics, forecasting, and AI decisions for modern malls.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "OmniMind AI — Mall Intelligence & Decision OS" },
-      { name: "description", content: "OmniMall Insights is an AI-powered mall intelligence platform for decision-making." },
-      { property: "og:description", content: "OmniMall Insights is an AI-powered mall intelligence platform for decision-making." },
-      { name: "twitter:description", content: "OmniMall Insights is an AI-powered mall intelligence platform for decision-making." },
+      {
+        name: "description",
+        content:
+          "OmniMall Insights is an AI-powered mall intelligence platform for decision-making.",
+      },
+      {
+        property: "og:description",
+        content:
+          "OmniMall Insights is an AI-powered mall intelligence platform for decision-making.",
+      },
+      {
+        name: "twitter:description",
+        content:
+          "OmniMall Insights is an AI-powered mall intelligence platform for decision-making.",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -133,8 +147,10 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Outlet />
-        <Toaster />
+        <BusinessDataProvider>
+          <Outlet />
+          <Toaster />
+        </BusinessDataProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

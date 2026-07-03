@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState, useMemo } from "react";
 import {
   Area,
   AreaChart,
@@ -35,25 +36,19 @@ import {
 import { KpiCard } from "@/components/kpi-card";
 import { PageHeader, SectionCard, StatusPill } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import {
-  DEPARTMENT_REVENUE,
-  EXECUTIVE_BRIEF,
-  FORECAST,
-  HEATMAP,
-  HOURLY_DEMAND,
-  KPIS,
-  RECOMMENDATIONS,
-  REVENUE_30D,
-  fmtINR,
-  fmtNum,
-} from "@/lib/mock-data";
+import { FORECAST, HEATMAP, HOURLY_DEMAND, fmtINR, fmtNum } from "@/lib/mock-data";
 import { useAuth } from "@/lib/auth-context";
+import { useBusinessData } from "@/lib/business-context";
 
-export const Route = createFileRoute("/_app/command-center" as never)({
+export const Route = createFileRoute("/_app/command-center")({
   head: () => ({
     meta: [
       { title: "Command Center — OmniMind AI" },
-      { name: "description", content: "Executive command center for mall owners: KPIs, AI briefs, revenue analytics, forecasts, and recommendations." },
+      {
+        name: "description",
+        content:
+          "Executive command center for mall owners: KPIs, AI briefs, revenue analytics, forecasts, and recommendations.",
+      },
     ],
   }),
   component: CommandCenter,
@@ -75,11 +70,91 @@ function CommandCenter() {
   const navigate = useNavigate();
   const greeting = greetingFor(new Date());
 
+  const {
+    kpis,
+    timeSeriesData,
+    departmentRevenue,
+    scopedRecommendations,
+    scopedTransactions,
+    transactions,
+    activeDate,
+  } = useBusinessData();
+  const [chartResolution, setChartResolution] = useState<"Hourly" | "Daily" | "Weekly" | "Monthly">(
+    "Daily",
+  );
+
+  // Construct chart data based on resolution
+  const resolvedChartData = useMemo(() => {
+    if (chartResolution === "Hourly") {
+      // 9:00 to 22:00
+      return Array.from({ length: 14 }, (_, i) => {
+        const hour = 9 + i;
+        const hourStr = `${String(hour).padStart(2, "0")}:00`;
+        const txns = scopedTransactions.filter((t) =>
+          t.time.startsWith(String(hour).padStart(2, "0")),
+        );
+        const revenue = txns.reduce(
+          (sum, t) => (t.status === "Completed" ? sum + t.total : sum),
+          0,
+        );
+        const profit = Math.round(revenue * 0.18); // 18% margin
+        return {
+          day: hourStr,
+          revenue,
+          profit,
+        };
+      });
+    }
+
+    if (chartResolution === "Weekly") {
+      // Group timeSeriesData into weeks (e.g. 7 days each)
+      const chunks: any[] = [];
+      const chunkSize = 7;
+      for (let i = 0; i < timeSeriesData.length; i += chunkSize) {
+        const chunk = timeSeriesData.slice(i, i + chunkSize);
+        const revenue = chunk.reduce((sum, d) => sum + d.revenue, 0);
+        const profit = chunk.reduce((sum, d) => sum + d.profit, 0);
+        chunks.push({
+          day: `Week ${chunks.length + 1}`,
+          revenue,
+          profit,
+        });
+      }
+      return chunks;
+    }
+
+    if (chartResolution === "Monthly") {
+      // Show March, April, May from the whole database
+      const monthsList = ["March", "April", "May"];
+      return monthsList.map((m, idx) => {
+        const monthPrefix = `2026-0${3 + idx}`;
+        const txns = transactions.filter((t) => t.date.startsWith(monthPrefix));
+        const revenue = txns.reduce(
+          (sum, t) => (t.status === "Completed" ? sum + t.total : sum),
+          0,
+        );
+        const profit = Math.round(revenue * 0.18);
+        return {
+          day: m,
+          revenue,
+          profit,
+        };
+      });
+    }
+
+    // Default "Daily" resolution
+    return timeSeriesData;
+  }, [chartResolution, timeSeriesData, scopedTransactions, transactions, activeDate]);
+
   return (
     <div className="space-y-6">
       <PageHeader
         title={`${greeting}, ${user?.name.split(" ")[0] ?? "Owner"}`}
-        subtitle="Here is what is happening across GrandSquare Mall today."
+        subtitle={
+          user?.role === "manager"
+            ? "Here is what is happening across your Fashion department today."
+            : "Here is what is happening across GrandSquare Mall today."
+        }
         actions={
           <>
             <DateRange />
@@ -105,7 +180,7 @@ function CommandCenter() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {KPIS.map((k) => (
+        {kpis.map((k) => (
           <KpiCard
             key={k.key}
             label={k.label}
@@ -113,7 +188,11 @@ function CommandCenter() {
             delta={k.delta}
             spark={k.spark}
             icon={ICONS[k.key]}
-            format={k.key === "orders" || k.key === "footfall" || k.key === "newCustomers" ? "num" : "inr-compact"}
+            format={
+              k.key === "orders" || k.key === "footfall" || k.key === "newCustomers"
+                ? "num"
+                : "inr-compact"
+            }
           />
         ))}
       </div>
@@ -124,18 +203,19 @@ function CommandCenter() {
       {/* Charts row */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <SectionCard
-          title="Revenue vs Profit — Last 30 days"
-          subtitle="Daily gross revenue against realized net profit"
+          title={`Revenue vs Profit — ${chartResolution}`}
+          subtitle={`${chartResolution} gross revenue against realized net profit`}
           className="xl:col-span-2"
           actions={
             <div className="flex gap-1 rounded-md border border-hairline bg-surface p-0.5 text-[11px]">
-              {["Hourly", "Daily", "Weekly", "Monthly"].map((t, i) => (
+              {(["Hourly", "Daily", "Weekly", "Monthly"] as const).map((t) => (
                 <button
                   key={t}
+                  onClick={() => setChartResolution(t)}
                   className={
-                    i === 1
-                      ? "rounded-sm bg-primary/20 px-2 py-0.5 text-foreground"
-                      : "px-2 py-0.5 text-muted-foreground"
+                    chartResolution === t
+                      ? "rounded-sm bg-primary/20 px-2 py-0.5 text-foreground font-semibold"
+                      : "px-2 py-0.5 text-muted-foreground hover:text-foreground"
                   }
                 >
                   {t}
@@ -146,7 +226,7 @@ function CommandCenter() {
         >
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={REVENUE_30D} margin={{ left: 4, right: 8, top: 8, bottom: 0 }}>
+              <AreaChart data={resolvedChartData} margin={{ left: 4, right: 8, top: 8, bottom: 0 }}>
                 <defs>
                   <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.35} />
@@ -159,10 +239,27 @@ function CommandCenter() {
                 </defs>
                 <CartesianGrid stroke="var(--color-hairline)" vertical={false} />
                 <XAxis dataKey="day" tickLine={false} axisLine={false} />
-                <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v / 1000}K`} width={54} />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v: any) => `₹${Number(v) / 1000}K`}
+                  width={54}
+                />
                 <Tooltip content={<ChartTooltip />} />
-                <Area type="monotone" dataKey="revenue" stroke="var(--color-primary)" strokeWidth={2} fill="url(#rev)" />
-                <Area type="monotone" dataKey="profit" stroke="var(--color-chart-3)" strokeWidth={2} fill="url(#prof)" />
+                <Area
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="var(--color-primary)"
+                  strokeWidth={2}
+                  fill="url(#rev)"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="profit"
+                  stroke="var(--color-chart-3)"
+                  strokeWidth={2}
+                  fill="url(#prof)"
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -173,30 +270,25 @@ function CommandCenter() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={DEPARTMENT_REVENUE}
+                  data={departmentRevenue}
                   dataKey="value"
                   nameKey="name"
                   innerRadius={56}
                   outerRadius={92}
                   paddingAngle={2}
-                  stroke="var(--color-background)"
-                  strokeWidth={2}
                 >
-                  {DEPARTMENT_REVENUE.map((d, i) => (
-                    <Cell key={i} fill={`var(--chart-${(i % 5) + 1})`} />
+                  {departmentRevenue.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip content={<ChartTooltip />} />
+                <Tooltip formatter={(v: any) => fmtINR(Number(v))} />
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="mt-2 grid max-h-32 grid-cols-2 gap-1.5 overflow-auto text-[11px]">
-            {DEPARTMENT_REVENUE.slice(0, 6).map((d, i) => (
-              <div key={d.name} className="flex items-center gap-1.5">
-                <span
-                  className="h-2 w-2 rounded-sm"
-                  style={{ background: `var(--chart-${(i % 5) + 1})` }}
-                />
+          <div className="mt-3 space-y-1.5 text-xs">
+            {departmentRevenue.slice(0, 5).map((d) => (
+              <div key={d.name} className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: d.color }} />
                 <span className="min-w-0 truncate text-muted-foreground">{d.name}</span>
                 <span className="ml-auto font-medium">{fmtINR(d.value, { compact: true })}</span>
               </div>
@@ -220,7 +312,12 @@ function CommandCenter() {
               <LineChart data={FORECAST}>
                 <CartesianGrid stroke="var(--color-hairline)" vertical={false} />
                 <XAxis dataKey="day" tickLine={false} axisLine={false} hide />
-                <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000}K`} width={44} />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v: any) => `${Number(v) / 1000}K`}
+                  width={44}
+                />
                 <Tooltip content={<ChartTooltip />} />
                 <Area
                   type="monotone"
@@ -236,7 +333,13 @@ function CommandCenter() {
                   fill="var(--color-background)"
                   fillOpacity={1}
                 />
-                <Line type="monotone" dataKey="actual" stroke="var(--color-cyan)" strokeWidth={2} dot={false} />
+                <Line
+                  type="monotone"
+                  dataKey="actual"
+                  stroke="var(--color-cyan)"
+                  strokeWidth={2}
+                  dot={false}
+                />
                 <Line
                   type="monotone"
                   dataKey="forecast"
@@ -251,8 +354,8 @@ function CommandCenter() {
           <div className="mt-3 rounded-md border border-hairline bg-surface p-3 text-xs">
             <p className="font-medium">Next Saturday</p>
             <p className="mt-1 text-muted-foreground">
-              Predicted revenue <span className="font-semibold text-foreground">₹62.4L</span> ± ₹4.1L
-              · Confidence 89%
+              Predicted revenue <span className="font-semibold text-foreground">₹62.4L</span> ±
+              ₹4.1L · Confidence 89%
             </p>
           </div>
         </SectionCard>
@@ -275,7 +378,7 @@ function CommandCenter() {
         }
       >
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {RECOMMENDATIONS.slice(0, 6).map((r) => (
+          {scopedRecommendations.slice(0, 3).map((r) => (
             <RecCard key={r.id} r={r} />
           ))}
         </div>
@@ -285,6 +388,7 @@ function CommandCenter() {
 }
 
 function ExecutiveBrief() {
+  const { executiveBrief } = useBusinessData();
   return (
     <section className="card-elevated relative overflow-hidden">
       <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
@@ -294,29 +398,29 @@ function ExecutiveBrief() {
           <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
             <Sparkles className="h-3 w-3" /> Today's Executive Brief
           </span>
-          <span className="text-[11px] text-muted-foreground">Generated 2 min ago · Confidence 92%</span>
+          <span className="text-[11px] text-muted-foreground">
+            Generated 2 min ago · Confidence 92%
+          </span>
         </div>
-        <p className="mt-3 text-sm leading-relaxed text-foreground/90">
-          {EXECUTIVE_BRIEF.summary}
-        </p>
+        <p className="mt-3 text-sm leading-relaxed text-foreground/90">{executiveBrief.summary}</p>
         <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
           <BriefBlock
             tone="success"
             title="Positive developments"
             icon={<CheckCircle2 className="h-3.5 w-3.5" />}
-            items={EXECUTIVE_BRIEF.positives}
+            items={executiveBrief.positives}
           />
           <BriefBlock
             tone="danger"
             title="Risks"
             icon={<AlertTriangle className="h-3.5 w-3.5" />}
-            items={EXECUTIVE_BRIEF.risks}
+            items={executiveBrief.risks}
           />
           <BriefBlock
             tone="violet"
             title="Opportunities"
             icon={<Lightbulb className="h-3.5 w-3.5" />}
-            items={EXECUTIVE_BRIEF.opportunities}
+            items={executiveBrief.opportunities}
           />
         </div>
       </div>
@@ -342,13 +446,17 @@ function BriefBlock({
   };
   return (
     <div className="rounded-lg border border-hairline bg-surface/60 p-3">
-      <div className={`flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider ${toneClass[tone]}`}>
+      <div
+        className={`flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider ${toneClass[tone]}`}
+      >
         {icon} {title}
       </div>
       <ul className="mt-2 space-y-1.5 text-xs text-foreground/90">
         {items.map((i) => (
           <li key={i} className="flex items-start gap-2">
-            <span className={`mt-1.5 h-1 w-1 shrink-0 rounded-full ${toneClass[tone]} bg-current`} />
+            <span
+              className={`mt-1.5 h-1 w-1 shrink-0 rounded-full ${toneClass[tone]} bg-current`}
+            />
             <span>{i}</span>
           </li>
         ))}
@@ -357,14 +465,17 @@ function BriefBlock({
   );
 }
 
-function RecCard({ r }: { r: (typeof RECOMMENDATIONS)[number] }) {
-  const tone =
-    r.severity === "Critical" ? "danger" : r.severity === "High" ? "warning" : "info";
+function RecCard({ r }: { r: any }) {
+  const { acceptRecommendation, openRecommendation } = useBusinessData();
+  const tone = r.severity === "Critical" ? "danger" : r.severity === "High" ? "warning" : "info";
+  const isAccepted = r.status === "Accepted";
   return (
     <div className="rounded-lg border border-hairline bg-surface p-3.5 transition-colors hover:border-primary/30">
       <div className="flex items-center gap-2">
         <StatusPill tone={tone}>{r.severity}</StatusPill>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{r.category}</span>
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          {r.category}
+        </span>
         <span className="ml-auto text-[10px] text-muted-foreground">{r.generated}</span>
       </div>
       <p className="mt-2 text-sm font-semibold text-foreground">{r.title}</p>
@@ -376,12 +487,26 @@ function RecCard({ r }: { r: (typeof RECOMMENDATIONS)[number] }) {
         </span>
       </div>
       <div className="mt-3 flex gap-1.5">
-        <button className="flex-1 rounded-md bg-primary/15 py-1.5 text-[11px] font-medium text-primary hover:bg-primary/25">
-          Accept
-        </button>
-        <button className="rounded-md border border-hairline px-2.5 py-1.5 text-[11px] text-muted-foreground hover:text-foreground">
-          Investigate
-        </button>
+        {isAccepted ? (
+          <span className="flex-1 text-center py-1.5 text-[11px] font-medium text-emerald-500 bg-emerald-500/10 rounded-md">
+            Accepted
+          </span>
+        ) : (
+          <>
+            <button
+              onClick={() => acceptRecommendation(r.id)}
+              className="flex-1 rounded-md bg-primary/15 py-1.5 text-[11px] font-medium text-primary hover:bg-primary/25"
+            >
+              Accept
+            </button>
+            <button
+              onClick={() => openRecommendation(r.id)}
+              className="rounded-md border border-hairline px-2.5 py-1.5 text-[11px] text-muted-foreground hover:text-foreground hover:bg-surface-hover"
+            >
+              Investigate
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -429,18 +554,27 @@ function Heatmap() {
 }
 
 function DateRange() {
+  const { timeRange, changeTimeRange } = useBusinessData();
+  const ranges: { label: string; value: any }[] = [
+    { label: "Today", value: "today" },
+    { label: "Yesterday", value: "yesterday" },
+    { label: "7d", value: "7d" },
+    { label: "30d", value: "30d" },
+    { label: "Custom", value: "custom" },
+  ];
   return (
     <div className="flex items-center gap-0.5 rounded-md border border-hairline bg-surface p-0.5 text-[11px]">
-      {["Today", "Yesterday", "7d", "30d", "Custom"].map((t, i) => (
+      {ranges.map((r) => (
         <button
-          key={t}
+          key={r.value}
+          onClick={() => changeTimeRange(r.value)}
           className={
-            i === 2
-              ? "rounded-sm bg-primary/20 px-2 py-1 text-foreground"
+            timeRange === r.value
+              ? "rounded-sm bg-primary/20 px-2 py-1 text-foreground font-semibold"
               : "px-2 py-1 text-muted-foreground hover:text-foreground"
           }
         >
-          {t}
+          {r.label}
         </button>
       ))}
     </div>
@@ -451,7 +585,9 @@ function ChartTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
     <div className="glass rounded-md px-2.5 py-1.5 text-xs shadow-elevated">
-      {label && <p className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>}
+      {label && (
+        <p className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      )}
       {payload.map((p: any) => (
         <div key={p.dataKey} className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-sm" style={{ background: p.color ?? p.fill }} />

@@ -3,7 +3,7 @@ import { PageHeader, SectionCard } from "@/components/page-header";
 import { DEPARTMENT_REVENUE, fmtINR } from "@/lib/mock-data";
 import { Users, TrendingUp } from "lucide-react";
 
-export const Route = createFileRoute("/_app/departments" as never)({
+export const Route = createFileRoute("/_app/departments")({
   head: () => ({
     meta: [
       { title: "Departments — OmniMind AI" },
@@ -16,19 +16,26 @@ export const Route = createFileRoute("/_app/departments" as never)({
 function Departments() {
   return (
     <div className="space-y-6">
-      <PageHeader title="Departments" subtitle="Performance snapshot across all mall departments." />
+      <PageHeader
+        title="Departments"
+        subtitle="Performance snapshot across all mall departments."
+      />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {DEPARTMENT_REVENUE.map((d, i) => (
           <div key={d.name} className="card-elevated p-4">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Department</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Department
+                </p>
                 <p className="mt-1 text-lg font-semibold">{d.name}</p>
               </div>
               <span
                 className="grid h-9 w-9 place-items-center rounded-md text-primary"
-                style={{ background: `color-mix(in oklab, var(--chart-${(i % 5) + 1}) 20%, transparent)` }}
+                style={{
+                  background: `color-mix(in oklab, var(--chart-${(i % 5) + 1}) 20%, transparent)`,
+                }}
               >
                 <TrendingUp className="h-4 w-4" />
               </span>

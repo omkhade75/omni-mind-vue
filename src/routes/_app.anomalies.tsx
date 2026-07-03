@@ -3,34 +3,61 @@ import { PageHeader, SectionCard, StatusPill } from "@/components/page-header";
 import { ANOMALIES } from "@/lib/mock-data";
 import { AlertTriangle } from "lucide-react";
 
-export const Route = createFileRoute("/_app/anomalies" as never)({
+export const Route = createFileRoute("/_app/anomalies")({
   head: () => ({
     meta: [
       { title: "Anomaly & Risk Center — OmniMind AI" },
-      { name: "description", content: "Detect sudden sales drops, expense spikes, and abnormal operations in real time." },
+      {
+        name: "description",
+        content: "Detect sudden sales drops, expense spikes, and abnormal operations in real time.",
+      },
     ],
   }),
   component: Anomalies,
 });
 
+import { useBusinessData } from "@/lib/business-context";
+
 function Anomalies() {
+  const { scopedAnomalies } = useBusinessData();
+
   return (
     <div className="space-y-6">
-      <PageHeader title="Anomaly & Risk Center" subtitle="Real-time deviations detected across all mall operations." />
+      <PageHeader
+        title="Anomaly & Risk Center"
+        subtitle="Real-time deviations detected across all mall operations."
+      />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <Kpi label="Active Anomalies" v={ANOMALIES.length.toString()} />
-        <Kpi label="Critical" v={ANOMALIES.filter((a) => a.severity === "Critical").length.toString()} tone="danger" />
-        <Kpi label="High" v={ANOMALIES.filter((a) => a.severity === "High").length.toString()} tone="warning" />
-        <Kpi label="Medium" v={ANOMALIES.filter((a) => a.severity === "Medium").length.toString()} />
+        <Kpi label="Active Anomalies" v={scopedAnomalies.length.toString()} />
+        <Kpi
+          label="Critical"
+          v={scopedAnomalies.filter((a) => a.severity === "Critical").length.toString()}
+          tone="danger"
+        />
+        <Kpi
+          label="High"
+          v={scopedAnomalies.filter((a) => a.severity === "High").length.toString()}
+          tone="warning"
+        />
+        <Kpi
+          label="Medium"
+          v={scopedAnomalies.filter((a) => a.severity === "Medium").length.toString()}
+        />
         <Kpi label="Resolved (30d)" v="42" />
       </div>
 
       <SectionCard title="Anomaly Timeline">
         <ul className="space-y-3">
-          {ANOMALIES.map((a) => {
+          {scopedAnomalies.map((a) => {
             const tone =
-              a.severity === "Critical" ? "danger" : a.severity === "High" ? "warning" : a.severity === "Medium" ? "info" : "default";
+              a.severity === "Critical"
+                ? "danger"
+                : a.severity === "High"
+                  ? "warning"
+                  : a.severity === "Medium"
+                    ? "info"
+                    : "default";
             return (
               <li key={a.id} className="rounded-lg border border-hairline bg-surface p-4">
                 <div className="flex flex-wrap items-center gap-2">
@@ -67,11 +94,23 @@ function Anomalies() {
   );
 }
 
-function Data({ label, v, tone }: { label: string; v: string; tone?: "danger" | "warning" | "info" }) {
+function Data({
+  label,
+  v,
+  tone,
+}: {
+  label: string;
+  v: string;
+  tone?: "danger" | "warning" | "info";
+}) {
   return (
     <div className="rounded-md border border-hairline bg-background p-2">
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className={`mt-0.5 font-semibold ${tone === "danger" ? "text-destructive" : tone === "warning" ? "text-warning" : ""}`}>{v}</p>
+      <p
+        className={`mt-0.5 font-semibold ${tone === "danger" ? "text-destructive" : tone === "warning" ? "text-warning" : ""}`}
+      >
+        {v}
+      </p>
     </div>
   );
 }
@@ -80,7 +119,9 @@ function Kpi({ label, v, tone }: { label: string; v: string; tone?: "warning" | 
   return (
     <div className="card-elevated p-3">
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className={`mt-1.5 font-display text-lg font-semibold ${tone === "danger" ? "text-destructive" : tone === "warning" ? "text-warning" : ""}`}>
+      <p
+        className={`mt-1.5 font-display text-lg font-semibold ${tone === "danger" ? "text-destructive" : tone === "warning" ? "text-warning" : ""}`}
+      >
         {v}
       </p>
     </div>

@@ -11,7 +11,10 @@ export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
       { title: "Sign in — OmniMind AI" },
-      { name: "description", content: "Sign in to OmniMind AI, the mall intelligence and decision operating system." },
+      {
+        name: "description",
+        content: "Sign in to OmniMind AI, the mall intelligence and decision operating system.",
+      },
     ],
   }),
   component: LoginPage,

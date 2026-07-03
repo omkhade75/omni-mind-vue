@@ -1,22 +1,41 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader, SectionCard } from "@/components/page-header";
-import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { FORECAST } from "@/lib/mock-data";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Sparkles } from "lucide-react";
 
-export const Route = createFileRoute("/_app/forecasting" as never)({
+export const Route = createFileRoute("/_app/forecasting")({
   head: () => ({
     meta: [
       { title: "Forecasting — OmniMind AI" },
-      { name: "description", content: "Revenue, footfall, inventory and expense forecasts with scenario planning." },
+      {
+        name: "description",
+        content: "Revenue, footfall, inventory and expense forecasts with scenario planning.",
+      },
     ],
   }),
   component: Forecasting,
 });
 
-const SCENARIOS = ["Normal", "Festival Demand", "Promotion Campaign", "Rainy Weekend", "Supplier Delay"];
+const SCENARIOS = [
+  "Normal",
+  "Festival Demand",
+  "Promotion Campaign",
+  "Rainy Weekend",
+  "Supplier Delay",
+];
 
 function Forecasting() {
   const [scenario, setScenario] = useState("Normal");
@@ -24,7 +43,10 @@ function Forecasting() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Forecasting Center" subtitle="Predict revenue, footfall, and inventory across scenarios." />
+      <PageHeader
+        title="Forecasting Center"
+        subtitle="Predict revenue, footfall, and inventory across scenarios."
+      />
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1 rounded-md border border-hairline bg-surface p-0.5 text-[11px]">
@@ -32,7 +54,10 @@ function Forecasting() {
             <button
               key={h}
               onClick={() => setHorizon(h)}
-              className={cn("rounded-sm px-2.5 py-1", horizon === h ? "bg-primary/20 text-foreground" : "text-muted-foreground")}
+              className={cn(
+                "rounded-sm px-2.5 py-1",
+                horizon === h ? "bg-primary/20 text-foreground" : "text-muted-foreground",
+              )}
             >
               Next {h}
             </button>
@@ -43,7 +68,12 @@ function Forecasting() {
             <button
               key={s}
               onClick={() => setScenario(s)}
-              className={cn("rounded-sm px-2.5 py-1", scenario === s ? "bg-primary/20 text-foreground" : "text-muted-foreground hover:text-foreground")}
+              className={cn(
+                "rounded-sm px-2.5 py-1",
+                scenario === s
+                  ? "bg-primary/20 text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
             >
               {s}
             </button>
@@ -57,11 +87,34 @@ function Forecasting() {
             <LineChart data={FORECAST}>
               <CartesianGrid stroke="var(--color-hairline)" vertical={false} />
               <XAxis dataKey="day" tickLine={false} axisLine={false} />
-              <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000}K`} width={44} />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v: any) => `${Number(v) / 1000}K`}
+                width={44}
+              />
               <Tooltip contentStyle={ttStyle} />
-              <Area type="monotone" dataKey="upper" stroke="none" fill="var(--color-primary)" fillOpacity={0.08} />
-              <Area type="monotone" dataKey="lower" stroke="none" fill="var(--color-background)" fillOpacity={1} />
-              <Line type="monotone" dataKey="actual" stroke="var(--color-cyan)" strokeWidth={2} dot={false} />
+              <Area
+                type="monotone"
+                dataKey="upper"
+                stroke="none"
+                fill="var(--color-primary)"
+                fillOpacity={0.08}
+              />
+              <Area
+                type="monotone"
+                dataKey="lower"
+                stroke="none"
+                fill="var(--color-background)"
+                fillOpacity={1}
+              />
+              <Line
+                type="monotone"
+                dataKey="actual"
+                stroke="var(--color-cyan)"
+                strokeWidth={2}
+                dot={false}
+              />
               <Line
                 type="monotone"
                 dataKey="forecast"
@@ -81,8 +134,8 @@ function Forecasting() {
           <p className="mt-1 text-foreground/90">
             Next Saturday revenue is forecast at{" "}
             <span className="font-semibold text-foreground">₹62.4L ± ₹4.1L</span>. Under the{" "}
-            <span className="font-semibold">{scenario}</span> scenario, expect Fashion contribution to shift by
-            ±6.2% and Grocery baseline to hold within 2%.
+            <span className="font-semibold">{scenario}</span> scenario, expect Fashion contribution
+            to shift by ±6.2% and Grocery baseline to hold within 2%.
           </p>
         </div>
       </SectionCard>
@@ -94,7 +147,9 @@ function Forecasting() {
           { t: "Inventory Draw", v: "₹1.42Cr", c: "+11.8%" },
         ].map((k) => (
           <div key={k.t} className="card-elevated p-4">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Forecast · {k.t}</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Forecast · {k.t}
+            </p>
             <p className="mt-2 font-display text-2xl font-semibold">{k.v}</p>
             <p className="mt-1 text-xs text-success">{k.c} vs current period</p>
           </div>
@@ -104,4 +159,9 @@ function Forecasting() {
   );
 }
 
-const ttStyle = { background: "var(--color-popover)", border: "1px solid var(--color-hairline)", borderRadius: 6, fontSize: 12 } as const;
+const ttStyle = {
+  background: "var(--color-popover)",
+  border: "1px solid var(--color-hairline)",
+  borderRadius: 6,
+  fontSize: 12,
+} as const;

@@ -1,15 +1,36 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader, SectionCard, StatusPill } from "@/components/page-header";
-import { Circle, ShoppingBag, UserPlus, AlertTriangle, Truck, RefreshCw, Sparkles, Wallet, Activity } from "lucide-react";
+import {
+  Circle,
+  ShoppingBag,
+  UserPlus,
+  AlertTriangle,
+  Truck,
+  RefreshCw,
+  Sparkles,
+  Wallet,
+  Activity,
+} from "lucide-react";
 import { LIVE_FEED, HOURLY_DEMAND, DEPARTMENTS } from "@/lib/mock-data";
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { useEffect, useState } from "react";
 
-export const Route = createFileRoute("/_app/live-ops" as never)({
+export const Route = createFileRoute("/_app/live-ops")({
   head: () => ({
     meta: [
       { title: "Live Operations — OmniMind AI" },
-      { name: "description", content: "Real-time mall operations: footfall, checkouts, sales, and staff." },
+      {
+        name: "description",
+        content: "Real-time mall operations: footfall, checkouts, sales, and staff.",
+      },
     ],
   }),
   component: LiveOps,
@@ -67,9 +88,20 @@ function LiveOps() {
                 </defs>
                 <CartesianGrid stroke="var(--color-hairline)" vertical={false} />
                 <XAxis dataKey="hour" tickLine={false} axisLine={false} />
-                <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000}K`} width={40} />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v: any) => `${Number(v) / 1000}K`}
+                  width={40}
+                />
                 <Tooltip contentStyle={ttStyle} />
-                <Area type="monotone" dataKey="sales" stroke="var(--color-primary)" strokeWidth={2} fill="url(#ls)" />
+                <Area
+                  type="monotone"
+                  dataKey="sales"
+                  stroke="var(--color-primary)"
+                  strokeWidth={2}
+                  fill="url(#ls)"
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -78,7 +110,10 @@ function LiveOps() {
         <SectionCard title="Activity Feed" subtitle="Streaming events">
           <ul className="max-h-64 space-y-2 overflow-y-auto text-xs">
             {LIVE_FEED.map((f, i) => (
-              <li key={i} className="flex items-start gap-2 rounded-md border border-hairline bg-surface p-2">
+              <li
+                key={i}
+                className="flex items-start gap-2 rounded-md border border-hairline bg-surface p-2"
+              >
                 <span className="mt-0.5">{ICON[f.type]}</span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-foreground/90">{f.text}</p>
@@ -115,14 +150,33 @@ function fmt(n: number) {
   return n.toLocaleString("en-IN");
 }
 
-function Live({ label, v, delta, tone }: { label: string; v: string; delta?: string; tone?: "warning" | "success" }) {
+function Live({
+  label,
+  v,
+  delta,
+  tone,
+}: {
+  label: string;
+  v: string;
+  delta?: string;
+  tone?: "warning" | "success";
+}) {
   return (
     <div className="card-elevated p-3">
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className={`mt-1.5 font-display text-lg font-semibold ${tone === "warning" ? "text-warning" : tone === "success" ? "text-success" : ""}`}>{v}</p>
+      <p
+        className={`mt-1.5 font-display text-lg font-semibold ${tone === "warning" ? "text-warning" : tone === "success" ? "text-success" : ""}`}
+      >
+        {v}
+      </p>
       {delta && <p className="text-[10px] text-success">{delta}</p>}
     </div>
   );
 }
 
-const ttStyle = { background: "var(--color-popover)", border: "1px solid var(--color-hairline)", borderRadius: 6, fontSize: 12 } as const;
+const ttStyle = {
+  background: "var(--color-popover)",
+  border: "1px solid var(--color-hairline)",
+  borderRadius: 6,
+  fontSize: 12,
+} as const;

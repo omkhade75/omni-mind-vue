@@ -13,10 +13,22 @@ interface KpiCardProps {
   onClick?: () => void;
 }
 
-export function KpiCard({ label, value, delta, spark, format = "inr-compact", icon, onClick }: KpiCardProps) {
+export function KpiCard({
+  label,
+  value,
+  delta,
+  spark,
+  format = "inr-compact",
+  icon,
+  onClick,
+}: KpiCardProps) {
   const positive = delta >= 0;
   const display =
-    format === "inr" ? fmtINR(value) : format === "inr-compact" ? fmtINR(value, { compact: true }) : fmtNum(value);
+    format === "inr"
+      ? fmtINR(value)
+      : format === "inr-compact"
+        ? fmtINR(value, { compact: true })
+        : fmtNum(value);
 
   return (
     <button

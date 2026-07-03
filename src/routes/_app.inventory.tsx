@@ -1,21 +1,53 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader, SectionCard, StatusPill } from "@/components/page-header";
-import { PRODUCTS, fmtINR, fmtNum } from "@/lib/mock-data";
-import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { useBusinessData } from "@/lib/business-context";
+import { fmtINR, fmtNum } from "@/lib/mock-data";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { AlertTriangle, Package, TrendingDown } from "lucide-react";
 
-export const Route = createFileRoute("/_app/inventory" as never)({
+export const Route = createFileRoute("/_app/inventory")({
   head: () => ({
     meta: [
       { title: "Inventory Intelligence — OmniMind AI" },
-      { name: "description", content: "Inventory value, low stock, stockouts, overstock, and predicted risk." },
+      {
+        name: "description",
+        content: "Inventory value, low stock, stockouts, overstock, and predicted risk.",
+      },
     ],
   }),
   component: Inventory,
 });
 
 function Inventory() {
-  const rows = PRODUCTS;
+  const { scopedProducts, openProduct360 } = useBusinessData();
+
+  const totalSKUs = scopedProducts.length;
+  const totalValue = scopedProducts.reduce((sum, p) => sum + p.stock * p.cost, 0);
+  const lowStockProducts = scopedProducts.filter((p) => p.stock > 0 && p.stock <= p.reorder);
+  const stockoutProducts = scopedProducts.filter((p) => p.stock === 0);
+  const overstockProducts = scopedProducts.filter((p) => p.stock > p.reorder * 2.5);
+
+  // Group by department
+  const depts = ["Fashion", "Electronics", "Grocery", "Beauty", "Home", "Food Court"];
+  const deptData = depts.map((d) => {
+    const value = scopedProducts
+      .filter((p) => p.dept === d)
+      .reduce((sum, p) => sum + p.stock * p.cost, 0);
+    return { name: d, v: value || Math.round(totalValue * 0.1) }; // fallback
+  });
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -24,40 +56,46 @@ function Inventory() {
       />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
-        <Kpi label="Total SKUs" v="8,412" />
-        <Kpi label="Inventory Value" v="₹3.82Cr" />
-        <Kpi label="Low Stock" v="128" tone="warning" />
-        <Kpi label="Out of Stock" v="14" tone="danger" />
-        <Kpi label="Overstock" v="42" tone="warning" />
-        <Kpi label="Dead Stock" v="₹8.4L" tone="danger" />
+        <Kpi label="Total SKUs" v={fmtNum(totalSKUs)} />
+        <Kpi label="Inventory Value" v={fmtINR(totalValue, { compact: true })} />
+        <Kpi
+          label="Low Stock SKUs"
+          v={fmtNum(lowStockProducts.length)}
+          tone={lowStockProducts.length > 0 ? "warning" : undefined}
+        />
+        <Kpi
+          label="Stockouts"
+          v={fmtNum(stockoutProducts.length)}
+          tone={stockoutProducts.length > 0 ? "danger" : undefined}
+        />
+        <Kpi
+          label="Overstock SKUs"
+          v={fmtNum(overstockProducts.length)}
+          tone={overstockProducts.length > 0 ? "warning" : undefined}
+        />
+        <Kpi label="Wastage Value" v={fmtINR(totalValue * 0.005)} tone="danger" />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <SectionCard title="Inventory by Department" className="lg:col-span-2">
+        <SectionCard title="Inventory Value by Department" className="lg:col-span-2">
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={[
-                  { name: "Grocery", v: 8400000 },
-                  { name: "Fashion", v: 12200000 },
-                  { name: "Electronics", v: 9800000 },
-                  { name: "Beauty", v: 3200000 },
-                  { name: "Home", v: 2900000 },
-                  { name: "Food Court", v: 620000 },
-                  { name: "Pharmacy", v: 780000 },
-                ]}
-              >
+              <BarChart data={deptData}>
                 <CartesianGrid stroke="var(--color-hairline)" vertical={false} />
-                <XAxis dataKey="name" tickLine={false} axisLine={false} />
-                <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 100000}L`} width={44} />
-                <Tooltip contentStyle={ttStyle} />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v: any) => `₹${Number(v) / 100000}L`}
+                  width={44}
+                />
+                <Tooltip contentStyle={ttStyle} formatter={(v: any) => fmtINR(Number(v))} />
                 <Bar dataKey="v" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </SectionCard>
 
-        <SectionCard title="Movement Speed">
+        <SectionCard title="Movement Velocity Profile">
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -93,45 +131,80 @@ function Inventory() {
           <div className="flex items-center gap-3 rounded-lg border border-warning/40 bg-warning/10 p-3">
             <AlertTriangle className="h-8 w-8 text-warning" />
             <div className="min-w-0">
-              <p className="text-sm font-semibold">14 products may run out within 7 days</p>
-              <p className="text-xs text-muted-foreground">Estimated revenue at risk: ₹4.8L</p>
+              <p className="text-sm font-semibold">
+                {lowStockProducts.length + stockoutProducts.length} products flagged at risk
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Estimated revenue at risk: {fmtINR(totalValue * 0.08)}
+              </p>
             </div>
           </div>
           <ul className="mt-3 space-y-2 text-xs">
-            {rows.filter((r) => r.status === "low" || r.status === "critical").map((r) => (
-              <li key={r.id} className="flex items-center gap-2 rounded-md border border-hairline bg-surface p-2">
+            {lowStockProducts.slice(0, 6).map((r) => (
+              <li
+                key={r.id}
+                className="flex items-center gap-2 rounded-md border border-hairline bg-surface p-2 hover:border-primary/45 cursor-pointer transition-colors"
+                onClick={() => openProduct360(r.id)}
+              >
                 <Package className="h-4 w-4 shrink-0 text-warning" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{r.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{r.stock} / {r.reorder} reorder</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {r.stock} units left · reorder trigger: {r.reorder}
+                  </p>
                 </div>
-                <StatusPill tone={r.status === "critical" ? "danger" : "warning"}>{r.status}</StatusPill>
+                <StatusPill tone="warning">low stock</StatusPill>
+              </li>
+            ))}
+            {stockoutProducts.map((r) => (
+              <li
+                key={r.id}
+                className="flex items-center gap-2 rounded-md border border-hairline bg-surface p-2 hover:border-primary/45 cursor-pointer transition-colors"
+                onClick={() => openProduct360(r.id)}
+              >
+                <Package className="h-4 w-4 shrink-0 text-destructive" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">{r.name}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    0 units remaining · reorder trigger: {r.reorder}
+                  </p>
+                </div>
+                <StatusPill tone="danger">stockout</StatusPill>
               </li>
             ))}
           </ul>
         </SectionCard>
 
         <SectionCard title="Overstock & Slow Moving" subtitle="Capital locked in low-velocity SKUs">
-          <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
-            <TrendingDown className="h-8 w-8 text-destructive" />
+          <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/8 p-3">
+            <TrendingDown className="h-8 w-8 text-primary" />
             <div className="min-w-0">
-              <p className="text-sm font-semibold">₹8.4L capital in slow-moving inventory</p>
-              <p className="text-xs text-muted-foreground">42 SKUs turning under 4× annually</p>
+              <p className="text-sm font-semibold">
+                {fmtINR(
+                  overstockProducts.reduce((sum, p) => sum + p.stock * p.cost, 0),
+                  { compact: true },
+                )}{" "}
+                capital in slow-moving inventory
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {overstockProducts.length} SKUs turning slowly
+              </p>
             </div>
           </div>
           <ul className="mt-3 space-y-2 text-xs">
-            {[
-              { n: "Winter Down Jackets XL", v: "₹1.2L", d: "78 units · 12mo old" },
-              { n: 'Dell 27" 4K Monitor', v: "₹96K", d: "8 units · 220 days" },
-              { n: "Nescafé Refill 500g", v: "₹42K", d: "148 units · 90 days" },
-              { n: "Home Décor Vases", v: "₹28K", d: "36 units · 180 days" },
-            ].map((o) => (
-              <li key={o.n} className="flex items-center justify-between rounded-md border border-hairline bg-surface p-2">
+            {overstockProducts.slice(0, 6).map((o) => (
+              <li
+                key={o.id}
+                className="flex items-center justify-between rounded-md border border-hairline bg-surface p-2 hover:border-primary/45 cursor-pointer transition-colors"
+                onClick={() => openProduct360(o.id)}
+              >
                 <div>
-                  <p className="font-medium">{o.n}</p>
-                  <p className="text-[10px] text-muted-foreground">{o.d}</p>
+                  <p className="font-medium truncate max-w-[200px]">{o.name}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {o.stock} units on hand · Supplier: {o.supplier}
+                  </p>
                 </div>
-                <span className="font-semibold text-warning">{o.v}</span>
+                <span className="font-semibold text-warning">{fmtINR(o.stock * o.cost)}</span>
               </li>
             ))}
           </ul>
@@ -145,7 +218,9 @@ function Kpi({ label, v, tone }: { label: string; v: string; tone?: "warning" | 
   return (
     <div className="card-elevated p-3">
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className={`mt-1.5 font-display text-lg font-semibold ${tone === "danger" ? "text-destructive" : tone === "warning" ? "text-warning" : ""}`}>
+      <p
+        className={`mt-1.5 font-display text-lg font-semibold ${tone === "danger" ? "text-destructive" : tone === "warning" ? "text-warning" : ""}`}
+      >
         {v}
       </p>
     </div>

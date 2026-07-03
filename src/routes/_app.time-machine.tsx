@@ -1,27 +1,66 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { CalendarDays, ArrowLeft, ArrowRight, TrendingUp, Users, ShoppingBag, IndianRupee, AlertTriangle, Sparkles } from "lucide-react";
+import {
+  CalendarDays,
+  ArrowLeft,
+  ArrowRight,
+  TrendingUp,
+  Users,
+  ShoppingBag,
+  IndianRupee,
+  AlertTriangle,
+  Sparkles,
+} from "lucide-react";
 import { PageHeader, SectionCard, StatusPill } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { fmtINR, fmtNum, getMonthDays, seeded } from "@/lib/mock-data";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { fmtINR, fmtNum, getMonthDays } from "@/lib/mock-data";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { useBusinessData } from "@/lib/business-context";
 
-export const Route = createFileRoute("/_app/time-machine" as never)({
+export const Route = createFileRoute("/_app/time-machine")({
   head: () => ({
     meta: [
       { title: "Business Time Machine — OmniMind AI" },
-      { name: "description", content: "Investigate any date across sales, customers, products, inventory, suppliers, expenses, and operations." },
+      {
+        name: "description",
+        content:
+          "Investigate any date across sales, customers, products, inventory, suppliers, expenses, and operations.",
+      },
     ],
   }),
   component: TimeMachine,
 });
 
 function TimeMachine() {
-  const [month, setMonth] = useState(4); // May
+  const navigate = useNavigate();
+  const { activeDate, changeDate, products, openProduct360 } = useBusinessData();
+
+  const parsedDate = new Date(activeDate);
+  const [month, setMonth] = useState(parsedDate.getMonth()); // Month (0-11)
   const year = 2026;
+
   const cells = useMemo(() => getMonthDays(year, month), [month]);
-  const [selected, setSelected] = useState<number | null>(5);
+
+  const handleSelectDay = (day: number) => {
+    const formatted = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    changeDate(formatted);
+  };
+
+  const selectedDay =
+    parsedDate.getFullYear() === year && parsedDate.getMonth() === month
+      ? parsedDate.getDate()
+      : null;
 
   return (
     <div className="space-y-6">
@@ -36,10 +75,18 @@ function TimeMachine() {
           title={new Date(year, month).toLocaleString("en-IN", { month: "long", year: "numeric" })}
           actions={
             <div className="flex items-center gap-1">
-              <Button size="icon" variant="ghost" onClick={() => setMonth((m) => Math.max(0, m - 1))}>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => setMonth((m) => Math.max(0, m - 1))}
+              >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              <Button size="icon" variant="ghost" onClick={() => setMonth((m) => Math.min(11, m + 1))}>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => setMonth((m) => Math.min(11, m + 1))}
+              >
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
@@ -55,15 +102,15 @@ function TimeMachine() {
               c ? (
                 <button
                   key={i}
-                  onClick={() => setSelected(c.day)}
+                  onClick={() => handleSelectDay(c.day)}
                   className={cn(
-                    "aspect-square rounded-md border p-1 text-left transition-all",
-                    selected === c.day
+                    "aspect-square rounded-md border p-1 text-left transition-all flex flex-col justify-between min-h-[64px]",
+                    selectedDay === c.day
                       ? "border-primary bg-primary/15 ring-1 ring-primary/40"
                       : "border-hairline bg-surface hover:border-primary/30",
                   )}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between w-full">
                     <span className="text-xs font-semibold">{c.day}</span>
                     <span
                       className={cn(
@@ -75,15 +122,13 @@ function TimeMachine() {
                       )}
                     />
                   </div>
-                  <p className="mt-1 text-[10px] text-muted-foreground">
+                  <p className="mt-1 text-[10px] text-muted-foreground font-medium">
                     {fmtINR(c.revenue, { compact: true })}
                   </p>
-                  {c.event && (
-                    <p className="mt-0.5 truncate text-[9px] text-primary">{c.event}</p>
-                  )}
+                  {c.event && <p className="mt-0.5 truncate text-[9px] text-primary">{c.event}</p>}
                 </button>
               ) : (
-                <div key={i} />
+                <div key={i} className="aspect-square bg-transparent border-none" />
               ),
             )}
           </div>
@@ -95,7 +140,7 @@ function TimeMachine() {
           </div>
         </SectionCard>
 
-        {selected && <DateSnapshot day={selected} month={month} year={year} />}
+        {selectedDay && <DateSnapshot />}
       </div>
     </div>
   );
@@ -110,35 +155,67 @@ function Legend({ color, label }: { color: string; label: string }) {
   );
 }
 
-function DateSnapshot({ day, month, year }: { day: number; month: number; year: number }) {
-  const r = seeded(year * 10000 + month * 100 + day);
-  const revenue = Math.round(140000 + r() * 120000);
-  const profit = Math.round(revenue * (0.16 + r() * 0.08));
-  const orders = Math.round(300 + r() * 250);
-  const footfall = Math.round(800 + r() * 500);
-  const newCustomers = Math.round(30 + r() * 60);
-  const dateStr = new Date(year, month, day).toLocaleDateString("en-IN", {
+function DateSnapshot() {
+  const navigate = useNavigate();
+  const {
+    activeDate,
+    dailySnapshot,
+    scopedTransactions,
+    scopedExpenses,
+    scopedAnomalies,
+    products,
+    openProduct360,
+    openSupplier360,
+  } = useBusinessData();
+
+  const dateStr = new Date(activeDate).toLocaleDateString("en-IN", {
     day: "numeric",
     month: "long",
     year: "numeric",
     weekday: "long",
   });
 
+  const revenue = dailySnapshot.grossRevenue;
+  const profit = dailySnapshot.netProfit;
+  const orders = dailySnapshot.orders;
+  const footfall = dailySnapshot.footfall;
+  const newCustomers = dailySnapshot.newCustomers;
+
+  // Derive hourly sales
   const hourly = Array.from({ length: 14 }, (_, i) => {
     const h = i + 9;
-    const rr = seeded(day * 100 + h);
-    const v = (h >= 18 && h <= 21 ? 32000 : h >= 12 && h <= 14 ? 22000 : 12000) + rr() * 8000;
-    return { hour: `${h}:00`, revenue: Math.round(v) };
+    const hourStr = `${String(h).padStart(2, "0")}:00`;
+    const txns = scopedTransactions.filter(
+      (t) => t.date === activeDate && t.time.startsWith(String(h).padStart(2, "0")),
+    );
+    const rev = txns.reduce((sum, t) => (t.status === "Completed" ? sum + t.total : sum), 0);
+    return {
+      hour: hourStr,
+      revenue: rev || Math.round(revenue * (h >= 18 && h <= 21 ? 0.15 : 0.05)),
+    };
   });
 
-  const deptRevenue = [
-    { name: "Fashion", v: Math.round(revenue * 0.28) },
-    { name: "Electronics", v: Math.round(revenue * 0.22) },
-    { name: "Grocery", v: Math.round(revenue * 0.18) },
-    { name: "Food Court", v: Math.round(revenue * 0.12) },
-    { name: "Beauty", v: Math.round(revenue * 0.08) },
-    { name: "Others", v: Math.round(revenue * 0.12) },
-  ];
+  // Department share
+  const depts = ["Fashion", "Electronics", "Grocery", "Food Court", "Beauty", "Others"];
+  const deptRevenue = depts.map((d) => {
+    const txns = scopedTransactions.filter(
+      (t) =>
+        t.date === activeDate &&
+        (d === "Others"
+          ? !["Fashion", "Electronics", "Grocery", "Food Court", "Beauty"].includes(t.dept)
+          : t.dept === d),
+    );
+    const rev = txns.reduce((sum, t) => (t.status === "Completed" ? sum + t.total : sum), 0);
+    return {
+      name: d,
+      v: rev || Math.round(revenue * (d === "Fashion" ? 0.32 : d === "Electronics" ? 0.22 : 0.1)),
+    };
+  });
+
+  const isMay5 = activeDate === "2026-05-05";
+  const explanationText = isMay5
+    ? `Gross Revenue was ₹3.14L (21.4% above average), driven by Fashion and Electronics after 6 PM. New Customers acquired: 14. Anomaly Alert: HVAC Zone B energy draw spike (+163%) detected overnight. Critical Action: Approve dairy reorder recommendation for Amul Milk.`
+    : `Gross Revenue was ${fmtINR(revenue)} with ${orders} completed orders. Footfall was estimated at ${fmtNum(footfall)} visitors, with ${newCustomers} new customer registrations. Operations remained stable with average queue length below 3.`;
 
   return (
     <div className="space-y-4">
@@ -146,25 +223,65 @@ function DateSnapshot({ day, month, year }: { day: number; month: number; year: 
         title={`${dateStr} — Complete Business Snapshot`}
         subtitle="Full drill-down with AI root-cause explanation"
         actions={
-          <>
-            <Button size="sm" variant="outline" className="border-hairline bg-surface">
-              vs Yesterday
+          <div className="flex gap-1.5">
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-hairline bg-surface hover:bg-surface-hover text-xs"
+              onClick={() => navigate({ to: "/sales" as never })}
+            >
+              View Sales
             </Button>
-            <Button size="sm" variant="outline" className="border-hairline bg-surface">
-              vs Last Week
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-hairline bg-surface hover:bg-surface-hover text-xs"
+              onClick={() => navigate({ to: "/expenses" as never })}
+            >
+              View Expenses
             </Button>
-            <Button size="sm" variant="outline" className="border-hairline bg-surface">
-              vs Monthly Avg
-            </Button>
-          </>
+          </div>
         }
       >
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
-          <MiniStat label="Total Sales" value={fmtINR(revenue, { compact: true })} icon={<IndianRupee className="h-3.5 w-3.5" />} tone="success" />
-          <MiniStat label="Net Profit" value={fmtINR(profit, { compact: true })} icon={<TrendingUp className="h-3.5 w-3.5" />} tone="success" />
-          <MiniStat label="Orders" value={fmtNum(orders)} icon={<ShoppingBag className="h-3.5 w-3.5" />} />
-          <MiniStat label="Footfall" value={fmtNum(footfall)} icon={<Users className="h-3.5 w-3.5" />} />
-          <MiniStat label="New Customers" value={fmtNum(newCustomers)} icon={<Users className="h-3.5 w-3.5" />} tone="info" />
+          <button onClick={() => navigate({ to: "/sales" as never })} className="text-left">
+            <MiniStat
+              label="Total Sales"
+              value={fmtINR(revenue, { compact: true })}
+              icon={<IndianRupee className="h-3.5 w-3.5" />}
+              tone="success"
+            />
+          </button>
+          <button onClick={() => navigate({ to: "/sales" as never })} className="text-left">
+            <MiniStat
+              label="Net Profit"
+              value={fmtINR(profit, { compact: true })}
+              icon={<TrendingUp className="h-3.5 w-3.5" />}
+              tone="success"
+            />
+          </button>
+          <button onClick={() => navigate({ to: "/transactions" as never })} className="text-left">
+            <MiniStat
+              label="Orders"
+              value={fmtNum(orders)}
+              icon={<ShoppingBag className="h-3.5 w-3.5" />}
+            />
+          </button>
+          <button onClick={() => navigate({ to: "/live-ops" as never })} className="text-left">
+            <MiniStat
+              label="Footfall"
+              value={fmtNum(footfall)}
+              icon={<Users className="h-3.5 w-3.5" />}
+            />
+          </button>
+          <button onClick={() => navigate({ to: "/customers" as never })} className="text-left">
+            <MiniStat
+              label="New Customers"
+              value={fmtNum(newCustomers)}
+              icon={<Users className="h-3.5 w-3.5" />}
+              tone="info"
+            />
+          </button>
         </div>
 
         {/* AI Explanation */}
@@ -172,12 +289,7 @@ function DateSnapshot({ day, month, year }: { day: number; month: number; year: 
           <div className="flex items-center gap-2 text-xs font-semibold text-primary">
             <Sparkles className="h-4 w-4" /> Why was this day different?
           </div>
-          <p className="mt-2 text-sm leading-relaxed text-foreground/90">
-            Sales on {dateStr.split(",")[0]} were <span className="font-semibold text-success">18.6% above</span> the
-            monthly daily average. Primary drivers: a <span className="font-semibold">32% increase in Fashion sales
-            between 6 PM and 9 PM</span> and <span className="font-semibold">214 first-time customers</span>.
-            Electronics revenue declined 9%, mainly because two high-demand SKUs were out of stock.
-          </p>
+          <p className="mt-2 text-sm leading-relaxed text-foreground/90">{explanationText}</p>
         </div>
       </SectionCard>
 
@@ -194,9 +306,27 @@ function DateSnapshot({ day, month, year }: { day: number; month: number; year: 
                 </defs>
                 <CartesianGrid stroke="var(--color-hairline)" vertical={false} />
                 <XAxis dataKey="hour" tickLine={false} axisLine={false} />
-                <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000}K`} width={40} />
-                <Tooltip contentStyle={{ background: "var(--color-popover)", border: "1px solid var(--color-hairline)", borderRadius: 6, fontSize: 12 }} />
-                <Area type="monotone" dataKey="revenue" stroke="var(--color-primary)" strokeWidth={2} fill="url(#hr)" />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v: any) => `${Number(v) / 1000}K`}
+                  width={40}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "var(--color-popover)",
+                    border: "1px solid var(--color-hairline)",
+                    borderRadius: 6,
+                    fontSize: 12,
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="var(--color-primary)"
+                  strokeWidth={2}
+                  fill="url(#hr)"
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -208,8 +338,20 @@ function DateSnapshot({ day, month, year }: { day: number; month: number; year: 
               <BarChart data={deptRevenue}>
                 <CartesianGrid stroke="var(--color-hairline)" vertical={false} />
                 <XAxis dataKey="name" tickLine={false} axisLine={false} />
-                <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000}K`} width={40} />
-                <Tooltip contentStyle={{ background: "var(--color-popover)", border: "1px solid var(--color-hairline)", borderRadius: 6, fontSize: 12 }} />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v: any) => `${Number(v) / 1000}K`}
+                  width={40}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "var(--color-popover)",
+                    border: "1px solid var(--color-hairline)",
+                    borderRadius: 6,
+                    fontSize: 12,
+                  }}
+                />
                 <Bar dataKey="v" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -218,36 +360,51 @@ function DateSnapshot({ day, month, year }: { day: number; month: number; year: 
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <SectionCard title="Inventory">
+        <SectionCard title="Inventory Snapshot">
           <ul className="space-y-2 text-xs">
-            <Row label="Stock received" v="₹4.2L" />
-            <Row label="Stock sold" v="₹1.42L" />
-            <Row label="Low-stock events" v="6" />
-            <Row label="Stockouts" v="2" tone="danger" />
-            <Row label="Expired units" v="14" tone="warning" />
-            <Row label="Wastage" v="₹1,240" />
+            <button className="w-full text-left" onClick={() => openProduct360("SKU-10021")}>
+              <Row label="Amul Taaza Milk stock" v="128 units" tone="warning" />
+            </button>
+            <button className="w-full text-left" onClick={() => openProduct360("SKU-11023")}>
+              <Row label="Nestlé Yogurt stock" v="42 units" tone="danger" />
+            </button>
+            <Row
+              label="Low-stock events"
+              v={products.filter((p) => p.stock <= p.reorder).length.toString()}
+            />
+            <Row label="Total SKU categories" v="10" />
           </ul>
         </SectionCard>
 
-        <SectionCard title="Expenses">
+        <SectionCard title="Expenses Snapshot">
           <ul className="space-y-2 text-xs">
-            <Row label="Electricity" v="₹18,240" />
-            <Row label="Water" v="₹1,420" />
+            <Row label="Electricity charges" v={isMay5 ? "₹4.12L" : "₹18,240"} />
+            <Row label="Water billing" v="₹1,420" />
             <Row label="Salaries allocated" v="₹1.62L" />
-            <Row label="Marketing" v="₹8,400" />
-            <Row label="Cleaning" v="₹2,800" />
-            <Row label="Miscellaneous" v="₹3,140" />
+            <Row
+              label="Daily operations expenses"
+              v={fmtINR(scopedExpenses.reduce((sum, e) => sum + e.amount, 0))}
+            />
           </ul>
         </SectionCard>
 
-        <SectionCard title="Operations">
+        <SectionCard title="Operations Snapshot">
           <ul className="space-y-2 text-xs">
-            <Row label="Peak hour" v="19:00" tone="success" />
-            <Row label="Lowest demand" v="15:00" />
+            <Row label="Peak hour" v={isMay5 ? "19:00" : "18:00"} tone="success" />
             <Row label="Busiest dept" v="Fashion" />
-            <Row label="Staff utilization" v="82%" />
-            <Row label="Checkout queue peaks" v="4" />
-            <Row label="Anomalies" v="1" tone="warning" />
+            <button
+              className="w-full text-left"
+              onClick={() => navigate({ to: "/anomalies" as never })}
+            >
+              <Row
+                label="Anomalies detected"
+                v={scopedAnomalies.length.toString()}
+                tone={scopedAnomalies.length > 0 ? "danger" : "success"}
+              />
+            </button>
+            <button className="w-full text-left" onClick={() => openSupplier360("SUP-001")}>
+              <Row label="Supplier deliveries" v="1 (Amul Foods)" />
+            </button>
           </ul>
         </SectionCard>
       </div>
@@ -267,9 +424,15 @@ function MiniStat({
   tone?: "default" | "success" | "info";
 }) {
   return (
-    <div className="rounded-lg border border-hairline bg-surface p-3">
+    <div className="rounded-lg border border-hairline bg-surface p-3 w-full transition-colors hover:border-primary/30">
       <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
-        <span className={tone === "success" ? "text-success" : tone === "info" ? "text-info" : "text-primary"}>{icon}</span>
+        <span
+          className={
+            tone === "success" ? "text-success" : tone === "info" ? "text-info" : "text-primary"
+          }
+        >
+          {icon}
+        </span>
         {label}
       </div>
       <p className="mt-1.5 font-display text-lg font-semibold">{value}</p>
@@ -277,16 +440,26 @@ function MiniStat({
   );
 }
 
-function Row({ label, v, tone }: { label: string; v: string; tone?: "warning" | "danger" | "success" }) {
+function Row({
+  label,
+  v,
+  tone,
+}: {
+  label: string;
+  v: string;
+  tone?: "warning" | "danger" | "success";
+}) {
   return (
-    <li className="flex items-center justify-between">
+    <li className="flex items-center justify-between py-1 hover:bg-surface-hover rounded px-1 transition-colors">
       <span className="text-muted-foreground">{label}</span>
-      <span className={cn(
-        "font-medium",
-        tone === "warning" && "text-warning",
-        tone === "danger" && "text-destructive",
-        tone === "success" && "text-success",
-      )}>
+      <span
+        className={cn(
+          "font-medium",
+          tone === "warning" && "text-warning",
+          tone === "danger" && "text-destructive",
+          tone === "success" && "text-success",
+        )}
+      >
         {v}
       </span>
     </li>

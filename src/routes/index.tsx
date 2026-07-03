@@ -1,11 +1,19 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/")({
-  beforeLoad: () => {
+  component: IndexRouteComponent,
+});
+
+function IndexRouteComponent() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
     if (typeof window !== "undefined") {
       const role = window.localStorage.getItem("omnimind_role");
-      throw redirect({ to: role ? "/command-center" : "/login" });
+      navigate({ to: role ? "/command-center" : "/login", replace: true });
     }
-  },
-  component: () => null,
-});
+  }, [navigate]);
+
+  return null;
+}
