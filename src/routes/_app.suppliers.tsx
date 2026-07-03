@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader, SectionCard, StatusPill } from "@/components/page-header";
 import { useBusinessData } from "@/lib/business-context";
+import { useAuth } from "@/lib/auth-context";
 import { fmtINR } from "@/lib/mock-data";
-import { Sparkles, Truck, Plus, Loader2 } from "lucide-react";
+import { Sparkles, Truck, Plus, Loader2, Edit, Archive, FileText } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { getSuppliers, addSupplier } from "@/lib/server-suppliers";
+import { getSuppliers, addSupplier, editSupplierServer, archiveSupplierServer } from "@/lib/server-suppliers";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -33,30 +34,34 @@ export const Route = createFileRoute("/_app/suppliers")({
 
 function Suppliers() {
   const { openSupplier360 } = useBusinessData();
+  const { user } = useAuth();
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [sel, setSel] = useState<any>(null);
 
   const [addOpen, setAddOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [formName, setFormName] = useState("");
   const [formContact, setFormContact] = useState("");
   const [formEmail, setFormEmail] = useState("");
   const [formPhone, setFormPhone] = useState("");
-  const [formAddress, setFormAddress] = useState("Default Address");
-  const [formTerms, setFormTerms] = useState("Net 30");
-  const [formLead, setFormLead] = useState("5");
+  const [formAddress, setFormAddress] = useState("");
+  const [formTerms, setFormTerms] = useState("");
+  const [formLead, setFormLead] = useState("");
 
   const loadSuppliers = async () => {
     setLoading(true);
     try {
       const res = await getSuppliers();
       setSuppliers(res);
-      if (res.length > 0) {
+      if (res.length > 0 && !sel) {
         setSel(res[0]);
-      } else {
-        setSel(null);
+      } else if (sel) {
+        const updatedSel = res.find((s) => s.id === sel.id);
+        if (updatedSel) setSel(updatedSel);
+        else setSel(null);
       }
     } catch (e) {
       toast.error("Failed to load suppliers");
@@ -69,8 +74,32 @@ function Suppliers() {
     loadSuppliers();
   }, []);
 
+  const openAdd = () => {
+    setFormName("");
+    setFormContact("");
+    setFormEmail("");
+    setFormPhone("");
+    setFormAddress("");
+    setFormTerms("Net 30");
+    setFormLead("5");
+    setAddOpen(true);
+  };
+
+  const openEdit = () => {
+    if (!sel) return;
+    setFormName(sel.name);
+    setFormContact(sel.contact);
+    setFormEmail(sel.email);
+    setFormPhone(sel.phone);
+    setFormAddress(sel.address);
+    setFormTerms(sel.paymentTerms);
+    setFormLead(sel.lead.toString());
+    setEditOpen(true);
+  };
+
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return toast.error("Unauthorized");
     setSaving(true);
     try {
       await addSupplier({
@@ -82,6 +111,8 @@ function Suppliers() {
           address: formAddress,
           paymentTerms: formTerms,
           leadTimeDays: Number(formLead),
+          role: user.role,
+          emailUser: user.email,
         },
       });
       toast.success("Supplier added successfully");
@@ -94,6 +125,54 @@ function Suppliers() {
     }
   };
 
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !sel) return toast.error("Unauthorized");
+    setSaving(true);
+    try {
+      await editSupplierServer({
+        data: {
+          id: sel.id,
+          name: formName,
+          contactPerson: formContact,
+          email: formEmail,
+          phone: formPhone,
+          address: formAddress,
+          paymentTerms: formTerms,
+          leadTimeDays: Number(formLead),
+          role: user.role,
+          emailUser: user.email,
+        },
+      });
+      toast.success("Supplier updated successfully");
+      setEditOpen(false);
+      loadSuppliers();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update supplier");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleArchive = async () => {
+    if (!user || !sel) return toast.error("Unauthorized");
+    if (!confirm(`Are you sure you want to archive ${sel.name}?`)) return;
+    try {
+      await archiveSupplierServer({
+        data: {
+          id: sel.id,
+          role: user.role,
+          emailUser: user.email,
+        },
+      });
+      toast.success("Supplier archived successfully");
+      setSel(null);
+      loadSuppliers();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to archive supplier");
+    }
+  };
+
   const totalPending = suppliers.reduce((sum, s) => sum + s.pending, 0);
 
   return (
@@ -103,12 +182,14 @@ function Suppliers() {
           title="Supplier Intelligence"
           subtitle="AI-scored supplier performance across the mall's vendor network."
         />
-        <Button
-          onClick={() => setAddOpen(true)}
-          className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" /> Add Supplier
-        </Button>
+        {(user?.role === "Owner" || user?.role === "Admin" || user?.role === "Manager") && (
+          <Button
+            onClick={openAdd}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" /> Add Supplier
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
@@ -186,14 +267,36 @@ function Suppliers() {
             title="Supplier 360° Profile"
             subtitle={sel.name}
             actions={
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-hairline bg-surface text-xs font-semibold"
-                onClick={() => openSupplier360(sel.id)}
-              >
-                Open Full 360° Profile
-              </Button>
+              <div className="flex gap-2">
+                {(user?.role === "Owner" || user?.role === "Admin") && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-hairline bg-surface text-xs font-semibold text-primary hover:bg-primary/10"
+                      onClick={openEdit}
+                    >
+                      <Edit className="h-3 w-3 mr-1" /> Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-hairline bg-surface text-xs font-semibold text-destructive hover:bg-destructive/10"
+                      onClick={handleArchive}
+                    >
+                      <Archive className="h-3 w-3 mr-1" /> Archive
+                    </Button>
+                  </>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-hairline bg-surface text-xs font-semibold"
+                  onClick={() => openSupplier360(sel.id)}
+                >
+                  360° Profile
+                </Button>
+              </div>
             }
           >
             <div className="flex items-center gap-3">
@@ -204,6 +307,9 @@ function Suppliers() {
                 <p className="text-sm font-semibold">{sel.name}</p>
                 <p className="text-[11px] text-muted-foreground">
                   {sel.category} · Contact: {sel.contact}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Email: {sel.email} · Phone: {sel.phone}
                 </p>
               </div>
             </div>
@@ -235,10 +341,21 @@ function Suppliers() {
                     : "Reliable partner. Maintain current relationship. Explore volume discount on next quarterly review."}
               </p>
             </div>
+            
+            <div className="mt-4">
+              <Button
+                variant="outline"
+                className="w-full border-hairline bg-surface font-semibold text-xs h-9"
+                onClick={() => window.location.href = `/purchase-orders?supplier=${sel.id}`}
+              >
+                <FileText className="h-3.5 w-3.5 mr-2" /> Create PO for {sel.name}
+              </Button>
+            </div>
           </SectionCard>
         )}
       </div>
 
+      {/* Add Dialog */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="sm:max-w-[425px] bg-sidebar border border-hairline text-foreground">
           <DialogHeader>
@@ -296,12 +413,100 @@ function Suppliers() {
                 />
               </div>
             </div>
+            <div className="space-y-1.5">
+              <Label>Address *</Label>
+              <Input
+                required
+                className="bg-surface border-hairline"
+                value={formAddress}
+                onChange={(e) => setFormAddress(e.target.value)}
+              />
+            </div>
             <DialogFooter className="pt-2">
               <Button type="button" variant="ghost" onClick={() => setAddOpen(false)}>
                 Cancel
               </Button>
               <Button type="submit" disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
                 {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Save Supplier
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-sidebar border border-hairline text-foreground">
+          <DialogHeader>
+            <DialogTitle>Edit Supplier</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEdit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Supplier Name *</Label>
+              <Input
+                required
+                className="bg-surface border-hairline"
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Contact Person *</Label>
+                <Input
+                  required
+                  className="bg-surface border-hairline"
+                  value={formContact}
+                  onChange={(e) => setFormContact(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Email *</Label>
+                <Input
+                  type="email"
+                  required
+                  className="bg-surface border-hairline"
+                  value={formEmail}
+                  onChange={(e) => setFormEmail(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Phone *</Label>
+                <Input
+                  required
+                  className="bg-surface border-hairline"
+                  value={formPhone}
+                  onChange={(e) => setFormPhone(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Lead Time (Days) *</Label>
+                <Input
+                  type="number"
+                  required
+                  className="bg-surface border-hairline"
+                  value={formLead}
+                  onChange={(e) => setFormLead(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Address *</Label>
+              <Input
+                required
+                className="bg-surface border-hairline"
+                value={formAddress}
+                onChange={(e) => setFormAddress(e.target.value)}
+              />
+            </div>
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="ghost" onClick={() => setEditOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
+                {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Save Changes
               </Button>
             </DialogFooter>
           </form>

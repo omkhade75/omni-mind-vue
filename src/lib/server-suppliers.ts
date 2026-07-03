@@ -4,6 +4,7 @@ import { prisma } from "./server/prisma";
 export const getSuppliers = createServerFn({ method: "GET" })
   .handler(async () => {
     const suppliers = await prisma.supplier.findMany({
+      where: { status: { not: "Archived" } },
       include: {
         purchaseOrders: true,
         supplierProducts: {
@@ -20,9 +21,9 @@ export const getSuppliers = createServerFn({ method: "GET" })
     });
 
     return suppliers.map((s) => {
-      const receivedPOs = s.purchaseOrders.filter((po) => po.status === "Received");
+      const receivedPOs = s.purchaseOrders.filter((po) => po.status === "Received" || po.status === "Partially_Received");
       const pendingPOs = s.purchaseOrders.filter(
-        (po) => po.status === "Draft" || po.status === "Ordered" || po.status === "Sent"
+        (po) => po.status === "Draft" || po.status === "Ordered" || po.status === "Sent" || po.status === "Approved" || po.status === "Submitted"
       );
 
       const spend = receivedPOs.reduce((sum, po) => sum + Number(po.totalAmount), 0);
@@ -69,8 +70,15 @@ export const addSupplier = createServerFn({ method: "POST" })
     address: string;
     paymentTerms: string;
     leadTimeDays: number;
+    role: string;
+    emailUser: string;
   }) => data)
   .handler(async ({ data: payload }) => {
+    // RBAC: Manager can add if they have access to suppliers
+    if (payload.role !== "Owner" && payload.role !== "Admin" && payload.role !== "Manager") {
+      throw new Error("Unauthorized");
+    }
+
     const count = await prisma.supplier.count();
     const supplierCode = `SUP-${String(count + 101).padStart(3, "0")}`;
 
@@ -90,6 +98,91 @@ export const addSupplier = createServerFn({ method: "POST" })
         status: "Active",
       },
     });
+
+    const user = await prisma.user.findUnique({ where: { email: payload.emailUser } });
+    if (user) {
+      await prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          action: "CREATE_SUPPLIER",
+          entityType: "Supplier",
+          entityId: supplier.id,
+        }
+      });
+    }
+
+    return { success: true, supplier };
+  });
+
+export const editSupplierServer = createServerFn({ method: "POST" })
+  .validator((data: {
+    id: string;
+    name: string;
+    contactPerson: string;
+    email: string;
+    phone: string;
+    address: string;
+    paymentTerms: string;
+    leadTimeDays: number;
+    role: string;
+    emailUser: string;
+  }) => data)
+  .handler(async ({ data: payload }) => {
+    if (payload.role !== "Owner" && payload.role !== "Admin") {
+      throw new Error("Only Owner and Admin can edit suppliers");
+    }
+
+    const supplier = await prisma.supplier.update({
+      where: { id: payload.id },
+      data: {
+        name: payload.name,
+        contactPerson: payload.contactPerson,
+        email: payload.email,
+        phone: payload.phone,
+        address: payload.address,
+        paymentTerms: payload.paymentTerms,
+        leadTimeDays: payload.leadTimeDays,
+      },
+    });
+
+    const user = await prisma.user.findUnique({ where: { email: payload.emailUser } });
+    if (user) {
+      await prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          action: "EDIT_SUPPLIER",
+          entityType: "Supplier",
+          entityId: supplier.id,
+        }
+      });
+    }
+
+    return { success: true, supplier };
+  });
+
+export const archiveSupplierServer = createServerFn({ method: "POST" })
+  .validator((data: { id: string, role: string, emailUser: string }) => data)
+  .handler(async ({ data: payload }) => {
+    if (payload.role !== "Owner" && payload.role !== "Admin") {
+      throw new Error("Only Owner and Admin can archive suppliers");
+    }
+
+    const supplier = await prisma.supplier.update({
+      where: { id: payload.id },
+      data: { status: "Archived" },
+    });
+
+    const user = await prisma.user.findUnique({ where: { email: payload.emailUser } });
+    if (user) {
+      await prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          action: "ARCHIVE_SUPPLIER",
+          entityType: "Supplier",
+          entityId: supplier.id,
+        }
+      });
+    }
 
     return { success: true, supplier };
   });
@@ -118,6 +211,7 @@ export const getPurchaseOrders = createServerFn({ method: "GET" })
 
       const productId = po.items.length > 0 ? po.items[0].product.id : "";
       const quantity = po.items.reduce((sum, item) => sum + item.quantity, 0);
+      const receivedQuantity = po.items.reduce((sum, item) => sum + item.receivedQuantity, 0);
 
       return {
         id: po.poNumber,
@@ -128,6 +222,7 @@ export const getPurchaseOrders = createServerFn({ method: "GET" })
         supplierName: po.supplier.name,
         supplierId: po.supplier.id,
         quantity,
+        receivedQuantity,
         totalCost: Number(po.totalAmount),
         source: po.notes || "Manual",
         status: po.status,
@@ -142,6 +237,7 @@ export const createPurchaseOrder = createServerFn({ method: "POST" })
     expectedDeliveryDate?: string;
     notes?: string;
     createdBy: string;
+    status?: string;
     items: Array<{
       productId: string;
       quantity: number;
@@ -164,7 +260,7 @@ export const createPurchaseOrder = createServerFn({ method: "POST" })
         poNumber,
         supplierId: payload.supplierId,
         departmentId: payload.departmentId,
-        status: "Sent",
+        status: payload.status || "Draft",
         orderDate: new Date(),
         expectedDeliveryDate: payload.expectedDeliveryDate ? new Date(payload.expectedDeliveryDate) : null,
         subtotal,
@@ -176,6 +272,7 @@ export const createPurchaseOrder = createServerFn({ method: "POST" })
           create: payload.items.map(item => ({
             productId: item.productId,
             quantity: item.quantity,
+            receivedQuantity: 0,
             unitCost: item.unitCost,
             lineTotal: item.quantity * item.unitCost
           }))
@@ -183,11 +280,70 @@ export const createPurchaseOrder = createServerFn({ method: "POST" })
       }
     });
 
+    const user = await prisma.user.findUnique({ where: { email: payload.createdBy } });
+    if (user) {
+      await prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          action: "CREATE_PO",
+          entityType: "PurchaseOrder",
+          entityId: po.id,
+        }
+      });
+    }
+
     return { success: true, po };
   });
 
-export const receivePurchaseOrder = createServerFn({ method: "POST" })
-  .validator((data: { poId: string, receivedBy: string }) => data)
+export const updatePurchaseOrderStatusServer = createServerFn({ method: "POST" })
+  .validator((data: { poId: string, status: string, role: string, emailUser: string }) => data)
+  .handler(async ({ data: payload }) => {
+    const po = await prisma.purchaseOrder.update({
+      where: { id: payload.poId },
+      data: { status: payload.status },
+    });
+
+    const user = await prisma.user.findUnique({ where: { email: payload.emailUser } });
+    if (user) {
+      await prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          action: `UPDATE_PO_STATUS_${payload.status.toUpperCase()}`,
+          entityType: "PurchaseOrder",
+          entityId: po.id,
+        }
+      });
+    }
+
+    return { success: true, po };
+  });
+
+export const getPurchaseOrderDetailsServer = createServerFn({ method: "POST" })
+  .validator((data: { poId: string }) => data)
+  .handler(async ({ data: payload }) => {
+    const po = await prisma.purchaseOrder.findUnique({
+      where: { id: payload.poId },
+      include: {
+        supplier: true,
+        items: {
+          include: { product: true }
+        }
+      }
+    });
+    return po;
+  });
+
+export const receivePurchaseOrderGoodsServer = createServerFn({ method: "POST" })
+  .validator((data: { 
+    poId: string; 
+    receivedByEmail: string; 
+    role: string;
+    itemsToReceive: Array<{
+      itemId: string;
+      productId: string;
+      quantity: number;
+    }>
+  }) => data)
   .handler(async ({ data: payload }) => {
     return await prisma.$transaction(async (tx) => {
       const po = await tx.purchaseOrder.findUnique({
@@ -196,35 +352,55 @@ export const receivePurchaseOrder = createServerFn({ method: "POST" })
       });
 
       if (!po) throw new Error("PO not found");
-      if (po.status === "Received") throw new Error("PO already received");
+      if (po.status === "Received") throw new Error("PO already fully received");
+      if (po.status === "Draft" || po.status === "Submitted") throw new Error("PO must be Ordered or Partially_Received");
 
-      // Mark PO as received
-      await tx.purchaseOrder.update({
-        where: { id: po.id },
-        data: { status: "Received" }
-      });
+      const user = await tx.user.findUnique({ where: { email: payload.receivedByEmail } });
+      if (!user) throw new Error("User not found");
 
       // Create GoodsReceipt
-      await tx.goodsReceipt.create({
+      const goodsReceipt = await tx.goodsReceipt.create({
         data: {
           purchaseOrderId: po.id,
-          receivedBy: payload.receivedBy,
+          receivedBy: user.id,
+          items: {
+            create: payload.itemsToReceive.map(i => ({
+              productId: i.productId,
+              quantity: i.quantity
+            }))
+          }
         }
       });
 
-      // Get default location
       const warehouse = await tx.inventoryLocation.findFirst({
         where: { type: "WAREHOUSE" }
       });
-
       if (!warehouse) throw new Error("Warehouse location not found");
 
-      // Add inventory stocks
-      for (const item of po.items) {
+      let allFullyReceived = true;
+
+      for (const itemToReceive of payload.itemsToReceive) {
+        if (itemToReceive.quantity <= 0) continue;
+
+        const poItem = po.items.find(i => i.id === itemToReceive.itemId);
+        if (!poItem) continue;
+
+        const newReceivedQty = poItem.receivedQuantity + itemToReceive.quantity;
+        if (newReceivedQty < poItem.quantity) {
+          allFullyReceived = false;
+        }
+
+        // Update PO Item
+        await tx.purchaseOrderItem.update({
+          where: { id: poItem.id },
+          data: { receivedQuantity: newReceivedQty }
+        });
+
+        // Add inventory stocks
         const stock = await tx.inventoryStock.findUnique({
           where: {
             productId_locationId: {
-              productId: item.productId,
+              productId: itemToReceive.productId,
               locationId: warehouse.id
             }
           }
@@ -234,50 +410,67 @@ export const receivePurchaseOrder = createServerFn({ method: "POST" })
           await tx.inventoryStock.update({
             where: { id: stock.id },
             data: {
-              quantityOnHand: stock.quantityOnHand + item.quantity,
-              availableQty: stock.availableQty + item.quantity
+              quantityOnHand: stock.quantityOnHand + itemToReceive.quantity,
+              availableQty: stock.availableQty + itemToReceive.quantity
             }
           });
         } else {
           await tx.inventoryStock.create({
             data: {
-              productId: item.productId,
+              productId: itemToReceive.productId,
               locationId: warehouse.id,
-              quantityOnHand: item.quantity,
-              availableQty: item.quantity
+              quantityOnHand: itemToReceive.quantity,
+              availableQty: itemToReceive.quantity
             }
           });
         }
 
+        // Inventory Movement
         await tx.inventoryMovement.create({
           data: {
-            productId: item.productId,
+            productId: itemToReceive.productId,
             locationId: warehouse.id,
             movementType: "PURCHASE_RECEIPT",
-            quantity: item.quantity,
-            referenceType: "PurchaseOrder",
-            referenceId: po.id,
-            performedBy: payload.receivedBy
-          }
-        });
-
-        const batchCount = await tx.productBatch.count({
-          where: { productId: item.productId }
-        });
-        
-        await tx.productBatch.create({
-          data: {
-            productId: item.productId,
-            batchNumber: `BATCH-${po.poNumber}-${batchCount + 1}`,
-            quantityReceived: item.quantity,
-            quantityRemaining: item.quantity,
-            costPrice: item.unitCost,
-            supplierId: po.supplierId,
-            status: "Safe"
+            quantity: itemToReceive.quantity,
+            referenceType: "GoodsReceipt",
+            referenceId: goodsReceipt.id,
+            performedBy: user.id
           }
         });
       }
 
-      return { success: true };
+      // Check if ANY item is still not fully received
+      // Wait, allFullyReceived was only checking items we just received. We need to check all items.
+      const updatedPoItems = await tx.purchaseOrderItem.findMany({ where: { purchaseOrderId: po.id } });
+      const finalFullyReceived = updatedPoItems.every(i => i.receivedQuantity >= i.quantity);
+
+      const newStatus = finalFullyReceived ? "Received" : "Partially_Received";
+
+      await tx.purchaseOrder.update({
+        where: { id: po.id },
+        data: { status: newStatus }
+      });
+
+      await tx.auditLog.create({
+        data: {
+          userId: user.id,
+          action: "RECEIVE_GOODS",
+          entityType: "PurchaseOrder",
+          entityId: po.id,
+        }
+      });
+
+      await tx.businessEvent.create({
+        data: {
+          eventType: "PO_RECEIVED",
+          entityType: "PurchaseOrder",
+          entityId: po.id,
+          title: `PO ${po.poNumber} ${newStatus}`,
+          description: `Received goods for PO ${po.poNumber}`,
+          actorId: user.id
+        }
+      });
+
+      return { success: true, status: newStatus };
     });
   });
