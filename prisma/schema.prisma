@@ -1,0 +1,409 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Mall {
+  id        String   @id @default(uuid())
+  name      String
+  location  String
+  timezone  String   @default("Asia/Kolkata")
+  currency  String   @default("INR")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  role         String   // OWNER, ADMIN, MANAGER
+  departmentId String?
+  status       String   @default("Active") // Active, Inactive
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Department {
+  id            String   @id @default(uuid())
+  name          String
+  code          String   @unique // FASHION, ELECTRONICS, GROCERY, etc.
+  managerId     String?
+  floor         String
+  targetRevenue Decimal  @db.Decimal(14, 2)
+  status        String   @default("Active") // Active, Archived
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Customer {
+  id                     String        @id @default(uuid())
+  customerCode           String        @unique
+  firstName              String
+  lastName               String
+  email                  String        @unique
+  phone                  String        @unique
+  loyaltyTier            String        @default("Regular") // VIP, Loyal, Regular
+  loyaltyPoints          Int           @default(0)
+  joinDate               DateTime      @default(now())
+  preferredDepartmentId  String?
+  status                 String        @default("Active") // Active, Archived
+  notes                  String?
+  churnRisk              String        @default("Low") // Low, Medium, High
+  transactions           Transaction[]
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+}
+
+model Category {
+  id           String    @id @default(uuid())
+  name         String
+  departmentId String
+  products     Product[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Product {
+  id                String             @id @default(uuid())
+  sku               String             @unique
+  barcode           String             @unique
+  name              String
+  description       String?
+  categoryId        String
+  category          Category           @relation(fields: [categoryId], references: [id])
+  departmentId      String
+  brand             String
+  sellingPrice      Decimal            @db.Decimal(14, 2)
+  costPrice         Decimal            @db.Decimal(14, 2)
+  taxRate           Decimal            @db.Decimal(4, 2) @default(18.00)
+  reorderLevel      Int
+  reorderQuantity   Int
+  unit              String             @default("units")
+  status            String             @default("Active") // Active, Archived
+  stockItems        InventoryStock[]
+  movements         InventoryMovement[]
+  batches           ProductBatch[]
+  transactionItems  TransactionItem[]
+  poItems           PurchaseOrderItem[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+}
+
+model Supplier {
+  id                 String            @id @default(uuid())
+  supplierCode       String            @unique
+  name               String
+  contactPerson      String
+  email              String            @unique
+  phone              String
+  address            String
+  paymentTerms       String
+  leadTimeDays       Int
+  onTimeDeliveryRate Decimal           @db.Decimal(5, 2) @default(100.00)
+  qualityScore       Decimal           @db.Decimal(5, 2) @default(100.00)
+  riskScore          Decimal           @db.Decimal(5, 2) @default(0.00)
+  status             String            @default("Active") // Active, Archived
+  supplierProducts   SupplierProduct[]
+  batches            ProductBatch[]
+  purchaseOrders     PurchaseOrder[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+}
+
+model SupplierProduct {
+  id                   String   @id @default(uuid())
+  supplierId           String
+  supplier             Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  productId            String
+  supplierPrice        Decimal  @db.Decimal(14, 2)
+  minimumOrderQuantity Int
+  leadTimeDays         Int
+  preferred            Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model InventoryLocation {
+  id        String              @id @default(uuid())
+  name      String
+  type      String              // WAREHOUSE, RETAIL_FLOOR
+  floor     String
+  stocks    InventoryStock[]
+  movements InventoryMovement[]
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+}
+
+model InventoryStock {
+  id             String            @id @default(uuid())
+  productId      String
+  product        Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  locationId     String
+  location       InventoryLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  quantityOnHand Int               @default(0)
+  reservedQty    Int               @default(0)
+  availableQty   Int               @default(0)
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([productId, locationId])
+}
+
+model InventoryMovement {
+  id            String            @id @default(uuid())
+  productId     String
+  product       Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  locationId    String
+  location      InventoryLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  movementType  String            // SALE, RETURN, PURCHASE_RECEIPT, ADJUSTMENT_IN, ADJUSTMENT_OUT, DAMAGE, EXPIRED
+  quantity      Int
+  referenceType String?           // Transaction, PurchaseOrder, GoodsReceipt
+  referenceId   String?
+  reason        String?
+  performedBy   String?
+  occurredAt    DateTime          @default(now())
+}
+
+model ProductBatch {
+  id                String          @id @default(uuid())
+  productId         String
+  product           Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  batchNumber       String
+  manufacturingDate DateTime?
+  expiryDate        DateTime?
+  quantityReceived  Int
+  quantityRemaining Int
+  costPrice         Decimal         @db.Decimal(14, 2)
+  supplierId        String
+  supplier          Supplier        @relation(fields: [supplierId], references: [id])
+  receivedAt        DateTime        @default(now())
+  status            String          @default("Safe") // Safe, Warning, Expired, Markdown
+  transactionItems  TransactionItem[]
+}
+
+model Transaction {
+  id                String            @id @default(uuid())
+  transactionNumber String            @unique
+  customerId        String?
+  customer          Customer?         @relation(fields: [customerId], references: [id])
+  departmentId      String
+  cashierId         String
+  transactionDate   DateTime          @default(now())
+  subtotal          Decimal           @db.Decimal(14, 2)
+  discountAmount    Decimal           @db.Decimal(14, 2)
+  taxAmount         Decimal           @db.Decimal(14, 2)
+  totalAmount       Decimal           @db.Decimal(14, 2)
+  paymentStatus     String            // Paid, Refunded, Failed
+  status            String            @default("Completed")
+  items             TransactionItem[]
+  payments          Payment[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+}
+
+model TransactionItem {
+  id                String        @id @default(uuid())
+  transactionId     String
+  transaction       Transaction   @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product       @relation(fields: [productId], references: [id])
+  batchId           String?
+  batch             ProductBatch? @relation(fields: [batchId], references: [id])
+  quantity          Int
+  unitPrice         Decimal       @db.Decimal(14, 2)
+  costPriceSnapshot Decimal       @db.Decimal(14, 2)
+  discountAmount    Decimal       @db.Decimal(14, 2)
+  taxAmount         Decimal       @db.Decimal(14, 2)
+  lineTotal         Decimal       @db.Decimal(14, 2)
+}
+
+model Payment {
+  id              String      @id @default(uuid())
+  transactionId   String
+  transaction     Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  method          String      // CASH, CARD, UPI, WALLET, OTHER
+  amount          Decimal     @db.Decimal(14, 2)
+  referenceNumber String?
+  status          String      @default("Success")
+  paidAt          DateTime    @default(now())
+}
+
+model ExpenseCategory {
+  id       String    @id @default(uuid())
+  name     String    @unique
+  expenses Expense[]
+}
+
+model Expense {
+  id              String          @id @default(uuid())
+  expenseNumber   String          @unique
+  date            DateTime
+  categoryId      String
+  category        ExpenseCategory @relation(fields: [categoryId], references: [id])
+  description     String
+  vendor          String
+  amount          Decimal         @db.Decimal(14, 2)
+  departmentId    String?
+  status          String          @default("Paid")
+  paymentMethod   String
+  referenceNumber String?
+  recurring       Boolean         @default(false)
+  createdBy       String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model IncomeRecord {
+  id           String   @id @default(uuid())
+  source       String   // rent, parking, advertising, kiosks, events, other
+  amount       Decimal  @db.Decimal(14, 2)
+  date         DateTime
+  departmentId String?
+  description  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model PurchaseOrder {
+  id                   String              @id @default(uuid())
+  poNumber             String              @unique
+  supplierId           String
+  supplier             Supplier            @relation(fields: [supplierId], references: [id])
+  departmentId         String?
+  status               String              @default("Draft") // Draft, Ordered, Received, Cancelled
+  orderDate            DateTime            @default(now())
+  expectedDeliveryDate DateTime?
+  subtotal             Decimal             @db.Decimal(14, 2)
+  taxAmount            Decimal             @db.Decimal(14, 2)
+  totalAmount          Decimal             @db.Decimal(14, 2)
+  createdBy            String
+  approvedBy           String?
+  notes                String?
+  items                PurchaseOrderItem[]
+  goodsReceipts        GoodsReceipt[]
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+}
+
+model PurchaseOrderItem {
+  id              String        @id @default(uuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product       @relation(fields: [productId], references: [id])
+  quantity        Int
+  unitCost        Decimal       @db.Decimal(14, 2)
+  lineTotal       Decimal       @db.Decimal(14, 2)
+}
+
+model GoodsReceipt {
+  id              String        @id @default(uuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  receivedAt      DateTime      @default(now())
+  receivedBy      String
+  notes           String?
+}
+
+model UtilityMeter {
+  id        String           @id @default(uuid())
+  type      String           // ELECTRICITY, WATER, HVAC, GAS
+  zone      String
+  unit      String           // kWh, L, etc.
+  baseline  Decimal          @db.Decimal(14, 2)
+  readings  UtilityReading[]
+}
+
+model UtilityReading {
+  id          String       @id @default(uuid())
+  meterId     String
+  meter       UtilityMeter @relation(fields: [meterId], references: [id], onDelete: Cascade)
+  readingDate DateTime
+  value       Decimal      @db.Decimal(14, 2)
+  cost        Decimal      @db.Decimal(14, 2)
+  source      String       @default("Meter")
+  createdAt   DateTime     @default(now())
+}
+
+model Staff {
+  id           String   @id @default(uuid())
+  employeeCode String   @unique
+  userId       String?
+  name         String
+  email        String
+  phone        String
+  departmentId String
+  designation  String
+  salary       Decimal  @db.Decimal(14, 2)
+  shift        String
+  joiningDate  DateTime
+  status       String   @default("Active")
+}
+
+model Recommendation {
+  id               String    @id @default(uuid())
+  type             String
+  title            String
+  summary          String
+  evidence         String    // JSON String
+  confidence       Decimal   @db.Decimal(5, 2)
+  priority         String    // high, medium, low
+  expectedImpact   String?
+  status           String    @default("New") // New, Investigating, Accepted, Rejected
+  targetEntityType String?
+  targetEntityId   String?
+  generatedAt      DateTime  @default(now())
+  acceptedAt       DateTime?
+  acceptedBy       String?
+  executedAt       DateTime?
+}
+
+model Anomaly {
+  id          String    @id @default(uuid())
+  type        String
+  severity    String    // high, medium, low
+  title       String
+  description String
+  evidence    String    // JSON String
+  entityType  String?
+  entityId    String?
+  detectedAt  DateTime  @default(now())
+  status      String    @default("Active") // Active, Resolved
+  resolvedAt  DateTime?
+  resolvedBy  String?
+}
+
+model BusinessEvent {
+  id          String   @id @default(uuid())
+  eventType   String
+  entityType  String?
+  entityId    String?
+  title       String
+  description String
+  metadata    String?  // JSON String
+  occurredAt  DateTime @default(now())
+  actorId     String?
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String
+  action     String
+  entityType String?
+  entityId   String?
+  beforeData String?  // JSON String
+  afterData  String?  // JSON String
+  timestamp  DateTime @default(now())
+  ipAddress  String?
+}
+
+model FootfallReading {
+  id           String   @id @default(uuid())
+  readingDate  DateTime
+  value        Int
+  departmentId String?
+}

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
@@ -8,7 +8,11 @@ import {
 } from "@/components/ui/sheet";
 import { db, Product, Customer, Supplier, Transaction } from "@/lib/db";
 import { useBusinessData } from "@/lib/business-context";
+import { useAuth } from "@/lib/auth-context";
+import { getCustomer360Server, type Customer360Profile } from "@/lib/server-customers";
+import { getProduct360Server, type Product360Details } from "@/lib/server-products";
 import { fmtINR, fmtNum } from "@/lib/mock-data";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -35,237 +39,277 @@ export const Product360Drawer: React.FC<DetailDrawerProps & { productId: string 
   onOpenChange,
   productId,
 }) => {
-  const { products, transactions, addPurchaseOrder } = useBusinessData();
-  const product = products.find((p) => p.id === productId);
-  if (!product) return null;
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<Product360Details | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // Filter transactions containing this product
-  const prodTransactions = transactions.filter((t) =>
-    t.items.some((item) => item.productId === productId),
-  );
-
-  const batches = db.getProductBatches(product.id);
-  const margin = Math.round(((product.price - product.cost) / product.price) * 100);
-
-  const handleQuickReorder = () => {
-    addPurchaseOrder({
-      productId: product.id,
-      productName: product.name,
-      supplierId: "SUP-001", // Default Amul or first supplier
-      supplierName: product.supplier,
-      quantity: product.reorder,
-      unitCost: product.cost,
-      totalCost: product.reorder * product.cost,
-      status: "Draft",
-      source: "Product 360 Quick Reorder",
-    });
-    onOpenChange(false);
-  };
+  useEffect(() => {
+    if (!productId || !open) {
+      setProfile(null);
+      return;
+    }
+    setLoading(true);
+    getProduct360Server({
+      data: {
+        id: productId,
+        role: user?.role || "owner",
+        email: user?.email || "",
+      }
+    })
+      .then((res) => {
+        setProfile(res);
+      })
+      .catch((err) => {
+        console.error("Error loading Product 360 profile:", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [productId, open, user]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="sm:max-w-xl bg-sidebar border-l border-hairline text-foreground overflow-y-auto">
-        <SheetHeader className="pb-4 border-b border-hairline">
-          <div className="flex items-center gap-2 text-primary">
-            <Package className="h-5 w-5" />
-            <span className="text-xs uppercase tracking-wider font-semibold">
-              Product 360 Profile
-            </span>
+        {loading ? (
+          <div className="h-full flex flex-col justify-center items-center py-20 space-y-4">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+            <p className="text-xs text-muted-foreground animate-pulse">
+              Assembling 360° Product Profile from database...
+            </p>
           </div>
-          <SheetTitle className="text-xl font-bold mt-1 text-foreground">{product.name}</SheetTitle>
-          <SheetDescription className="text-xs text-muted-foreground">
-            SKU: {product.id} | Department: {product.dept}
-          </SheetDescription>
-        </SheetHeader>
-
-        <div className="py-6 space-y-6">
-          {/* Status Alert */}
-          {product.stock <= product.reorder && (
-            <div className="rounded-lg border border-warning/30 bg-warning/10 p-3.5 flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
-              <div>
-                <h4 className="text-sm font-semibold text-warning">Stock Warning Alert</h4>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Current inventory level ({product.stock} units) is below the reorder threshold (
-                  {product.reorder} units). Suggested order volume: {product.reorder} units.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Key Stats */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-lg border border-hairline bg-surface p-3 text-center">
-              <span className="text-[10px] text-muted-foreground uppercase font-semibold">
-                Stock Level
-              </span>
-              <p className="text-lg font-bold mt-1 text-foreground">{product.stock}</p>
-              <Badge
-                variant={product.stock > product.reorder ? "secondary" : "destructive"}
-                className="mt-1.5 text-[9px] py-0.5"
-              >
-                {product.stock > product.reorder ? "In Stock" : "Low Stock"}
-              </Badge>
-            </div>
-            <div className="rounded-lg border border-hairline bg-surface p-3 text-center">
-              <span className="text-[10px] text-muted-foreground uppercase font-semibold">
-                Retail Price
-              </span>
-              <p className="text-lg font-bold mt-1 text-foreground">{fmtINR(product.price)}</p>
-              <span className="text-[10px] text-muted-foreground">
-                Cost: {fmtINR(product.cost)}
-              </span>
-            </div>
-            <div className="rounded-lg border border-hairline bg-surface p-3 text-center">
-              <span className="text-[10px] text-muted-foreground uppercase font-semibold">
-                Gross Margin
-              </span>
-              <p className="text-lg font-bold mt-1 text-foreground">{margin}%</p>
-              <span className="text-[10px] text-emerald-500 font-medium">
-                ₹{product.price - product.cost} profit/unit
-              </span>
-            </div>
+        ) : !profile ? (
+          <div className="py-12 text-center text-sm text-muted-foreground">
+            Product details could not be found or access was restricted.
           </div>
-
-          {/* Details */}
-          <div>
-            <h3 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-3">
-              Specifications & Supplier
-            </h3>
-            <div className="rounded-lg border border-hairline bg-surface divide-y divide-hairline text-sm">
-              <div className="flex justify-between p-3">
-                <span className="text-muted-foreground">Brand</span>
-                <span className="font-medium">{product.brand}</span>
-              </div>
-              <div className="flex justify-between p-3">
-                <span className="text-muted-foreground">Category</span>
-                <span className="font-medium">{product.category}</span>
-              </div>
-              <div className="flex justify-between p-3">
-                <span className="text-muted-foreground">Supplier Partner</span>
-                <span className="font-medium text-primary hover:underline cursor-pointer">
-                  {product.supplier}
+        ) : (
+          <>
+            <SheetHeader className="pb-4 border-b border-hairline">
+              <div className="flex items-center gap-2 text-primary">
+                <Package className="h-5 w-5" />
+                <span className="text-xs uppercase tracking-wider font-semibold">
+                  Product 360 Profile
                 </span>
               </div>
-              <div className="flex justify-between p-3">
-                <span className="text-muted-foreground">Reorder Point</span>
-                <span className="font-medium">{product.reorder} units</span>
-              </div>
-            </div>
-          </div>
+              <SheetTitle className="text-xl font-bold mt-1 text-foreground">{profile.name}</SheetTitle>
+              <SheetDescription className="text-xs text-muted-foreground">
+                SKU: {profile.sku} | Barcode: {profile.barcode} | Dept: {profile.dept}
+              </SheetDescription>
+            </SheetHeader>
 
-          {/* Batches */}
-          {batches.length > 0 && (
-            <div>
-              <h3 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-3">
-                Active Batches & Expiries
-              </h3>
-              <div className="space-y-2">
-                {batches.map((b) => (
-                  <div
-                    key={b.id}
-                    className="rounded-lg border border-hairline bg-surface p-3 flex justify-between items-center"
-                  >
-                    <div>
-                      <p className="text-xs font-semibold">{b.batchNumber}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        Expires: {b.expiryDate} (Mfg: {b.mfgDate})
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs font-bold">
-                        {b.remainingQty} / {b.quantity} units
-                      </p>
-                      <Badge
-                        variant={
-                          b.status === "expired"
-                            ? "destructive"
-                            : b.status === "expiring"
-                              ? "destructive"
-                              : "secondary"
-                        }
-                        className="mt-1 text-[9px]"
-                      >
-                        {b.status.toUpperCase()}
-                      </Badge>
-                    </div>
+            <div className="py-6 space-y-6">
+              {/* Status Alert */}
+              {profile.currentStock <= profile.reorder && (
+                <div className="rounded-lg border border-warning/30 bg-warning/10 p-3.5 flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-sm font-semibold text-warning">Stock Warning Alert</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Current inventory level ({profile.currentStock} {profile.unit}) is below the reorder threshold (
+                      {profile.reorder} {profile.unit}).
+                    </p>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Sales History */}
-          <div>
-            <h3 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-3">
-              Sales & Velocity
-            </h3>
-            <div className="rounded-lg border border-hairline bg-surface p-4 space-y-3">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="text-[10px] text-muted-foreground uppercase font-semibold">
-                    Total Sold
-                  </span>
-                  <p className="text-xl font-bold mt-0.5 text-foreground">{product.sold} units</p>
                 </div>
-                <div>
+              )}
+
+              {/* Key Stats */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-lg border border-hairline bg-surface p-3 text-center">
                   <span className="text-[10px] text-muted-foreground uppercase font-semibold">
-                    Total Revenue Generated
+                    Stock Level
                   </span>
-                  <p className="text-xl font-bold mt-0.5 text-emerald-500">
-                    {fmtINR(product.revenue)}
-                  </p>
+                  <p className="text-lg font-bold mt-1 text-foreground">{profile.currentStock}</p>
+                  <Badge
+                    variant={profile.currentStock > profile.reorder ? "secondary" : "destructive"}
+                    className="mt-1.5 text-[9px] py-0.5 font-semibold"
+                  >
+                    {profile.currentStock > profile.reorder ? "In Stock" : "Low Stock"}
+                  </Badge>
+                </div>
+                <div className="rounded-lg border border-hairline bg-surface p-3 text-center">
+                  <span className="text-[10px] text-muted-foreground uppercase font-semibold">
+                    Retail Price
+                  </span>
+                  <p className="text-lg font-bold mt-1 text-foreground">{fmtINR(profile.price)}</p>
+                  <span className="text-[10px] text-muted-foreground">
+                    Cost: {fmtINR(profile.cost)}
+                  </span>
+                </div>
+                <div className="rounded-lg border border-hairline bg-surface p-3 text-center">
+                  <span className="text-[10px] text-muted-foreground uppercase font-semibold">
+                    Gross Margin
+                  </span>
+                  <p className="text-lg font-bold mt-1 text-foreground">{profile.margin}%</p>
+                  <span className="text-[10px] text-emerald-500 font-medium">
+                    ₹{(profile.price - profile.cost).toFixed(0)} profit/unit
+                  </span>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-hairline">
-                <span className="text-[10px] text-muted-foreground uppercase font-semibold">
-                  Recent Sales Activity ({prodTransactions.length} orders)
-                </span>
-                {prodTransactions.length === 0 ? (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    No sales recorded on this snapshot range.
-                  </p>
-                ) : (
-                  <div className="space-y-1.5 mt-2 max-h-40 overflow-y-auto">
-                    {prodTransactions.slice(0, 5).map((t) => (
+              {/* Stock By Location */}
+              <div>
+                <h3 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-3">
+                  Stock distribution by Location
+                </h3>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {profile.stocksByLocation.map((item) => (
+                    <div key={item.locationId} className="rounded-lg border border-hairline bg-surface p-3 flex justify-between">
+                      <span className="text-muted-foreground">{item.locationName}</span>
+                      <span className="font-bold">{item.quantity} {profile.unit}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Details */}
+              <div>
+                <h3 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-3">
+                  Specifications & Supplier
+                </h3>
+                <div className="rounded-lg border border-hairline bg-surface divide-y divide-hairline text-sm">
+                  <div className="flex justify-between p-3">
+                    <span className="text-muted-foreground">Brand</span>
+                    <span className="font-medium">{profile.brand}</span>
+                  </div>
+                  <div className="flex justify-between p-3">
+                    <span className="text-muted-foreground">Category</span>
+                    <span className="font-medium">{profile.category}</span>
+                  </div>
+                  {profile.supplier && (
+                    <div className="flex justify-between p-3">
+                      <span className="text-muted-foreground">Supplier Partner</span>
+                      <span className="font-medium text-primary">
+                        {profile.supplier.name}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between p-3">
+                    <span className="text-muted-foreground">Reorder Point</span>
+                    <span className="font-medium">{profile.reorder} {profile.unit}</span>
+                  </div>
+                  <div className="flex justify-between p-3">
+                    <span className="text-muted-foreground">Expiry Risk Status</span>
+                    <span className={cn("font-medium", profile.expiryRisk === "High" || profile.expiryRisk === "Expired" ? "text-destructive font-bold" : "text-success")}>
+                      {profile.expiryRisk.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Batches */}
+              {profile.batches.length > 0 && (
+                <div>
+                  <h3 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-3">
+                    Active Batches & Expiries
+                  </h3>
+                  <div className="space-y-2">
+                    {profile.batches.map((b) => (
                       <div
-                        key={t.id}
-                        className="flex justify-between text-xs py-1 border-b border-hairline/40"
+                        key={b.id}
+                        className="rounded-lg border border-hairline bg-surface p-3 flex justify-between items-center text-xs"
                       >
-                        <span className="text-muted-foreground">
-                          {t.date} {t.time}
-                        </span>
-                        <span className="font-semibold">
-                          {t.customerName} (x
-                          {t.items.find((i) => i.productId === productId)?.quantity})
-                        </span>
-                        <span className="font-bold">{fmtINR(t.total)}</span>
+                        <div>
+                          <p className="font-semibold">{b.batchNumber}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            Expires: {b.expiryDate || "N/A"} (Mfg: {b.mfgDate || "N/A"})
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold">
+                            {b.remainingQty} / {b.receivedQty} units
+                          </p>
+                          <Badge
+                            variant={
+                              b.status === "Expired" || b.status === "expired"
+                                ? "destructive"
+                                : b.status === "Warning" || b.status === "expiring"
+                                  ? "destructive"
+                                  : "secondary"
+                            }
+                            className="mt-1 text-[9px] font-semibold"
+                          >
+                            {b.status.toUpperCase()}
+                          </Badge>
+                        </div>
                       </div>
                     ))}
                   </div>
-                )}
+                </div>
+              )}
+
+              {/* Sales History */}
+              <div>
+                <h3 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-3">
+                  Sales & Velocity (Last 30d)
+                </h3>
+                <div className="rounded-lg border border-hairline bg-surface p-4 space-y-3 text-xs">
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <span className="text-[10px] text-muted-foreground uppercase font-semibold">
+                        Units Sold
+                      </span>
+                      <p className="text-lg font-bold mt-0.5 text-foreground">{profile.unitsSold30d} {profile.unit}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-muted-foreground uppercase font-semibold">
+                        Revenue
+                      </span>
+                      <p className="text-lg font-bold mt-0.5 text-emerald-500">
+                        {fmtINR(profile.revenue30d)}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-muted-foreground uppercase font-semibold">
+                        Profit Est.
+                      </span>
+                      <p className="text-lg font-bold mt-0.5 text-primary">
+                        {fmtINR(profile.profit30d)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-hairline">
+                    <span className="text-[10px] text-muted-foreground uppercase font-semibold">
+                      AI Demand Reorder Recommendation
+                    </span>
+                    <p className="mt-1 leading-relaxed text-foreground/90">
+                      {profile.reorderRecommendation}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ledger Movements */}
+              {profile.movements.length > 0 && (
+                <div>
+                  <h3 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-3">
+                    Recent Ledger Stock Movements
+                  </h3>
+                  <div className="space-y-1.5 text-xs max-h-40 overflow-y-auto border border-hairline rounded-lg p-2 bg-surface">
+                    {profile.movements.map((m) => (
+                      <div key={m.id} className="flex justify-between py-1 border-b border-hairline last:border-0">
+                        <span className="text-muted-foreground">{m.occurredAt}</span>
+                        <span className="font-semibold text-primary">{m.type}</span>
+                        <span className="font-medium text-foreground">{m.quantity} {profile.unit}</span>
+                        <span className="text-muted-foreground italic truncate max-w-[150px]">{m.reason || "N/A"}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="pt-4 flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  className="flex-1 border-hairline text-foreground"
+                >
+                  Close Profile
+                </Button>
               </div>
             </div>
-          </div>
-
-          {/* Actions */}
-          <div className="pt-4 flex gap-2">
-            <Button
-              onClick={handleQuickReorder}
-              className="flex-1 gradient-primary text-primary-foreground font-semibold"
-            >
-              Create Purchase Order
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              className="flex-1 border-hairline text-foreground"
-            >
-              Close Profile
-            </Button>
-          </div>
-        </div>
+          </>
+        )}
       </SheetContent>
     </Sheet>
   );
@@ -276,141 +320,238 @@ export const Customer360Drawer: React.FC<DetailDrawerProps & { customerId: strin
   onOpenChange,
   customerId,
 }) => {
-  const { customers, transactions } = useBusinessData();
-  const customer = customers.find((c) => c.id === customerId);
-  if (!customer) return null;
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<Customer360Profile | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // Filter transactions for this customer
-  const customerTransactions = transactions.filter((t) => t.customerId === customerId);
+  useEffect(() => {
+    if (!customerId || !open) {
+      setProfile(null);
+      return;
+    }
+    setLoading(true);
+    getCustomer360Server({
+      data: {
+        id: customerId,
+        role: user?.role || "owner",
+        email: user?.email || "",
+      }
+    })
+      .then((res) => {
+        setProfile(res);
+      })
+      .catch((err) => {
+        console.error("Error loading Customer 360 profile:", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [customerId, open, user]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="sm:max-w-xl bg-sidebar border-l border-hairline text-foreground overflow-y-auto">
-        <SheetHeader className="pb-4 border-b border-hairline">
-          <div className="flex items-center gap-2 text-primary">
-            <Users className="h-5 w-5" />
-            <span className="text-xs uppercase tracking-wider font-semibold">
-              Customer 360 Intelligence
-            </span>
+        {loading ? (
+          <div className="h-full flex flex-col justify-center items-center py-20 space-y-4">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+            <p className="text-xs text-muted-foreground animate-pulse">
+              Assembling 360° Customer Profile from database...
+            </p>
           </div>
-          <SheetTitle className="text-xl font-bold mt-1 text-foreground">
-            {customer.name}
-          </SheetTitle>
-          <SheetDescription className="text-xs text-muted-foreground">
-            ID: {customer.id} | Joined: {customer.joined}
-          </SheetDescription>
-        </SheetHeader>
-
-        <div className="py-6 space-y-6">
-          {/* Segment and Risk */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-lg border border-hairline bg-surface p-3.5">
-              <span className="text-[10px] text-muted-foreground uppercase font-semibold">
-                Customer Segment
-              </span>
-              <p className="text-base font-bold mt-1 text-foreground">{customer.segment}</p>
-              <span className="text-[10px] text-muted-foreground mt-1 block">
-                Favorite Dept: {customer.favDept}
-              </span>
-            </div>
-            <div className="rounded-lg border border-hairline bg-surface p-3.5">
-              <span className="text-[10px] text-muted-foreground uppercase font-semibold">
-                Churn Risk
-              </span>
-              <p className="text-base font-bold mt-1 text-foreground">{customer.churn}%</p>
-              <Badge
-                variant={
-                  customer.churn > 50
-                    ? "destructive"
-                    : customer.churn > 25
-                      ? "outline"
-                      : "secondary"
-                }
-                className="mt-1 text-[9px]"
-              >
-                {customer.churn > 50 ? "At Risk" : customer.churn > 25 ? "Caution" : "Stable"}
-              </Badge>
-            </div>
+        ) : !profile ? (
+          <div className="py-12 text-center text-sm text-muted-foreground">
+            Customer details could not be found or access was restricted.
           </div>
-
-          {/* Financials */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-lg border border-hairline bg-surface p-3 text-center">
-              <span className="text-[10px] text-muted-foreground uppercase font-semibold">
-                Total Visits
-              </span>
-              <p className="text-base font-bold mt-1 text-foreground">{customer.visits}</p>
-            </div>
-            <div className="rounded-lg border border-hairline bg-surface p-3 text-center">
-              <span className="text-[10px] text-muted-foreground uppercase font-semibold">
-                Total Spend
-              </span>
-              <p className="text-base font-bold mt-1 text-foreground">{fmtINR(customer.spend)}</p>
-            </div>
-            <div className="rounded-lg border border-hairline bg-surface p-3 text-center">
-              <span className="text-[10px] text-muted-foreground uppercase font-semibold">AOV</span>
-              <p className="text-base font-bold mt-1 text-foreground">{fmtINR(customer.aov)}</p>
-            </div>
-          </div>
-
-          {/* Behavior Profile */}
-          <div>
-            <h3 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-3">
-              Behavior Intelligence
-            </h3>
-            <div className="rounded-lg border border-hairline bg-surface p-4 space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Preferred Dept</span>
-                <span className="font-medium">{customer.favDept}</span>
+        ) : (
+          <>
+            <SheetHeader className="pb-4 border-b border-hairline">
+              <div className="flex items-center gap-2 text-primary">
+                <Users className="h-5 w-5" />
+                <span className="text-xs uppercase tracking-wider font-semibold">
+                  Customer 360 Intelligence
+                </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Last Visit Date</span>
-                <span className="font-medium">{customer.lastVisit}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Loyalty Status</span>
-                <span className="font-medium text-emerald-500">Active</span>
-              </div>
-            </div>
-          </div>
+              <SheetTitle className="text-xl font-bold mt-1 text-foreground">
+                {profile.name}
+              </SheetTitle>
+              <SheetDescription className="text-xs text-muted-foreground">
+                Customer Code: {profile.customerCode} | Joined: {profile.joined} | Status: <span className="font-semibold text-primary">{profile.status}</span>
+              </SheetDescription>
+            </SheetHeader>
 
-          {/* Purchase History */}
-          <div>
-            <h3 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-3">
-              Recent Purchase History
-            </h3>
-            {customerTransactions.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                No recent transactions recorded for this customer.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {customerTransactions.slice(0, 5).map((t) => (
-                  <div
-                    key={t.id}
-                    className="rounded-lg border border-hairline bg-surface p-3 flex justify-between items-center"
+            <div className="py-6 space-y-6">
+              {/* Segment and Risk */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border border-hairline bg-surface p-3.5">
+                  <span className="text-[10px] text-muted-foreground uppercase font-semibold">
+                    Loyalty Tier
+                  </span>
+                  <p className="text-base font-bold mt-1 text-foreground">{profile.loyaltyTier}</p>
+                  <span className="text-[10px] text-muted-foreground mt-1 block">
+                    Points: {profile.loyaltyPoints} · Pref Dept: {profile.preferredDept}
+                  </span>
+                </div>
+                <div className="rounded-lg border border-hairline bg-surface p-3.5">
+                  <span className="text-[10px] text-muted-foreground uppercase font-semibold">
+                    Churn Risk Score
+                  </span>
+                  <p className="text-base font-bold mt-1 text-foreground">{profile.churn}%</p>
+                  <Badge
+                    variant={
+                      profile.churn > 50
+                        ? "destructive"
+                        : profile.churn > 25
+                          ? "outline"
+                          : "secondary"
+                    }
+                    className="mt-1 text-[9px]"
                   >
-                    <div>
-                      <p className="text-xs font-semibold">{t.id}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {t.date} {t.time} | {t.items.length} items ({t.dept})
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs font-bold">{fmtINR(t.total)}</p>
-                      <Badge
-                        variant={t.status === "Completed" ? "secondary" : "destructive"}
-                        className="text-[8px] mt-1 py-0 px-1"
-                      >
-                        {t.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
+                    {profile.churnRisk}
+                  </Badge>
+                </div>
               </div>
-            )}
-          </div>
-        </div>
+
+              {/* Financials */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-lg border border-hairline bg-surface p-3 text-center">
+                  <span className="text-[10px] text-muted-foreground uppercase font-semibold">
+                    Total Visits
+                  </span>
+                  <p className="text-base font-bold mt-1 text-foreground">{profile.visits}</p>
+                </div>
+                <div className="rounded-lg border border-hairline bg-surface p-3 text-center">
+                  <span className="text-[10px] text-muted-foreground uppercase font-semibold">
+                    Total Spend
+                  </span>
+                  <p className="text-base font-bold mt-1 text-foreground">{fmtINR(profile.spend)}</p>
+                </div>
+                <div className="rounded-lg border border-hairline bg-surface p-3 text-center">
+                  <span className="text-[10px] text-muted-foreground uppercase font-semibold">AOV</span>
+                  <p className="text-base font-bold mt-1 text-foreground">{fmtINR(profile.aov)}</p>
+                </div>
+              </div>
+
+              {/* Profile Details */}
+              <div className="rounded-lg border border-hairline bg-surface p-4 space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Email Address</span>
+                  <span className="font-semibold">{profile.email}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Phone Number</span>
+                  <span className="font-semibold">{profile.phone}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Last Visit Date</span>
+                  <span className="font-semibold">{profile.lastVisit}</span>
+                </div>
+                {profile.notes && (
+                  <div className="mt-2 pt-2 border-t border-hairline">
+                    <span className="text-muted-foreground block mb-1">Profile Notes:</span>
+                    <p className="text-foreground italic">{profile.notes}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Purchased Products */}
+              {profile.recentProducts.length > 0 && (
+                <div>
+                  <h3 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-3">
+                    Top Purchased Products
+                  </h3>
+                  <div className="space-y-2">
+                    {profile.recentProducts.map((p) => (
+                      <div key={p.id} className="rounded-lg border border-hairline bg-surface p-3 flex justify-between items-center text-xs">
+                        <div>
+                          <p className="font-semibold">{p.name}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">{p.brand} · ID: {p.id}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold">{p.qty} units</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">Last: {p.lastPurchased}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Payment & Spending trends */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <h3 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-3">
+                    Payment Methods
+                  </h3>
+                  <div className="space-y-1.5 text-xs">
+                    {profile.paymentPreferences.map((pref) => (
+                      <div key={pref.method} className="rounded-md border border-hairline bg-surface p-2 flex justify-between">
+                        <span className="text-muted-foreground">{pref.method}</span>
+                        <span className="font-semibold">{pref.count}x ({fmtINR(pref.amount, { compact: true })})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-3">
+                    Acquisition Period
+                  </h3>
+                  <div className="rounded-md border border-hairline bg-surface p-3 text-xs flex flex-col justify-center h-full">
+                    <span className="text-muted-foreground">Joined Store:</span>
+                    <span className="font-bold text-sm text-primary mt-1">{profile.joined}</span>
+                    <span className="text-[10px] text-muted-foreground mt-1">Acquired during GrandSquare Spring Promo campaign.</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* CRM Insight */}
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-4 text-xs">
+                <div className="flex items-center gap-2 text-primary font-bold">
+                  <span className="uppercase tracking-wider text-[10px]">AI CRITICAL CRM OUTREACH DETAILS</span>
+                </div>
+                <p className="mt-2 text-foreground/90 leading-relaxed">
+                  {profile.aiInsight}
+                </p>
+              </div>
+
+              {/* Purchase History */}
+              <div>
+                <h3 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-3">
+                  Recent Transaction Log
+                </h3>
+                {profile.transactions.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    No transactions recorded for this customer.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {profile.transactions.slice(0, 5).map((t) => (
+                      <div
+                        key={t.id}
+                        className="rounded-lg border border-hairline bg-surface p-3 flex justify-between items-center text-xs"
+                      >
+                        <div>
+                          <p className="font-semibold">{t.transactionNumber}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            {t.date} | {t.itemCount} items · Method: {t.paymentMethod}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold">{fmtINR(t.totalAmount)}</p>
+                          <Badge
+                            variant={t.status === "Completed" || t.status === "Paid" ? "secondary" : "destructive"}
+                            className="text-[8px] mt-1 py-0 px-1 font-semibold"
+                          >
+                            {t.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </SheetContent>
     </Sheet>
   );
