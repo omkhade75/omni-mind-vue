@@ -182,7 +182,7 @@ function Suppliers() {
           title="Supplier Intelligence"
           subtitle="AI-scored supplier performance across the mall's vendor network."
         />
-        {(user?.role === "Owner" || user?.role === "Admin" || user?.role === "Manager") && (
+        {(user?.role === "owner" || user?.role === "admin" || user?.role === "manager") && (
           <Button
             onClick={openAdd}
             className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-2"
@@ -268,7 +268,7 @@ function Suppliers() {
             subtitle={sel.name}
             actions={
               <div className="flex gap-2">
-                {(user?.role === "Owner" || user?.role === "Admin") && (
+                {(user?.role === "owner" || user?.role === "admin") && (
                   <>
                     <Button
                       size="sm"

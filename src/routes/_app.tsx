@@ -4,7 +4,6 @@ import {
   Link,
   useNavigate,
   useRouterState,
-  redirect,
 } from "@tanstack/react-router";
 import { useEffect, useState, useRef, useMemo } from "react";
 import {
@@ -54,12 +53,6 @@ import {
 } from "@/components/details-drawers";
 
 export const Route = createFileRoute("/_app")({
-  beforeLoad: () => {
-    if (typeof window !== "undefined") {
-      const role = window.localStorage.getItem("omnimind_role");
-      if (!role) throw redirect({ to: "/login" });
-    }
-  },
   component: AppShell,
 });
 
@@ -129,7 +122,7 @@ const NAV: NavSection[] = [
 ];
 
 function AppShell() {
-  const { user, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const pathname = useRouterState({ select: (s: any) => s.location.pathname });
@@ -185,8 +178,11 @@ function AppShell() {
   }, [searchQuery, products, customers, suppliers]);
 
   useEffect(() => {
-    // If somehow no user after mount, bounce
-    if (typeof window !== "undefined" && !window.localStorage.getItem("omnimind_role")) {
+    // If auth is still loading, don't redirect yet
+    if (loading) return;
+
+    // If no valid server session, redirect to login
+    if (!user) {
       navigate({ to: "/login" });
       return;
     }
@@ -199,7 +195,7 @@ function AppShell() {
         navigate({ to: "/command-center" });
       }
     }
-  }, [navigate, user, pathname]);
+  }, [navigate, user, loading, pathname]);
 
   const filteredNAV = NAV.map((section) => ({
     ...section,
@@ -310,8 +306,8 @@ function AppShell() {
             )}
             {!collapsed && (
               <button
-                onClick={() => {
-                  logout();
+                onClick={async () => {
+                  await logout();
                   navigate({ to: "/login" });
                 }}
                 className="rounded-md p-1.5 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"

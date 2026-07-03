@@ -1,11 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { Eye, EyeOff, ShieldCheck, Sparkles, TrendingUp, Zap } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Eye, EyeOff, ShieldCheck, Sparkles, TrendingUp, Zap, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth, type Role } from "@/lib/auth-context";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -22,14 +23,43 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const [show, setShow] = useState(false);
-  const [email, setEmail] = useState("owner@grandsquare.in");
-  const [pass, setPass] = useState("demo1234");
-  const { login } = useAuth();
+  const [email, setEmail] = useState("");
+  const [pass, setPass] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const { user, loading, login, demoLogin } = useAuth();
   const navigate = useNavigate();
 
-  const quickLogin = (role: Role) => {
-    login(role);
-    navigate({ to: "/command-center" });
+  // If already authenticated, redirect
+  useEffect(() => {
+    if (!loading && user) {
+      navigate({ to: "/command-center", replace: true });
+    }
+  }, [loading, user, navigate]);
+
+  const handleFormLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return toast.error("Enter your email");
+    setSubmitting(true);
+    try {
+      await login(email, pass);
+      navigate({ to: "/command-center" });
+    } catch (err: any) {
+      toast.error(err.message || "Login failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const quickLogin = async (role: Role) => {
+    setSubmitting(true);
+    try {
+      await demoLogin(role);
+      navigate({ to: "/command-center" });
+    } catch (err: any) {
+      toast.error(err.message || "Demo login failed");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -104,10 +134,7 @@ function LoginPage() {
 
               <form
                 className="mt-6 space-y-4"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  quickLogin("owner");
-                }}
+                onSubmit={handleFormLogin}
               >
                 <div className="space-y-1.5">
                   <Label htmlFor="email">Email</Label>
@@ -150,7 +177,8 @@ function LoginPage() {
                   </Label>
                 </div>
 
-                <Button type="submit" className="w-full gradient-primary text-primary-foreground">
+                <Button type="submit" disabled={submitting} className="w-full gradient-primary text-primary-foreground">
+                  {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                   Sign in
                 </Button>
               </form>

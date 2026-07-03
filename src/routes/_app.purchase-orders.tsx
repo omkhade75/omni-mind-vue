@@ -175,7 +175,7 @@ function PurchaseOrders() {
           title="Purchase Orders"
           subtitle="Manage inventory restock commitments and supplier deliveries."
         />
-        {(user?.role === "Owner" || user?.role === "Admin" || user?.role === "Manager") && (
+        {(user?.role === "owner" || user?.role === "admin" || user?.role === "manager") && (
           <Button
             onClick={openCreatePO}
             className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-2"
