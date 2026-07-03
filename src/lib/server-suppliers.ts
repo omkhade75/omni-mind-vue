@@ -44,7 +44,7 @@ export const getSuppliers = createServerFn({ method: "GET" })
         id: s.id,
         supplierCode: s.supplierCode,
         name: s.name,
-        category: s.supplierProducts[0]?.product.category.name || "General",
+        category: s.supplierProducts[0]?.product?.category?.name || "General",
         contact: s.contactPerson,
         spend,
         pending,
