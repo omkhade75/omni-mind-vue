@@ -91,6 +91,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "OmniMind AI — Mall Intelligence & Decision OS" },
+      { name: "description", content: "OmniMall Insights is an AI-powered mall intelligence platform for decision-making." },
+      { property: "og:description", content: "OmniMall Insights is an AI-powered mall intelligence platform for decision-making." },
+      { name: "twitter:description", content: "OmniMall Insights is an AI-powered mall intelligence platform for decision-making." },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
