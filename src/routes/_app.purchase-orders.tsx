@@ -294,7 +294,7 @@ function PurchaseOrders() {
           <form onSubmit={handleCreatePO} className="space-y-4">
             <div className="space-y-1.5">
               <Label>Supplier *</Label>
-              <Select value={selSupplier} onValueChange={setSelSupplier} required>
+              <Select value={selSupplier || undefined} onValueChange={setSelSupplier} required>
                 <SelectTrigger className="bg-surface border-hairline">
                   <SelectValue placeholder="Select Supplier" />
                 </SelectTrigger>
@@ -310,7 +310,7 @@ function PurchaseOrders() {
                 {poItems.map((item, idx) => (
                   <div key={idx} className="flex items-center gap-2">
                     <Select 
-                      value={item.productId} 
+                      value={item.productId || undefined} 
                       onValueChange={(val) => {
                         const newItems = [...poItems];
                         newItems[idx].productId = val;
