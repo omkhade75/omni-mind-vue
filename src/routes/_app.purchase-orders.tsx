@@ -315,7 +315,7 @@ function PurchaseOrders() {
                         const newItems = [...poItems];
                         newItems[idx].productId = val;
                         const prod = products.find(p => p.id === val);
-                        if (prod) newItems[idx].unitCost = Number(prod.costPrice) || 0;
+                        if (prod) newItems[idx].unitCost = Number(prod.cost) || 0;
                         setPoItems(newItems);
                       }}
                     >
@@ -323,7 +323,7 @@ function PurchaseOrders() {
                         <SelectValue placeholder="Select Product" />
                       </SelectTrigger>
                       <SelectContent className="bg-popover border-hairline max-h-48">
-                        {products.map(p => <SelectItem key={p.id} value={p.id}>{p.name} - {fmtINR(p.costPrice)}</SelectItem>)}
+                        {products.map(p => <SelectItem key={p.id} value={p.id}>{p.name} - {fmtINR(p.cost)}</SelectItem>)}
                       </SelectContent>
                     </Select>
                     <Input 
