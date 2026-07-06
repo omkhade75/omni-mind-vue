@@ -70,19 +70,15 @@ export const createTransactionServer = createServerFn({ method: "POST" })
         const cost = Number(prod.costPrice);
         const taxRate = Number(prod.taxRate) / 100;
 
-        // Check stock at Retail Floor (loc-retail)
-        const stock = await tx.inventoryStock.findUnique({
-          where: {
-            productId_locationId: {
-              productId: prod.id,
-              locationId: "loc-retail",
-            },
-          },
+        // Fetch all stock locations for this product to deduct sequentially
+        const stockRecords = await tx.inventoryStock.findMany({
+          where: { productId: prod.id },
+          orderBy: { locationId: 'asc' } // Try to deduct from loc-retail first if possible
         });
 
-        const currentStock = stock ? stock.quantityOnHand : 0;
-        if (currentStock < item.quantity) {
-          throw new Error(`Insufficient stock for ${prod.name} at Retail Floor. Available: ${currentStock}, Requested: ${item.quantity}`);
+        const totalStock = stockRecords.reduce((sum, s) => sum + s.quantityOnHand, 0);
+        if (totalStock < item.quantity) {
+          throw new Error(`Insufficient total stock for ${prod.name}. Available: ${totalStock}, Requested: ${item.quantity}`);
         }
 
         const itemSubtotal = price * item.quantity;
@@ -105,14 +101,34 @@ export const createTransactionServer = createServerFn({ method: "POST" })
           lineTotal,
         });
 
-        // Add to stock decrement updates
-        stockUpdates.push({
-          productId: prod.id,
-          locationId: "loc-retail",
-          qty: item.quantity,
-        });
+        // Deduct from stock locations sequentially
+        let remainingToDeduct = item.quantity;
+        for (const stockRecord of stockRecords) {
+          if (remainingToDeduct <= 0) break;
+          
+          const qtyToDeduct = Math.min(stockRecord.quantityOnHand, remainingToDeduct);
+          if (qtyToDeduct > 0) {
+            stockUpdates.push({
+              productId: prod.id,
+              locationId: stockRecord.locationId,
+              qty: qtyToDeduct,
+            });
+            
+            // Add to inventory movement ledger
+            movementData.push({
+              productId: prod.id,
+              locationId: stockRecord.locationId,
+              movementType: "SALE",
+              quantity: qtyToDeduct,
+              reason: "POS Sale Checkout",
+              performedBy: data.role,
+            });
+            
+            remainingToDeduct -= qtyToDeduct;
+          }
+        }
 
-        const newStock = currentStock - item.quantity;
+        const newStock = totalStock - item.quantity;
         if (newStock < prod.reorderLevel) {
           outOfStockAlerts.push({
             productName: prod.name,
@@ -121,16 +137,6 @@ export const createTransactionServer = createServerFn({ method: "POST" })
             reorderLevel: prod.reorderLevel,
           });
         }
-
-        // Add to inventory movement ledger
-        movementData.push({
-          productId: prod.id,
-          locationId: "loc-retail",
-          movementType: "SALE",
-          quantity: item.quantity,
-          reason: "POS Sale Checkout",
-          performedBy: data.role,
-        });
       }
 
       const totalAmount = subtotal - totalDiscount + totalTax;

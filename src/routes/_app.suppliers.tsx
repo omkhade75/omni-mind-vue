@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader, SectionCard, StatusPill } from "@/components/page-header";
 import { useBusinessData } from "@/lib/business-context";
 import { useAuth } from "@/lib/auth-context";
@@ -288,6 +288,15 @@ function Suppliers() {
                     </Button>
                   </>
                 )}
+                <Link to="/_app/purchase-orders">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-hairline bg-surface text-xs font-semibold text-indigo-600 hover:bg-indigo-50"
+                  >
+                    <Plus className="h-3 w-3 mr-1" /> Place Order
+                  </Button>
+                </Link>
                 <Button
                   size="sm"
                   variant="outline"
