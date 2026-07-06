@@ -382,6 +382,107 @@ async function executePrismaFallback(query: string, intent: string): Promise<AIR
     };
   }
 
+  // 2. Inventory / Stock Intent
+  if (intent === "inventory" || q.includes("stock") || q.includes("low") || q.includes("empty") || q.includes("reorder")) {
+    const products = await prisma.product.findMany({
+      include: { stockItems: true },
+    });
+    
+    const lowStock = products.filter(p => {
+      const totalStock = p.stockItems.reduce((sum, s) => sum + s.availableQty, 0);
+      return totalStock < p.reorderLevel;
+    });
+
+    if (lowStock.length === 0) {
+      return {
+        answer: "All products are currently adequately stocked above their respective reorder levels.",
+        summary: "Healthy inventory levels.",
+        evidence: [],
+        reasoning: ["Checked all active products against their designated reorder thresholds."],
+        recommendedActions: [],
+        risks: [],
+        confidence: 0.95,
+      };
+    }
+
+    return {
+      answer: `There are currently ${lowStock.length} products running low on stock and below their reorder threshold. For example, ${lowStock[0].name} requires immediate reordering.`,
+      summary: `${lowStock.length} products need reordering.`,
+      evidence: lowStock.slice(0, 3).map(p => ({
+        label: p.name,
+        value: `Target: ${p.reorderLevel}`,
+        sourceType: "product",
+        sourceId: p.id,
+      })),
+      reasoning: [
+        "Compared live availableQty against reorderLevel for all products.",
+        "Identified critical stockouts."
+      ],
+      recommendedActions: [
+        {
+          title: `Create PO for ${lowStock[0].name}`,
+          description: `Generate a purchase order to replenish ${lowStock[0].name}.`,
+          priority: "high",
+          actionType: "CREATE_PO",
+          entityId: lowStock[0].id,
+        }
+      ],
+      risks: [
+        { title: "Potential Stockout & Lost Sales", severity: "high" }
+      ],
+      confidence: 0.9,
+    };
+  }
+
+  // 3. Customers / Loyalty Intent
+  if (intent === "customers" || q.includes("customer") || q.includes("loyalty") || q.includes("churn") || q.includes("vip")) {
+    const highRiskCustomers = await prisma.customer.findMany({
+      where: { churnRisk: "High" },
+      orderBy: { loyaltyPoints: 'desc' },
+      take: 3
+    });
+
+    if (highRiskCustomers.length === 0) {
+      return {
+        answer: "Customer retention looks great! Currently, there are no customers flagged as high risk for churn in the database.",
+        summary: "Zero high-risk churn customers.",
+        evidence: [],
+        reasoning: ["Scanned CRM database for customers with churnRisk set to 'High'."],
+        recommendedActions: [],
+        risks: [],
+        confidence: 0.9,
+      };
+    }
+
+    return {
+      answer: `Warning: You have ${highRiskCustomers.length} high-value customers showing signs of churning. ${highRiskCustomers[0].firstName} ${highRiskCustomers[0].lastName} (Loyalty Points: ${highRiskCustomers[0].loyaltyPoints}) has drastically reduced their visit frequency.`,
+      summary: "High-value customers at risk.",
+      evidence: highRiskCustomers.map(c => ({
+        label: `${c.firstName} ${c.lastName}`,
+        value: `${c.loyaltyPoints} pts`,
+        sourceType: "customer",
+        sourceId: c.id,
+      })),
+      reasoning: [
+        "Identified customers with 'High' churnRisk flag.",
+        "Cross-referenced with loyalty point balance to assess impact."
+      ],
+      recommendedActions: [
+        {
+          title: `Review ${highRiskCustomers[0].firstName}'s Profile`,
+          description: `Analyze recent transaction history and issue a targeted win-back coupon.`,
+          priority: "high",
+          actionType: "OPEN_CUSTOMER",
+          entityId: highRiskCustomers[0].id,
+        }
+      ],
+      risks: [
+        { title: "Loss of High LTV Customers", severity: "high" }
+      ],
+      confidence: 0.85,
+    };
+  }
+
   // Default Overview / General Summary
   // Let's get the active date's transactions and expenses
   const todayStr = "2026-05-05"; // fallback fixed for AI demo or dynamic based on context
