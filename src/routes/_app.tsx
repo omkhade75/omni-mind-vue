@@ -46,6 +46,7 @@ import {
   AlertTriangle,
   ShoppingBag as ShoppingBagIcon,
   RotateCcw,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
@@ -156,6 +157,18 @@ function AppShell() {
       navigate({ to: "/login", replace: true });
     }
   }, [loading, user, navigate]);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null; // Don't render anything, useEffect will redirect
+  }
 
   const {
     activeProductId,

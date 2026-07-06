@@ -32,10 +32,14 @@ function LandingPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
-  // If already authenticated, redirect to command center
+  // If already authenticated, redirect to command center, else to login
   useEffect(() => {
-    if (!loading && user) {
-      navigate({ to: "/command-center", replace: true });
+    if (!loading) {
+      if (user) {
+        navigate({ to: "/command-center", replace: true });
+      } else {
+        navigate({ to: "/login", replace: true });
+      }
     }
   }, [loading, user, navigate]);
 
