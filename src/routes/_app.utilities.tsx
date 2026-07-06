@@ -32,7 +32,7 @@ export const Route = createFileRoute("/_app/utilities")({
 });
 
 function Utilities() {
-  const { activeDate } = useBusinessData();
+  const { activeDate, utilities } = useBusinessData();
   const { user } = useAuth();
   
   const [electricityToday, setElectricityToday] = useState(12450);
