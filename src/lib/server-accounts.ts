@@ -18,7 +18,7 @@ export const getAccountsDataServer = createServerFn({ method: "POST" })
     // Accounts Payable (We owe Supplier)
     const payables = await prisma.purchaseOrder.findMany({
       where: {
-        paymentStatus: { in: ["Pending", "PartiallyPaid", "Unpaid"] }
+        status: { in: ["Ordered", "Draft"] }
       },
       include: {
         supplier: true
@@ -41,7 +41,7 @@ export const getAccountsDataServer = createServerFn({ method: "POST" })
         poNumber: p.poNumber,
         date: p.orderDate,
         amount: Number(p.totalAmount),
-        status: p.paymentStatus,
+        status: p.status,
         supplierName: p.supplier ? p.supplier.name : "Unknown",
         supplierId: p.supplierId
       }))
