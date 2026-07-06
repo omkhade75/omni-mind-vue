@@ -13,6 +13,7 @@
 - **Accounts & Finance**: Automated tracking of Accounts Payable (suppliers) and Accounts Receivable (customers), ensuring cash flow is always visible.
 - **Supplier & Purchase Order Management**: Track vendor performance, manage POs, and instantly identify pending payments.
 - **Customer 360 & Loyalty**: Track customer footfall, monitor loyalty points, and identify high-value shoppers at risk of churning.
+- **WhatsApp Mass Broadcasting**: (Coming Soon) Engage your customers instantly with personalized offers, discounts, and greetings directly via WhatsApp.
 - **Smart Inventory**: Monitor stock levels, track reorder thresholds, and generate restock alerts before items run out.
 - **WhatsApp Notifications**: Automatically dispatch digital POS receipts to customers via WhatsApp and send emergency low-stock alerts directly to the owner's phone.
 - **Decision Intelligence AI**: Ask natural language questions about your business (e.g. *"Which products are low on stock?"*, *"Who are my top churning customers?"*) and get immediate, data-backed answers derived directly from the live PostgreSQL database.
