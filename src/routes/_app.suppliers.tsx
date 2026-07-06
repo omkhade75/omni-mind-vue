@@ -288,7 +288,7 @@ function Suppliers() {
                     </Button>
                   </>
                 )}
-                <Link to="/_app/purchase-orders">
+                <Link to="/purchase-orders">
                   <Button
                     size="sm"
                     variant="outline"
@@ -352,13 +352,14 @@ function Suppliers() {
             </div>
             
             <div className="mt-4">
-              <Button
-                variant="outline"
-                className="w-full border-hairline bg-surface font-semibold text-xs h-9"
-                onClick={() => window.location.href = `/purchase-orders?supplier=${sel.id}`}
-              >
-                <FileText className="h-3.5 w-3.5 mr-2" /> Create PO for {sel.name}
-              </Button>
+              <Link to="/purchase-orders" search={{ supplier: sel.id }}>
+                <Button
+                  variant="outline"
+                  className="w-full border-hairline bg-surface font-semibold text-xs h-9"
+                >
+                  <FileText className="h-3.5 w-3.5 mr-2" /> Create PO for {sel.name}
+                </Button>
+              </Link>
             </div>
           </SectionCard>
         )}
