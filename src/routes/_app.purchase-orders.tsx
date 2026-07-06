@@ -15,6 +15,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const Route = createFileRoute("/_app/purchase-orders")({
+  validateSearch: (search: Record<string, unknown>): { supplier?: string } => {
+    return {
+      supplier: search.supplier as string | undefined,
+    };
+  },
   head: () => ({
     meta: [
       { title: "Purchase Orders — OmniMind AI" },
@@ -66,6 +71,14 @@ function PurchaseOrders() {
   useEffect(() => {
     loadData();
   }, [user]);
+
+  const search = Route.useSearch();
+  useEffect(() => {
+    if (search.supplier && suppliers.length > 0) {
+      setSelSupplier(search.supplier);
+      setCreateOpen(true);
+    }
+  }, [search.supplier, suppliers.length]);
 
   const handleUpdateStatus = async (dbId: string, status: string) => {
     if (!user) return;
