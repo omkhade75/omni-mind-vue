@@ -94,8 +94,17 @@ function RouteComponent() {
     loadData();
   }, [user]);
 
-  const addToCart = () => {
-    if (!selectedItemSku || Number(selectedItemQty) <= 0) return;
+  const addToCart = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    if (!selectedItemSku) {
+      toast.error("Please select a product.");
+      return;
+    }
+    const qty = Number(selectedItemQty);
+    if (isNaN(qty) || qty <= 0) {
+      toast.error("Quantity must be greater than 0.");
+      return;
+    }
     
     const existingIndex = cartItems.findIndex(i => i.productId === selectedItemSku);
     if (existingIndex > -1) {
@@ -350,7 +359,7 @@ function RouteComponent() {
                   onChange={(e) => setSelectedItemDiscount(e.target.value)}
                 />
               </div>
-              <Button onClick={addToCart} className="bg-indigo-600 hover:bg-indigo-700">
+              <Button type="button" onClick={addToCart} className="bg-indigo-600 hover:bg-indigo-700">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Item
               </Button>
