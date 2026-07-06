@@ -43,7 +43,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Edit, Archive, Loader2 } from "lucide-react";
+import { Plus, Search, Edit, Archive, Loader2, PhoneCall } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/customers")({
@@ -286,6 +286,13 @@ function Customers() {
           subtitle="Segments, lifetime value, retention, and churn prediction."
         />
         <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            className="border-hairline bg-surface hover:text-[#007AFF] transition-colors gap-2"
+            onClick={() => toast.info("AI Voice Campaigns are coming soon! The AI assistant will autonomously call customers to share personalized offers.")}
+          >
+            <PhoneCall className="h-4 w-4 text-[#007AFF]" /> AI Voice Call
+          </Button>
           <Button
             variant="outline"
             className="border-hairline bg-surface hover:text-[#25D366] transition-colors gap-2"
