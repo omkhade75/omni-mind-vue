@@ -280,7 +280,13 @@ export const createTransactionServer = createServerFn({ method: "POST" })
       }
     }
 
-    return result.transaction;
+    return {
+      ...result.transaction,
+      subtotal: Number(result.transaction.subtotal),
+      discountAmount: Number(result.transaction.discountAmount),
+      taxAmount: Number(result.transaction.taxAmount),
+      totalAmount: Number(result.transaction.totalAmount),
+    };
   });
 
 // 2. Get Transactions List
