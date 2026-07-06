@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { prisma } from "./server/prisma";
 import { getDepartmentScope } from "./server-customers";
+import { sendCustomerBillWhatsApp, sendOwnerStockAlertWhatsApp } from "./server-whatsapp";
 
 export interface TransactionListItem {
   id: string;
@@ -57,6 +58,7 @@ export const createTransactionServer = createServerFn({ method: "POST" })
       const txItemsData: any[] = [];
       const stockUpdates: any[] = [];
       const movementData: any[] = [];
+      const outOfStockAlerts: any[] = [];
 
       for (const item of data.items) {
         const prod = dbProducts.find((p) => p.id === item.productId);
@@ -109,6 +111,16 @@ export const createTransactionServer = createServerFn({ method: "POST" })
           locationId: "loc-retail",
           qty: item.quantity,
         });
+
+        const newStock = currentStock - item.quantity;
+        if (newStock < prod.reorderLevel) {
+          outOfStockAlerts.push({
+            productName: prod.name,
+            sku: prod.sku,
+            remainingStock: newStock,
+            reorderLevel: prod.reorderLevel,
+          });
+        }
 
         // Add to inventory movement ledger
         movementData.push({
@@ -235,10 +247,34 @@ export const createTransactionServer = createServerFn({ method: "POST" })
         },
       });
 
-      return transaction;
+      return { transaction, outOfStockAlerts };
     });
 
-    return result;
+    // --- WHATSAPP NOTIFICATIONS ---
+    
+    // 1. Send low stock alerts asynchronously
+    for (const alert of result.outOfStockAlerts) {
+      sendOwnerStockAlertWhatsApp(alert.productName, alert.remainingStock, alert.reorderLevel, alert.sku).catch(err => {
+        console.error("Failed to send stock alert:", err);
+      });
+    }
+
+    // 2. Send Customer Bill
+    if (data.customerId) {
+      const customer = await prisma.customer.findUnique({ where: { id: data.customerId } });
+      if (customer && customer.phone) {
+        sendCustomerBillWhatsApp(customer.phone, {
+          transactionNumber: result.transaction.transactionNumber,
+          totalAmount: result.transaction.totalAmount,
+          itemsCount: data.items.length,
+          customerName: customer.firstName,
+        }).catch(err => {
+          console.error("Failed to send customer bill:", err);
+        });
+      }
+    }
+
+    return result.transaction;
   });
 
 // 2. Get Transactions List
