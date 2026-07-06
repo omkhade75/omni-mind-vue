@@ -32,14 +32,16 @@ import {
   AlertTriangle,
   Lightbulb,
   CheckCircle2,
+  Send,
 } from "lucide-react";
+import { toast } from "sonner";
 import { KpiCard } from "@/components/kpi-card";
 import { PageHeader, SectionCard, StatusPill } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { FORECAST, HEATMAP, HOURLY_DEMAND, fmtINR, fmtNum } from "@/lib/mock-data";
 import { useAuth } from "@/lib/auth-context";
 import { useBusinessData, type KpiItem } from "@/lib/business-context";
-import { getCommandCenterServer } from "@/lib/server-analytics";
+import { getCommandCenterServer, dispatchEodReportServer } from "@/lib/server-analytics";
 import { useEffect } from "react";
 
 export const Route = createFileRoute("/_app/command-center")({
@@ -82,6 +84,23 @@ function CommandCenter() {
   } = useBusinessData();
 
   const [liveKpis, setLiveKpis] = useState<KpiItem[]>([]);
+  const [isSendingEod, setIsSendingEod] = useState(false);
+  
+  const handleSendEodReport = async () => {
+    try {
+      setIsSendingEod(true);
+      const res = await dispatchEodReportServer({ data: { activeDate: activeDate } }) as any;
+      if (res && res.success) {
+        toast.success("EOD Report dispatched via WhatsApp!");
+      } else {
+        throw new Error("Failed to dispatch");
+      }
+    } catch (err) {
+      toast.error("Failed to dispatch EOD report.");
+    } finally {
+      setIsSendingEod(false);
+    }
+  };
   
   useEffect(() => {
     async function load() {
@@ -182,6 +201,16 @@ function CommandCenter() {
               onClick={() => navigate({ to: "/time-machine" as never })}
             >
               Time Machine
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 border-hairline bg-surface"
+              onClick={handleSendEodReport}
+              disabled={isSendingEod}
+            >
+              {isSendingEod ? <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent" /> : <Send className="h-3.5 w-3.5" />}
+              Send EOD Report
             </Button>
             <Button
               size="sm"

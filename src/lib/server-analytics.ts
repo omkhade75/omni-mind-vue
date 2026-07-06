@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { prisma } from "./server/prisma";
+import { sendEodReportWhatsApp } from "./server-whatsapp";
 
 export const getCommandCenterServer = createServerFn({ method: "POST" })
   .validator((data: { role: string; email: string; activeDate?: string }) => data)
@@ -115,4 +116,51 @@ export const getForecastingServer = createServerFn({ method: "POST" })
     });
 
     return forecastData;
+  });
+
+export const dispatchEodReportServer = createServerFn({ method: "POST" })
+  .validator((data: { activeDate?: string }) => data)
+  .handler(async ({ data }) => {
+    const date = data.activeDate ? new Date(data.activeDate) : new Date();
+    const dateStr = date.toISOString().split("T")[0];
+
+    const transactions = await prisma.transaction.findMany({
+      where: {
+        transactionDate: {
+          gte: new Date(`${dateStr}T00:00:00.000Z`),
+          lte: new Date(`${dateStr}T23:59:59.999Z`),
+        },
+      },
+    });
+
+    const expenses = await prisma.expense.findMany({
+      where: {
+        date: {
+          gte: new Date(`${dateStr}T00:00:00.000Z`),
+          lte: new Date(`${dateStr}T23:59:59.999Z`),
+        },
+      },
+    });
+
+    const grossRevenue = transactions.reduce((sum, t) => sum + Number(t.totalAmount), 0);
+    const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+    const netProfit = grossRevenue * 0.4 - totalExpenses; // Approx 40% margin
+
+    // Usually we would fetch anomalies from DB, but we'll mock 2 for the EOD report demo
+    const activeAnomalies = 2;
+
+    const stats = {
+      date: dateStr,
+      revenue: grossRevenue,
+      profit: netProfit,
+      orders: transactions.length,
+      anomalies: activeAnomalies,
+    };
+
+    const ownerPhone = process.env.OWNER_WHATSAPP_NUMBER || "+919876543210";
+    const managerPhone = process.env.MANAGER_WHATSAPP_NUMBER || "+919876543211";
+
+    await sendEodReportWhatsApp(stats, [ownerPhone, managerPhone]);
+
+    return { success: true, stats };
   });

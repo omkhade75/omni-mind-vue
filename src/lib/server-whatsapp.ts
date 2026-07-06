@@ -124,3 +124,61 @@ export async function sendOwnerStockAlertWhatsApp(
   }
   */
 }
+
+export async function sendEodReportWhatsApp(
+  stats: {
+    date: string;
+    revenue: number;
+    profit: number;
+    orders: number;
+    anomalies: number;
+  },
+  recipients: string[]
+) {
+  const messageBody = `📊 *OmniMind End of Day Report* 📊\n\n*Date:* ${stats.date}\n\n*Gross Revenue:* ${fmtINR(stats.revenue)}\n*Net Profit:* ${fmtINR(stats.profit)}\n*Total Orders:* ${stats.orders}\n*Active Anomalies:* ${stats.anomalies}\n\nGreat work today! Open OmniMind Command Center for detailed analytics.`;
+
+  for (const phone of recipients) {
+    const formattedPhone = phone.startsWith("+") ? phone : `+91${phone}`;
+
+    // --- MOCK LOGGING FOR DEMO ---
+    console.log("==========================================");
+    console.log("📈 [WHATSAPP OUTBOUND: EOD REPORT]");
+    console.log(`To: ${formattedPhone}`);
+    console.log(`Message:\n${messageBody}`);
+    console.log("==========================================");
+
+    // --- PRODUCTION TWILIO IMPLEMENTATION ---
+    /*
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const senderNumber = process.env.TWILIO_WHATSAPP_SENDER;
+
+    if (accountSid && authToken && senderNumber) {
+      const params = new URLSearchParams({
+        To: `whatsapp:${formattedPhone}`,
+        From: senderNumber,
+        Body: messageBody,
+      });
+
+      try {
+        const response = await fetch(
+          `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString("base64")}`,
+            },
+            body: params.toString(),
+          }
+        );
+        if (!response.ok) {
+          console.error("Twilio WhatsApp Error:", await response.text());
+        }
+      } catch (err) {
+        console.error("Failed to dispatch Twilio WhatsApp EOD report:", err);
+      }
+    }
+    */
+  }
+}
