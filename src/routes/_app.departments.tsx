@@ -14,10 +14,35 @@ export const Route = createFileRoute("/_app/departments")({
   component: Departments,
 });
 
+const ALL_DEPARTMENTS = [
+  { name: "Fashion", margin: 22.4, color: "var(--chart-1)", defaultStaff: 12 },
+  { name: "Electronics", margin: 12.1, color: "var(--chart-2)", defaultStaff: 15 },
+  { name: "Grocery", margin: 8.6, color: "var(--chart-3)", defaultStaff: 18 },
+  { name: "Food Court", margin: 28.2, color: "var(--chart-4)", defaultStaff: 21 },
+  { name: "Beauty", margin: 26.8, color: "var(--chart-5)", defaultStaff: 24 },
+  { name: "Home & Living", margin: 18.4, color: "var(--chart-1)", defaultStaff: 27 },
+  { name: "Pharmacy", margin: 14.2, color: "var(--chart-2)", defaultStaff: 30 },
+  { name: "Sports", margin: 21.6, color: "var(--chart-3)", defaultStaff: 33 },
+  { name: "Kids", margin: 24.3, color: "var(--chart-4)", defaultStaff: 36 },
+  { name: "Fresh Produce", margin: 9.4, color: "var(--chart-5)", defaultStaff: 39 },
+];
+
 function Departments() {
   const { departmentRevenue } = useBusinessData();
 
-  const totalDeptRevenue = departmentRevenue.reduce((sum, d) => sum + d.value, 0) || 1;
+  // Merge the standard 10 departments list with actual dynamic sales from database
+  const departmentsData = ALL_DEPARTMENTS.map((dept) => {
+    const dynamicData = departmentRevenue.find((d) => d.name === dept.name);
+    return {
+      name: dept.name,
+      value: dynamicData ? dynamicData.value : 0,
+      margin: dept.margin,
+      color: dept.color,
+      staff: dept.defaultStaff,
+    };
+  }).sort((a, b) => b.value - a.value);
+
+  const totalDeptRevenue = departmentsData.reduce((sum, d) => sum + d.value, 0) || 1;
 
   return (
     <div className="space-y-6">
@@ -27,7 +52,7 @@ function Departments() {
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {departmentRevenue.map((d, i) => {
+        {departmentsData.map((d, i) => {
           const sharePercent = ((d.value / totalDeptRevenue) * 100).toFixed(1);
           
           return (
@@ -51,21 +76,21 @@ function Departments() {
               <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
                 <Kv label="Revenue" v={fmtINR(d.value, { compact: true })} />
                 <Kv label="Margin" v={`${d.margin.toFixed(1)}%`} tone="success" />
-                <Kv label="Staff" v={`${12 + i * 3}`} />
+                <Kv label="Staff" v={`${d.staff}`} />
               </div>
               <div className="mt-3">
                 <div className="h-1.5 overflow-hidden rounded-full bg-surface-2">
                   <div
                     className="h-full"
                     style={{
-                      width: `${sharePercent}%`,
+                      width: `${d.value > 0 ? sharePercent : 0}%`,
                       background: `var(--chart-${(i % 5) + 1})`,
                     }}
                   />
                 </div>
                 <div className="mt-1 flex items-center justify-between text-[10px] text-muted-foreground">
                   <p>Share of total revenue</p>
-                  <p className="font-semibold text-foreground">{sharePercent}%</p>
+                  <p className="font-semibold text-foreground">{d.value > 0 ? sharePercent : "0.0"}%</p>
                 </div>
               </div>
             </div>
