@@ -339,7 +339,7 @@ function AskOmniMind() {
               <div className="flex items-center gap-2 text-xs font-semibold text-primary">
                 <Sparkles className="h-4 w-4" /> Direct Answer
               </div>
-              <p className="mt-2 text-sm leading-relaxed text-foreground">{answerData.answer}</p>
+              <p className="mt-2 text-sm leading-relaxed text-foreground whitespace-pre-wrap">{answerData.answer}</p>
             </div>
 
             {/* Evidence & Risks Grid */}
