@@ -18,6 +18,7 @@ import { getCustomersServer, type CustomerListItem } from "@/lib/server-customer
 import { toast } from "sonner";
 import { Plus, Trash2, Loader2, FileText, CheckCircle2, ShoppingCart, Calculator } from "lucide-react";
 import { fmtINR } from "@/lib/mock-data";
+import { useBusinessData } from "@/lib/business-context";
 
 export const Route = createFileRoute("/_app/billing")({
   head: () => ({
@@ -31,6 +32,7 @@ export const Route = createFileRoute("/_app/billing")({
 
 function RouteComponent() {
   const { user } = useAuth();
+  const { activeDate } = useBusinessData();
 
   // Data states
   const [products, setProducts] = useState<ProductListItem[]>([]);
@@ -142,6 +144,7 @@ function RouteComponent() {
           paymentMethod: formPaymentMethod,
           role: user?.role || "owner",
           emailUser: user?.email || "",
+          transactionDate: activeDate,
         }
       };
       // Use any for response to bypass strict typing if it returns transaction ID etc

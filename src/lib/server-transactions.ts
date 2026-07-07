@@ -37,6 +37,7 @@ export const createTransactionServer = createServerFn({ method: "POST" })
       cashierId?: string;
       role: string;
       emailUser: string;
+      transactionDate?: string;
     }) => data,
   )
   .handler(async ({ data }) => {
@@ -150,7 +151,7 @@ export const createTransactionServer = createServerFn({ method: "POST" })
           customerId: data.customerId || null,
           departmentId: data.departmentId,
           cashierId: data.cashierId || "cashier-01",
-          transactionDate: new Date(),
+          transactionDate: data.transactionDate ? new Date(data.transactionDate) : new Date(),
           subtotal,
           discountAmount: totalDiscount,
           taxAmount: totalTax,
