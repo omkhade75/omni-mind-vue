@@ -1,15 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { TimeMachine } from "./_app.time-machine";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_app/time_machine")({
-  head: () => ({
-    meta: [
-      { title: "Business Time Machine — OmniMind AI" },
-      {
-        name: "description",
-        content: "Investigate any date across sales, customers, products, inventory, suppliers, expenses, and operations.",
-      },
-    ],
-  }),
-  component: TimeMachine,
+  beforeLoad: () => {
+    throw redirect({
+      to: "/time-machine",
+    });
+  },
 });
