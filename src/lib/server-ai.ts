@@ -79,6 +79,7 @@ STRATEGIC DECISION SUGGESTIONS:
   2. Inventory adjustment recommendations if stock runs low on the Retail Floor but is available in the Central Warehouse.
   3. Margin optimization suggestions (e.g. promoting high-margin Beauty products when Grocery sales spike).
   4. Win-back campaign recommendations with specific coupon amounts for churn-risk loyalty customers.
+  5. Competitive Market Pricing & Margin Corrections: If a product's profit margin is narrow (e.g. selling price is less than 30% above the cost price), or if competitor prices fluctuate, suggest specific price optimization suggestions (such as increasing selling price to match market rates or offering bundle markdowns to clear slow-moving inventory). Use APPLY_MARKDOWN or OPEN_PRODUCT action suggestions for these.
 
 ROLE/SECURITY CONSTRAINT:
 If the evidence states that the user is scoped to the FASHION department, you must restrict your reasoning, evidence, and actions to the FASHION department only. Do not reveal or reference any other department details or total mall details.
