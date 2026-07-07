@@ -46,7 +46,7 @@ const ICON: Record<string, React.ReactNode> = {
   expense: <Wallet className="h-3.5 w-3.5 text-muted-foreground" />,
 };
 
-function LiveOps() {
+export function LiveOps() {
   const [t, setT] = useState(Date.now());
   useEffect(() => {
     const id = setInterval(() => setT(Date.now()), 3000);

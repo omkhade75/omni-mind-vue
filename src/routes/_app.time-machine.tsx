@@ -42,7 +42,7 @@ export const Route = createFileRoute("/_app/time-machine")({
   component: TimeMachine,
 });
 
-function TimeMachine() {
+export function TimeMachine() {
   const navigate = useNavigate();
   const { activeDate, changeDate, products, openProduct360 } = useBusinessData();
 

@@ -79,7 +79,7 @@ const WhatsappIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-function CommandCenter() {
+export function CommandCenter() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const greeting = greetingFor(new Date());

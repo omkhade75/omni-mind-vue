@@ -55,7 +55,7 @@ const SUGGESTIONS = [
   "Compare 5 May with 4 May",
 ];
 
-function AIDecisions() {
+export function AIDecisions() {
   const [tab, setTab] = useState<(typeof TABS)[number]>("Ask OmniMind");
   return (
     <div className="space-y-6">
