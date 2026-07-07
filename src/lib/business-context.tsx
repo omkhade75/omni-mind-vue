@@ -170,7 +170,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const [prods, txns, custs, supps, exps, pos] = await Promise.all([
           getProductsServer(payload),
           getTransactionsServer(payload),
-          getCustomersServer({ role: user?.role || "owner", email: user?.email || "", status: "Active" }),
+          getCustomersServer({ data: { role: user?.role || "owner", email: user?.email || "", status: "Active" } }),
           getSuppliers(),
           getExpensesServer(payload),
           getPurchaseOrders(),
