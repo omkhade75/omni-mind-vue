@@ -12,6 +12,7 @@ import {
   Activity,
 } from "lucide-react";
 import { LIVE_FEED, HOURLY_DEMAND, DEPARTMENTS } from "@/lib/mock-data";
+import { useBusinessData } from "@/lib/business-context";
 import {
   Area,
   AreaChart,
@@ -53,6 +54,104 @@ export function LiveOps() {
     return () => clearInterval(id);
   }, []);
 
+  const { activeDate, transactions } = useBusinessData();
+
+  // Filter transactions to the current active date (defaults to today's local date)
+  const activeDateStr = activeDate.split("T")[0];
+  const dayTxns = transactions.filter(t => t.date.split("T")[0] === activeDateStr);
+
+  // 1. Footfall & Checkouts pseudo-fluctuations
+  const footfallFluctuation = Math.floor(Math.sin(t / 10000) * 15) + Math.floor(Math.cos(t / 5000) * 8);
+  const displayFootfall = (1842 + footfallFluctuation + (dayTxns.length * 5)).toLocaleString("en-IN");
+
+  const checkoutFluctuation = Math.abs(Math.floor(Math.sin(t / 8000) * 2));
+  const displayCheckouts = `${18 + checkoutFluctuation} / 22`;
+
+  const staffFluctuation = Math.floor(Math.sin(t / 15000) * 3);
+  const displayStaff = 142 + staffFluctuation;
+
+  // 2. Sales this hour: base 1.42L + any today sales in the current hour
+  const currentHour = new Date().getHours();
+  const salesThisHourVal = dayTxns
+    .filter(t => {
+      try {
+        return new Date(t.date).getHours() === currentHour;
+      } catch {
+        return false;
+      }
+    })
+    .reduce((sum, t) => sum + t.amount, 0);
+  const displaySalesThisHour = `₹${((142000 + salesThisHourVal) / 100000).toFixed(2)}L`;
+
+  // 3. Txn/min: base 14.2 + increment based on daily checkouts
+  const displayTxnMin = (14.2 + (dayTxns.length * 0.1)).toFixed(1);
+
+  // 4. Live Sales - hourly chart data overlay
+  const hourlySalesChart = HOURLY_DEMAND.map((d) => {
+    const hourNum = parseInt(d.hour);
+    const liveSales = dayTxns
+      .filter(t => {
+        try {
+          return new Date(t.date).getHours() === hourNum;
+        } catch {
+          return false;
+        }
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+    return {
+      hour: d.hour,
+      sales: d.sales + liveSales,
+    };
+  });
+
+  // 5. Activity Feed: Prepend real database transactions at the top
+  const getTimeAgo = (dateStr: string) => {
+    try {
+      const diffMs = Date.now() - new Date(dateStr).getTime();
+      if (diffMs < 0 || diffMs > 24 * 60 * 60 * 1000) {
+        return new Date(dateStr).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+      }
+      const mins = Math.max(1, Math.floor(diffMs / 60000));
+      if (mins < 60) return `${mins} min ago`;
+      return `${Math.floor(mins / 60)} hrs ago`;
+    } catch {
+      return "just now";
+    }
+  };
+
+  const combinedFeed = [
+    ...dayTxns.map((tx) => {
+      const deptName = tx.departmentId === "dept-grocery" 
+        ? "Grocery" 
+        : tx.departmentId === "dept-fashion" 
+        ? "Fashion" 
+        : tx.departmentId === "dept-electronics" 
+        ? "Electronics" 
+        : tx.departmentId === "dept-beauty" 
+        ? "Beauty" 
+        : "Food Court";
+      return {
+        type: "sale",
+        text: `New sale ₹${tx.amount.toLocaleString("en-IN")} - ${deptName} - ${tx.paymentMethod}`,
+        t: getTimeAgo(tx.date),
+        timestamp: new Date(tx.date).getTime(),
+      };
+    }),
+    ...LIVE_FEED.map((f, i) => ({
+      ...f,
+      timestamp: Date.now() - (i + 1) * 5 * 60000, // mock older timestamps
+    }))
+  ].sort((a, b) => b.timestamp - a.timestamp);
+
+  // 6. Departments live visitor fluctuations
+  const getDeptVisitors = (index: number) => {
+    const fluctuation = Math.floor(Math.sin((t + index * 1200) / 4000) * 8);
+    // Overlay base department visitors with real transactions count
+    const deptId = DEPARTMENTS[index] === "Grocery" ? "dept-grocery" : DEPARTMENTS[index] === "Fashion" ? "dept-fashion" : DEPARTMENTS[index] === "Electronics" ? "dept-electronics" : DEPARTMENTS[index] === "Beauty" ? "dept-beauty" : "other";
+    const deptTxnsCount = transactions.filter(tx => tx.departmentId === deptId).length;
+    return 120 + index * 42 + fluctuation + deptTxnsCount * 2;
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -67,19 +166,19 @@ export function LiveOps() {
       />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
-        <Live label="Footfall now" v="1,842" delta="+12/min" />
-        <Live label="Active checkouts" v="18 / 22" />
+        <Live label="Footfall now" v={displayFootfall} delta="+12/min" />
+        <Live label="Active checkouts" v={displayCheckouts} />
         <Live label="Queue pressure" v="Moderate" tone="warning" />
-        <Live label="Sales this hour" v="₹1.42L" tone="success" />
-        <Live label="Txn/min" v="14.2" />
-        <Live label="Active staff" v="142" />
+        <Live label="Sales this hour" v={displaySalesThisHour} tone="success" />
+        <Live label="Txn/min" v={displayTxnMin} />
+        <Live label="Active staff" v={displayStaff.toString()} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <SectionCard title="Live Sales — hourly" className="xl:col-span-2">
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={HOURLY_DEMAND}>
+              <AreaChart data={hourlySalesChart}>
                 <defs>
                   <linearGradient id="ls" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.4} />
@@ -109,10 +208,10 @@ export function LiveOps() {
 
         <SectionCard title="Activity Feed" subtitle="Streaming events">
           <ul className="max-h-64 space-y-2 overflow-y-auto text-xs">
-            {LIVE_FEED.map((f, i) => (
+            {combinedFeed.map((f, i) => (
               <li
                 key={i}
-                className="flex items-start gap-2 rounded-md border border-hairline bg-surface p-2"
+                className="flex items-start gap-2 rounded-md border border-hairline bg-surface p-2 animate-fadeIn"
               >
                 <span className="mt-0.5">{ICON[f.type]}</span>
                 <div className="min-w-0 flex-1">
@@ -133,7 +232,7 @@ export function LiveOps() {
                 <p className="text-xs font-semibold">{d}</p>
                 <Activity className="h-3 w-3 text-primary" />
               </div>
-              <p className="mt-1.5 font-display text-lg font-semibold">{fmt(120 + i * 42)}</p>
+              <p className="mt-1.5 font-display text-lg font-semibold">{fmt(getDeptVisitors(i))}</p>
               <p className="text-[10px] text-muted-foreground">visitors now</p>
               <div className="mt-2 h-1 overflow-hidden rounded-full bg-surface-2">
                 <div className="h-full gradient-primary" style={{ width: `${30 + i * 6}%` }} />
