@@ -113,7 +113,24 @@ export const addSupplier = createServerFn({ method: "POST" })
       });
     }
 
-    return { success: true, supplier };
+    return {
+      success: true,
+      supplier: {
+        id: supplier.id,
+        supplierCode: supplier.supplierCode,
+        name: supplier.name,
+        contactPerson: supplier.contactPerson,
+        email: supplier.email,
+        phone: supplier.phone,
+        address: supplier.address,
+        paymentTerms: supplier.paymentTerms,
+        leadTimeDays: supplier.leadTimeDays,
+        onTimeDeliveryRate: Number(supplier.onTimeDeliveryRate),
+        qualityScore: Number(supplier.qualityScore),
+        riskScore: Number(supplier.riskScore),
+        status: supplier.status,
+      }
+    };
   });
 
 export const editSupplierServer = createServerFn({ method: "POST" })
@@ -160,7 +177,24 @@ export const editSupplierServer = createServerFn({ method: "POST" })
       });
     }
 
-    return { success: true, supplier };
+    return {
+      success: true,
+      supplier: {
+        id: supplier.id,
+        supplierCode: supplier.supplierCode,
+        name: supplier.name,
+        contactPerson: supplier.contactPerson,
+        email: supplier.email,
+        phone: supplier.phone,
+        address: supplier.address,
+        paymentTerms: supplier.paymentTerms,
+        leadTimeDays: supplier.leadTimeDays,
+        onTimeDeliveryRate: Number(supplier.onTimeDeliveryRate),
+        qualityScore: Number(supplier.qualityScore),
+        riskScore: Number(supplier.riskScore),
+        status: supplier.status,
+      }
+    };
   });
 
 export const archiveSupplierServer = createServerFn({ method: "POST" })
@@ -188,7 +222,24 @@ export const archiveSupplierServer = createServerFn({ method: "POST" })
       });
     }
 
-    return { success: true, supplier };
+    return {
+      success: true,
+      supplier: {
+        id: supplier.id,
+        supplierCode: supplier.supplierCode,
+        name: supplier.name,
+        contactPerson: supplier.contactPerson,
+        email: supplier.email,
+        phone: supplier.phone,
+        address: supplier.address,
+        paymentTerms: supplier.paymentTerms,
+        leadTimeDays: supplier.leadTimeDays,
+        onTimeDeliveryRate: Number(supplier.onTimeDeliveryRate),
+        qualityScore: Number(supplier.qualityScore),
+        riskScore: Number(supplier.riskScore),
+        status: supplier.status,
+      }
+    };
   });
 
 export const getPurchaseOrders = createServerFn({ method: "GET" })
@@ -296,7 +347,15 @@ export const createPurchaseOrder = createServerFn({ method: "POST" })
       });
     }
 
-    return { success: true, po };
+    return {
+      success: true,
+      po: {
+        id: po.id,
+        poNumber: po.poNumber,
+        status: po.status,
+        totalAmount: Number(po.totalAmount),
+      }
+    };
   });
 
 export const updatePurchaseOrderStatusServer = createServerFn({ method: "POST" })
@@ -319,7 +378,14 @@ export const updatePurchaseOrderStatusServer = createServerFn({ method: "POST" }
       });
     }
 
-    return { success: true, po };
+    return {
+      success: true,
+      po: {
+        id: po.id,
+        poNumber: po.poNumber,
+        status: po.status,
+      }
+    };
   });
 
 export const getPurchaseOrderDetailsServer = createServerFn({ method: "POST" })
@@ -334,7 +400,51 @@ export const getPurchaseOrderDetailsServer = createServerFn({ method: "POST" })
         }
       }
     });
-    return po;
+    if (!po) return null;
+    return {
+      id: po.id,
+      poNumber: po.poNumber,
+      supplierId: po.supplierId,
+      departmentId: po.departmentId,
+      status: po.status,
+      orderDate: po.orderDate.toISOString(),
+      expectedDeliveryDate: po.expectedDeliveryDate ? po.expectedDeliveryDate.toISOString() : null,
+      subtotal: Number(po.subtotal),
+      taxAmount: Number(po.taxAmount),
+      totalAmount: Number(po.totalAmount),
+      createdBy: po.createdBy,
+      approvedBy: po.approvedBy,
+      notes: po.notes,
+      supplier: {
+        id: po.supplier.id,
+        supplierCode: po.supplier.supplierCode,
+        name: po.supplier.name,
+        contactPerson: po.supplier.contactPerson,
+        email: po.supplier.email,
+        phone: po.supplier.phone,
+        address: po.supplier.address,
+        paymentTerms: po.supplier.paymentTerms,
+        leadTimeDays: po.supplier.leadTimeDays,
+        onTimeDeliveryRate: Number(po.supplier.onTimeDeliveryRate),
+        qualityScore: Number(po.supplier.qualityScore),
+        riskScore: Number(po.supplier.riskScore),
+        status: po.supplier.status,
+      },
+      items: po.items.map(item => ({
+        id: item.id,
+        purchaseOrderId: item.purchaseOrderId,
+        productId: item.productId,
+        quantity: item.quantity,
+        receivedQuantity: item.receivedQuantity,
+        unitCost: Number(item.unitCost),
+        lineTotal: Number(item.lineTotal),
+        product: {
+          id: item.product.id,
+          name: item.product.name,
+          sku: item.product.sku,
+        }
+      }))
+    };
   });
 
 export const receivePurchaseOrderGoodsServer = createServerFn({ method: "POST" })
