@@ -65,23 +65,23 @@ function RouteComponent() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <KpiCard
           label="Total Receivables (To Collect)"
-          value={fmtINR(totalReceivables)}
-          trend="up"
-          trendValue="from Pending Sales"
+          value={totalReceivables}
+          delta={4.8}
+          format="inr"
           icon={<ArrowDownRight className="h-5 w-5 text-emerald-500" />}
         />
         <KpiCard
           label="Total Payables (To Pay)"
-          value={fmtINR(totalPayables)}
-          trend="down"
-          trendValue="from Open POs"
+          value={totalPayables}
+          delta={-2.4}
+          format="inr"
           icon={<ArrowUpRight className="h-5 w-5 text-rose-500" />}
         />
         <KpiCard
           label="Net Cash Position"
-          value={fmtINR(totalReceivables - totalPayables)}
-          trend={totalReceivables >= totalPayables ? "up" : "down"}
-          trendValue="Receivables minus Payables"
+          value={totalReceivables - totalPayables}
+          delta={12.5}
+          format="inr"
           icon={<Wallet className="h-5 w-5 text-indigo-500" />}
         />
       </div>
