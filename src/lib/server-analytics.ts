@@ -112,11 +112,27 @@ export const getAnomaliesServer = createServerFn({ method: "POST" })
   });
 
 export const getForecastingServer = createServerFn({ method: "POST" })
-  .validator((data: { role: string; email: string }) => data)
-  .handler(async () => {
-    // We will generate a 21-day dataset: 14 days of actual (past) based on a realistic database average,
-    // and 7 days of future forecast (upper, lower, forecast).
-    
+  .validator((data: { role: string; email: string; horizon?: string; scenario?: string }) => data)
+  .handler(async ({ data }) => {
+    const horizon = data.horizon || "7d";
+    const scenario = data.scenario || "Normal";
+
+    // We will generate a dataset based on horizon:
+    // "7d": 14 days actual, 7 days forecast (21 total)
+    // "30d": 30 days actual, 30 days forecast (60 total)
+    // "90d": 30 days actual, 90 days forecast (120 total)
+    let pastDays = 14;
+    let futureDays = 7;
+    if (horizon === "30d") {
+      pastDays = 30;
+      futureDays = 30;
+    } else if (horizon === "90d") {
+      pastDays = 30;
+      futureDays = 90;
+    }
+
+    const totalDays = pastDays + futureDays;
+
     // Let's compute average daily revenue from DB to keep numbers realistic.
     const txns = await prisma.transaction.findMany({
       take: 100,
@@ -124,16 +140,42 @@ export const getForecastingServer = createServerFn({ method: "POST" })
     const totalAmount = txns.reduce((sum, t) => sum + Number(t.totalAmount), 0);
     const avgRevenue = txns.length > 0 ? (totalAmount / txns.length) * 15 : 150000;
 
-    const forecastData = Array.from({ length: 21 }, (_, i) => {
-      const past = i < 14;
-      const base = avgRevenue + Math.sin(i / 2) * (avgRevenue * 0.25);
-      
+    // Scenario modifiers
+    let multiplier = 1.0;
+    let volatility = 0.15;
+    if (scenario === "Festival Demand") {
+      multiplier = 1.35;
+      volatility = 0.25;
+    } else if (scenario === "Promotion Campaign") {
+      multiplier = 1.20;
+      volatility = 0.10;
+    } else if (scenario === "Rainy Weekend") {
+      multiplier = 0.80;
+      volatility = 0.12;
+    } else if (scenario === "Supplier Delay") {
+      multiplier = 0.85;
+      volatility = 0.18;
+    }
+
+    const forecastData = Array.from({ length: totalDays }, (_, i) => {
+      const past = i < pastDays;
+      // Add a slight sine wave for weekly cycle
+      const cycle = Math.sin(i / 1.1) * (avgRevenue * 0.2);
+      const base = avgRevenue + cycle;
+
+      const actualVal = past ? Math.round(base + (Math.sin(i * 3) * (avgRevenue * 0.05))) : null;
+
+      // Apply scenario multiplier to future values
+      const forecastVal = !past ? Math.round(base * multiplier * 1.03) : null;
+      const upperVal = !past ? Math.round(base * multiplier * (1 + volatility)) : null;
+      const lowerVal = !past ? Math.round(base * multiplier * (1 - volatility)) : null;
+
       return {
         day: `Day ${i + 1}`,
-        actual: past ? Math.round(base) : null,
-        forecast: !past ? Math.round(base * 1.05) : null,
-        upper: !past ? Math.round(base * 1.15) : null,
-        lower: !past ? Math.round(base * 0.88) : null,
+        actual: actualVal,
+        forecast: forecastVal,
+        upper: upperVal,
+        lower: lowerVal,
       };
     });
 
