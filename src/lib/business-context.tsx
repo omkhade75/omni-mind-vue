@@ -16,6 +16,11 @@ import {
 import { useAuth } from "./auth-context";
 import { toast } from "sonner";
 import { fmtINR, fmtNum } from "./mock-data";
+import { getProductsServer } from "./server-products";
+import { getTransactionsServer } from "./server-transactions";
+import { getCustomersServer } from "./server-customers";
+import { getSuppliers, getPurchaseOrders } from "./server-suppliers";
+import { getExpensesServer } from "./server-expenses";
 
 export type TimeRange = "today" | "yesterday" | "7d" | "30d" | "custom";
 
@@ -148,6 +153,154 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const forceRefresh = () => setDbRev((prev) => prev + 1);
+  const [syncRev, setSyncRev] = useState(0);
+
+  useEffect(() => {
+    let intervalId: any;
+    
+    async function syncData() {
+      try {
+        const payload = {
+          data: {
+            role: user?.role || "owner",
+            email: user?.email || "",
+          }
+        };
+
+        const [prods, txns, custs, supps, exps, pos] = await Promise.all([
+          getProductsServer(payload),
+          getTransactionsServer(payload),
+          getCustomersServer({ role: user?.role || "owner", email: user?.email || "", status: "Active" }),
+          getSuppliers(),
+          getExpensesServer(payload),
+          getPurchaseOrders(),
+        ]);
+
+        // Map the PostgreSQL products to mock Products
+        const mappedProducts = prods.map(p => ({
+          id: p.id,
+          name: p.name,
+          category: p.category,
+          dept: p.dept,
+          brand: p.brand,
+          price: p.price,
+          cost: p.cost,
+          stock: p.stock,
+          reorder: p.reorder,
+          expiry: p.expiry,
+          supplier: p.supplier,
+          sold: p.sold,
+          revenue: p.revenue,
+          margin: p.margin,
+          status: p.status,
+        }));
+
+        // Map the PostgreSQL transactions to mock Transactions
+        const mappedTransactions = txns.map(t => ({
+          id: t.id,
+          date: t.date,
+          time: t.time,
+          customerName: t.customerName,
+          customerId: t.customerId || "walkin",
+          items: t.items.map(it => ({
+            productId: it.productId,
+            name: it.productName,
+            quantity: it.quantity,
+            price: it.price,
+            cost: it.price * 0.6, // estimate cost
+          })),
+          subtotal: t.subtotal,
+          discount: t.discount,
+          tax: t.tax,
+          total: t.total,
+          payment: t.payment as any,
+          status: t.status as any,
+          dept: t.dept,
+        }));
+
+        // Map the PostgreSQL customers to mock Customers
+        const mappedCustomers = custs.map(c => ({
+          id: c.id,
+          name: c.name,
+          joined: c.joined,
+          visits: c.visits,
+          spend: c.spend,
+          aov: c.aov,
+          favDept: c.favDept,
+          lastVisit: c.lastVisit,
+          segment: c.segment as any,
+          churn: c.churn,
+        }));
+
+        // Map the PostgreSQL suppliers to mock Suppliers
+        const mappedSuppliers = supps.map(s => ({
+          id: s.id,
+          name: s.name,
+          category: s.category,
+          contact: s.contact,
+          spend: s.spend,
+          pending: s.pending,
+          onTime: s.onTime,
+          quality: s.quality,
+          lead: s.lead,
+          risk: s.risk as any,
+          score: s.score,
+        }));
+
+        // Map the PostgreSQL expenses to mock Expenses
+        const mappedExpenses = exps.map(e => ({
+          id: e.id,
+          date: e.date,
+          category: e.category,
+          desc: e.description,
+          vendor: e.vendor,
+          amount: e.amount,
+          status: e.status as any,
+          dept: "All",
+        }));
+
+        // Map the PostgreSQL purchase orders to mock PurchaseOrders
+        const mappedPurchaseOrders = pos.map(po => ({
+          id: po.id,
+          productId: po.productId,
+          productName: po.productName,
+          supplierId: po.supplierId,
+          supplierName: po.supplierName,
+          quantity: po.quantity,
+          unitCost: po.totalCost / (po.quantity || 1),
+          totalCost: po.totalCost,
+          status: po.status as any,
+          date: po.date,
+          source: po.source,
+        }));
+
+        const currentSchema = db.schema;
+        db.save({
+          ...currentSchema,
+          products: mappedProducts,
+          transactions: mappedTransactions,
+          customers: mappedCustomers,
+          suppliers: mappedSuppliers,
+          expenses: mappedExpenses,
+          purchaseOrders: mappedPurchaseOrders,
+        });
+
+        setSyncRev(prev => prev + 1);
+      } catch (err) {
+        console.error("Failed to sync client database with server:", err);
+      }
+    }
+
+    if (user) {
+      syncData();
+      // Sync every 8 seconds
+      intervalId = setInterval(syncData, 8000);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [user, dbRev]);
 
   const acceptRecommendation = (id: string) => {
     const rec = db.getRecommendations().find((r) => r.id === id);
