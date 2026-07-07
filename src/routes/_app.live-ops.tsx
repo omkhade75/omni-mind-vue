@@ -80,7 +80,7 @@ export function LiveOps() {
         return false;
       }
     })
-    .reduce((sum, t) => sum + t.amount, 0);
+    .reduce((sum, t) => sum + (t.total || 0), 0);
   const displaySalesThisHour = `₹${((142000 + salesThisHourVal) / 100000).toFixed(2)}L`;
 
   // 3. Txn/min: base 14.2 + increment based on daily checkouts
@@ -97,7 +97,7 @@ export function LiveOps() {
           return false;
         }
       })
-      .reduce((sum, t) => sum + t.amount, 0);
+      .reduce((sum, t) => sum + (t.total || 0), 0);
     return {
       hour: d.hour,
       sales: d.sales + liveSales,
@@ -121,18 +121,9 @@ export function LiveOps() {
 
   const combinedFeed = [
     ...dayTxns.map((tx) => {
-      const deptName = tx.departmentId === "dept-grocery" 
-        ? "Grocery" 
-        : tx.departmentId === "dept-fashion" 
-        ? "Fashion" 
-        : tx.departmentId === "dept-electronics" 
-        ? "Electronics" 
-        : tx.departmentId === "dept-beauty" 
-        ? "Beauty" 
-        : "Food Court";
       return {
         type: "sale",
-        text: `New sale ₹${tx.amount.toLocaleString("en-IN")} - ${deptName} - ${tx.paymentMethod}`,
+        text: `New sale ₹${(tx.total || 0).toLocaleString("en-IN")} - ${tx.dept || "Others"} - ${tx.payment || "UPI"}`,
         t: getTimeAgo(tx.date),
         timestamp: new Date(tx.date).getTime(),
       };
@@ -147,8 +138,8 @@ export function LiveOps() {
   const getDeptVisitors = (index: number) => {
     const fluctuation = Math.floor(Math.sin((t + index * 1200) / 4000) * 8);
     // Overlay base department visitors with real transactions count
-    const deptId = DEPARTMENTS[index] === "Grocery" ? "dept-grocery" : DEPARTMENTS[index] === "Fashion" ? "dept-fashion" : DEPARTMENTS[index] === "Electronics" ? "dept-electronics" : DEPARTMENTS[index] === "Beauty" ? "dept-beauty" : "other";
-    const deptTxnsCount = transactions.filter(tx => tx.departmentId === deptId).length;
+    const deptName = DEPARTMENTS[index];
+    const deptTxnsCount = transactions.filter(tx => tx.dept === deptName).length;
     return 120 + index * 42 + fluctuation + deptTxnsCount * 2;
   };
 
