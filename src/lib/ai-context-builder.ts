@@ -84,7 +84,15 @@ export function buildAIContext(query: string, activeDate: string, roleScope?: st
     q.includes("reorder") ||
     q.includes("restock") ||
     q.includes("stockout") ||
-    q.includes("low stock")
+    q.includes("low stock") ||
+    q.includes("out of stock") ||
+    q.includes("outof stock") ||
+    q.includes("outof stck") ||
+    q.includes("stcks") ||
+    q.includes("stck") ||
+    q.includes("buy") ||
+    q.includes("replenish") ||
+    q.includes("shortage")
   ) {
     intent = "reorder";
     const candidates = getReorderCandidates(resolvedDate, roleScope);

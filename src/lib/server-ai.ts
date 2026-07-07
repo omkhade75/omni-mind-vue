@@ -410,7 +410,20 @@ async function executePrismaFallback(query: string, intent: string): Promise<AIR
   }
 
   // 2. Inventory / Stock Intent
-  if (intent === "inventory" || q.includes("stock") || q.includes("low") || q.includes("empty") || q.includes("reorder")) {
+  if (
+    intent === "inventory" ||
+    intent === "reorder" ||
+    q.includes("stock") ||
+    q.includes("stck") ||
+    q.includes("low") ||
+    q.includes("empty") ||
+    q.includes("reorder") ||
+    q.includes("buy") ||
+    q.includes("outof") ||
+    q.includes("replenish") ||
+    q.includes("restock") ||
+    q.includes("shortage")
+  ) {
     const products = await prisma.product.findMany({
       include: { stockItems: true },
     });
@@ -561,7 +574,21 @@ async function buildAIContextServer(
   const q = query.toLowerCase();
   const deptScope = getDepartmentScope(role || "owner", email || "");
   
-  if (intent === "reorder" || q.includes("reorder") || q.includes("restock") || q.includes("stockout") || q.includes("low stock")) {
+  if (
+    intent === "reorder" ||
+    q.includes("reorder") ||
+    q.includes("restock") ||
+    q.includes("stockout") ||
+    q.includes("low stock") ||
+    q.includes("out of stock") ||
+    q.includes("outof stock") ||
+    q.includes("outof stck") ||
+    q.includes("stcks") ||
+    q.includes("stck") ||
+    q.includes("buy") ||
+    q.includes("replenish") ||
+    q.includes("shortage")
+  ) {
     const where: any = { status: "Active" };
     if (deptScope) {
       where.departmentId = deptScope;
