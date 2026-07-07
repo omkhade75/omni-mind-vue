@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { prisma } from "./server/prisma";
 import { fmtINR } from "./mock-data";
+import { getDepartmentScope } from "./server-customers";
 
 export interface AIResponseContract {
   answer: string;
@@ -36,12 +37,15 @@ export interface AIResponseContract {
 
 export const askOmniMindServer = createServerFn({ method: "POST" })
   .validator(
-    (data: { query: string; evidenceText: string; intent: string; resolvedDate: string }) => data,
+    (data: { query: string; evidenceText: string; intent: string; resolvedDate: string; role?: string; email?: string }) => data,
   )
   .handler(async ({ data }) => {
     // Loaded only from environment variable on server side
     const geminiKey = process.env.GEMINI_API_KEY || "";
     const groqKey = process.env.GROQ_API_KEY || "";
+
+    // Generate live database evidence
+    const liveEvidenceText = await buildAIContextServer(data.query, data.intent, data.resolvedDate, data.role, data.email);
 
     if (!geminiKey && !groqKey) {
       // PRISMA DYNAMIC FALLBACK LOGIC
@@ -58,7 +62,7 @@ ROLE/SECURITY CONSTRAINT:
 If the evidence states that the user is scoped to the FASHION department, you must restrict your reasoning, evidence, and actions to the FASHION department only. Do not reveal or reference any other department details or total mall details.
 
 DATABASE EVIDENCE PROVIDED:
-${data.evidenceText}
+${liveEvidenceText}
 
 USER QUESTION:
 "${data.query}"
@@ -522,4 +526,207 @@ async function executePrismaFallback(query: string, intent: string): Promise<AIR
     risks: [],
     confidence: 1.0,
   };
+}
+
+async function buildAIContextServer(
+  query: string,
+  intent: string,
+  resolvedDate: string,
+  role?: string,
+  email?: string
+): Promise<string> {
+  const q = query.toLowerCase();
+  const deptScope = getDepartmentScope(role || "owner", email || "");
+  
+  if (intent === "reorder" || q.includes("reorder") || q.includes("restock") || q.includes("stockout") || q.includes("low stock")) {
+    const where: any = { status: "Active" };
+    if (deptScope) {
+      where.departmentId = deptScope;
+    }
+    const products = await prisma.product.findMany({
+      where,
+      include: {
+        stockItems: true,
+      }
+    });
+    const reorderCandidates = products.filter(p => {
+      const stock = p.stockItems.reduce((sum, item) => sum + item.availableQty, 0);
+      return stock <= p.reorderLevel;
+    });
+
+    return "REORDER CANDIDATES FROM LIVE DB:\n" + 
+      reorderCandidates.map(p => {
+        const stock = p.stockItems.reduce((sum, item) => sum + item.availableQty, 0);
+        return `- ${p.name} (SKU: ${p.sku}, ID: ${p.id}): Stock: ${stock}, Reorder Threshold: ${p.reorderLevel}, Cost: ₹${p.costPrice}, Price: ₹${p.sellingPrice}`;
+      }).join("\n");
+  }
+
+  if (intent === "utilities" || q.includes("electricity") || q.includes("hvac") || q.includes("energy") || q.includes("utility") || q.includes("water") || q.includes("power")) {
+    const readings = await prisma.utilityReading.findMany({
+      where: {
+        readingDate: {
+          gte: new Date(`${resolvedDate}T00:00:00.000Z`),
+          lte: new Date(`${resolvedDate}T23:59:59.999Z`),
+        }
+      },
+      include: {
+        meter: true
+      }
+    });
+
+    const anomalies = await prisma.anomaly.findMany({
+      where: {
+        type: "Utility",
+        status: "Active"
+      }
+    });
+
+    let text = `UTILITY READINGS AND ANOMALIES FOR ${resolvedDate} (LIVE DB):\n`;
+    if (anomalies.length > 0) {
+      anomalies.forEach(a => {
+        text += `- Anomaly: ${a.title}. Description: ${a.description}. Detected At: ${a.detectedAt.toISOString()}\n`;
+      });
+    }
+    if (readings.length > 0) {
+      readings.forEach(r => {
+        text += `- Meter ${r.meter.zone} (${r.meter.type}): Reading: ${r.value} ${r.meter.unit}, Cost: ₹${r.cost}\n`;
+      });
+    } else {
+      text += "- No utility readings recorded for this date in the database.\n";
+    }
+    return text;
+  }
+
+  if (intent === "expiry" || q.includes("expire") || q.includes("expiry") || q.includes("yogurt") || q.includes("milk") || q.includes("spoil")) {
+    const where: any = {
+      status: { in: ["Warning", "Markdown"] }
+    };
+    if (deptScope) {
+      where.product = { departmentId: deptScope };
+    }
+    const expiringBatches = await prisma.productBatch.findMany({
+      where,
+      include: {
+        product: true
+      },
+      orderBy: { expiryDate: "asc" }
+    });
+
+    return "EXPIRY RISKS (Warning/Markdown Batches in Live DB):\n" +
+      expiringBatches.map(b => {
+        const daysToExpiry = b.expiryDate ? Math.round((new Date(b.expiryDate).getTime() - new Date(resolvedDate).getTime()) / (24 * 60 * 60 * 1000)) : 999;
+        return `- ${b.product.name} (Batch: ${b.batchNumber}, SKU: ${b.product.sku}): Expires in ${daysToExpiry} days. Remaining Qty: ${b.quantityRemaining}. Cost: ₹${b.costPrice}`;
+      }).join("\n");
+  }
+
+  if (intent === "customers" || q.includes("vip") || q.includes("customer")) {
+    const customers = await prisma.customer.findMany({
+      where: {
+        status: "Active"
+      },
+      orderBy: [
+        { churnRisk: "desc" },
+        { loyaltyPoints: "desc" }
+      ],
+      take: 10
+    });
+
+    return "VIP AND HIGH CHURN RISK CUSTOMERS (LIVE DB):\n" +
+      customers.map(c => {
+        return `- ${c.firstName} ${c.lastName} (Phone: ${c.phone}, ID: ${c.id}): Loyalty Tier: ${c.loyaltyTier}, Points: ${c.loyaltyPoints}, Churn Risk: ${c.churnRisk}`;
+      }).join("\n");
+  }
+
+  if (intent === "suppliers" || q.includes("supplier") || q.includes("delivery") || q.includes("reliability") || q.includes("lead time")) {
+    const suppliers = await prisma.supplier.findMany({
+      where: { status: "Active" }
+    });
+
+    return "SUPPLIER RELIABILITY & PERFORMANCE (LIVE DB):\n" +
+      suppliers.map(s => {
+        return `- ${s.name} (Code: ${s.supplierCode}, ID: ${s.id}): Delivery Rate: ${s.onTimeDeliveryRate}%, Quality: ${s.qualityScore}%, Lead Time: ${s.leadTimeDays} days, Risk: ${s.riskScore >= 70 ? "High" : s.riskScore >= 40 ? "Medium" : "Low"}`;
+      }).join("\n");
+  }
+
+  if (intent === "comparison" || q.includes("compare") || q.includes("change") || q.includes("different") || q.includes("vs")) {
+    const dateA = resolvedDate;
+    const dateB = resolvedDate === "2026-05-05" ? "2026-05-04" : "2026-05-05";
+
+    const getStats = async (dStr: string) => {
+      const start = new Date(`${dStr}T00:00:00.000Z`);
+      const end = new Date(`${dStr}T23:59:59.999Z`);
+
+      const txns = await prisma.transaction.findMany({
+        where: { transactionDate: { gte: start, lte: end } }
+      });
+      const exps = await prisma.expense.findMany({
+        where: { date: { gte: start, lte: end } }
+      });
+
+      const rev = txns.reduce((sum, t) => sum + Number(t.totalAmount), 0);
+      const cost = exps.reduce((sum, e) => sum + Number(e.amount), 0);
+      return { revenue: rev, expenses: cost, orders: txns.length };
+    };
+
+    const statsA = await getStats(dateA);
+    const statsB = await getStats(dateB);
+
+    return `METRICS COMPARISON (LIVE DB - ${dateA} vs ${dateB}):\n` +
+      `- Revenue: ${dateA} = ₹${statsA.revenue} vs ${dateB} = ₹${statsB.revenue}\n` +
+      `- Expenses: ${dateA} = ₹${statsA.expenses} vs ${dateB} = ₹${statsB.expenses}\n` +
+      `- Orders: ${dateA} = ${statsA.orders} vs ${dateB} = ${statsB.orders}`;
+  }
+
+  if (intent === "department_performance" || q.includes("department") || q.includes("grocery") || q.includes("fashion") || q.includes("electronics")) {
+    const start = new Date(`${resolvedDate}T00:00:00.000Z`);
+    const end = new Date(`${resolvedDate}T23:59:59.999Z`);
+    const txns = await prisma.transaction.findMany({
+      where: { transactionDate: { gte: start, lte: end } }
+    });
+
+    const depts = await prisma.department.findMany();
+    const deptRevs = depts.map(d => {
+      const dTxns = txns.filter(t => t.departmentId === d.id);
+      const rev = dTxns.reduce((sum, t) => sum + Number(t.totalAmount), 0);
+      return { name: d.name, value: rev };
+    });
+
+    const totalRev = deptRevs.reduce((sum, r) => sum + r.value, 0);
+
+    return `DEPARTMENT REVENUE SHARES FOR ${resolvedDate} (LIVE DB):\n` +
+      deptRevs.map(r => {
+        const share = totalRev > 0 ? Math.round((r.value / totalRev) * 100) : 0;
+        return `- ${r.name}: Revenue: ₹${r.value} (Share: ${share}%)`;
+      }).join("\n");
+  }
+
+  // Default / general_summary
+  const start = new Date(`${resolvedDate}T00:00:00.000Z`);
+  const end = new Date(`${resolvedDate}T23:59:59.999Z`);
+  const txns = await prisma.transaction.findMany({
+    where: { transactionDate: { gte: start, lte: end } }
+  });
+  const exps = await prisma.expense.findMany({
+    where: { date: { gte: start, lte: end } }
+  });
+  const recs = await prisma.recommendation.findMany({
+    where: { status: "New" }
+  });
+  const anomalies = await prisma.anomaly.findMany({
+    where: { status: "Active" }
+  });
+
+  const grossRevenue = txns.reduce((sum, t) => sum + Number(t.totalAmount), 0);
+  const totalExpenses = exps.reduce((sum, e) => sum + Number(e.amount), 0);
+  const netProfit = (grossRevenue * 0.40) - totalExpenses;
+
+  return `BUSINESS OVERVIEW FOR ${resolvedDate} (LIVE DB):\n` +
+    `- Gross Revenue: ₹${grossRevenue}\n` +
+    `- Net Profit: ₹${netProfit}\n` +
+    `- Total Orders: ${txns.length}\n` +
+    `- Total Expenses: ₹${totalExpenses}\n` +
+    `- Active AI Recommendations: ${recs.length}\n` +
+    `- Active Anomalies: ${anomalies.length}\n` +
+    `RECOMMENDED ACTIONS DRAFTED:\n` +
+    recs.map(r => `- [${r.priority.toUpperCase()}] ${r.title}: ${r.summary} (Impact: ${r.expectedImpact})`).join("\n");
 }

@@ -150,6 +150,8 @@ function AskOmniMind() {
           evidenceText: ctx.evidenceText,
           intent: ctx.intent,
           resolvedDate: ctx.resolvedDate,
+          role: user?.role || "owner",
+          email: user?.email || "",
         },
       });
 
