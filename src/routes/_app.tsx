@@ -151,25 +151,6 @@ function AppShell() {
   const notifRef = useRef<HTMLDivElement>(null);
   const pathname = useRouterState({ select: (s: any) => s.location.pathname });
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate({ to: "/login", replace: true });
-    }
-  }, [loading, user, navigate]);
-
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null; // Don't render anything, useEffect will redirect
-  }
-
   const {
     activeProductId,
     activeCustomerId,
@@ -187,6 +168,13 @@ function AppShell() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate({ to: "/login", replace: true });
+    }
+  }, [loading, user, navigate]);
 
   // Keyboard shortcut listener (Cmd/Ctrl + K to focus search, Esc to close)
   useEffect(() => {
@@ -256,6 +244,18 @@ function AppShell() {
       }
     }
   }, [navigate, user, loading, pathname]);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null; // Don't render anything, useEffect will redirect
+  }
 
   const filteredNAV = NAV.map((section) => ({
     ...section,
