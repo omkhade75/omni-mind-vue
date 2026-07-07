@@ -128,12 +128,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const localNow = new Date(now.getTime() - (offset * 60 * 1000));
       return localNow.toISOString().split("T")[0];
     };
-    const defaultToday = getLocalTodayStr();
-
-    if (typeof window !== "undefined") {
-      return window.localStorage.getItem("omnimind_active_date") || defaultToday;
-    }
-    return defaultToday;
+    return getLocalTodayStr();
   });
 
   const [timeRange, setTimeRange] = useState<TimeRange>(() => {
@@ -148,9 +143,6 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const changeDate = (date: string) => {
     setActiveDate(date);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("omnimind_active_date", date);
-    }
   };
 
   const changeTimeRange = (range: TimeRange) => {
