@@ -328,7 +328,7 @@ export const getExpiryIntelligenceServer = createServerFn({ method: "POST" })
       },
       include: {
         product: {
-          include: { department: true }
+          include: { category: true }
         },
       }
     });
@@ -339,16 +339,26 @@ export const getExpiryIntelligenceServer = createServerFn({ method: "POST" })
       const days = Math.ceil(
         (batch.expiryDate!.getTime() - activeDate.getTime()) / 86400000,
       );
+
+      const deptName = batch.product.departmentId === "dept-grocery" 
+        ? "Grocery" 
+        : batch.product.departmentId === "dept-fashion" 
+        ? "Fashion" 
+        : batch.product.departmentId === "dept-electronics" 
+        ? "Electronics" 
+        : batch.product.departmentId === "dept-beauty" 
+        ? "Beauty" 
+        : "Other";
       
       return {
         id: batch.id,
         productId: batch.product.id,
         name: batch.product.name,
         sku: batch.product.sku,
-        department: batch.product.department.name,
+        department: deptName,
         batchNumber: batch.batchNumber,
         expiry: batch.expiryDate!.toISOString(),
-        daysToExpiry: days,
+        days: days,
         stock: batch.quantityRemaining,
         cost: Number(batch.costPrice),
         status: batch.status,
@@ -356,7 +366,7 @@ export const getExpiryIntelligenceServer = createServerFn({ method: "POST" })
     });
 
     // Sort by days to expiry ascending
-    perishable.sort((a, b) => a.daysToExpiry - b.daysToExpiry);
+    perishable.sort((a, b) => a.days - b.days);
 
     return perishable;
   });
