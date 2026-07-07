@@ -622,11 +622,11 @@ async function buildAIContextServer(
 
   if (intent === "expiry" || q.includes("expire") || q.includes("expiry") || q.includes("yogurt") || q.includes("milk") || q.includes("spoil")) {
     const where: any = {
-      status: { in: ["Warning", "Markdown"] }
+      status: { in: ["Warning", "Markdown"] },
+      product: {
+        departmentId: deptScope ? deptScope : { in: ["dept-grocery", "dept-beauty"] },
+      },
     };
-    if (deptScope) {
-      where.product = { departmentId: deptScope };
-    }
     const expiringBatches = await prisma.productBatch.findMany({
       where,
       include: {

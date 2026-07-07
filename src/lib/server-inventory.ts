@@ -325,6 +325,9 @@ export const getExpiryIntelligenceServer = createServerFn({ method: "POST" })
       where: {
         expiryDate: { not: null },
         quantityRemaining: { gt: 0 },
+        product: {
+          departmentId: { in: ["dept-grocery", "dept-beauty"] },
+        },
       },
       include: {
         product: {

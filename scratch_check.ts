@@ -3,19 +3,17 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  const batches = await prisma.productBatch.findMany({
-    where: {
-      expiryDate: { not: null },
-      quantityRemaining: { gt: 0 },
-    },
-    include: {
-      product: {
-        include: { department: true }
-      },
-    }
+  const product = await prisma.product.findFirst({
+    where: { name: { contains: "Samsung" } },
   });
-  console.log("Batches count:", batches.length);
-  console.log("Batches sample:", JSON.stringify(batches.slice(0, 2), null, 2));
+  console.log("Product found:", product);
+  
+  if (product) {
+    const batches = await prisma.productBatch.findMany({
+      where: { productId: product.id },
+    });
+    console.log("Samsung Batches:", JSON.stringify(batches, null, 2));
+  }
 }
 
 main().catch(console.error).finally(() => prisma.$disconnect());
