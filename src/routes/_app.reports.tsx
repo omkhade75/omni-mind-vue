@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_app/reports")({
 
 function ReportsPage() {
   const { user } = useAuth();
-  const { openSupplier360, openCustomer360 } = useBusinessData();
+  const { activeDate, products } = useBusinessData();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -39,6 +39,36 @@ function ReportsPage() {
     }
     load();
   }, [user]);
+
+  // Calculate dynamic dates based on activeDate
+  const activeDateObj = new Date(activeDate);
+
+  // Daily Snapshot - matches activeDate
+  const dailyLastRunStr = activeDateObj.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+  // Monthly - 1st of the current active month
+  const monthlyDate = new Date(activeDateObj);
+  monthlyDate.setDate(1);
+  const monthlyLastRunStr = monthlyDate.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+  // Weekly - most recent Monday on or before activeDate
+  const weeklyDate = new Date(activeDateObj);
+  const currentDay = weeklyDate.getDay(); // 0 is Sunday, 1 is Monday, etc.
+  const daysSinceMonday = currentDay === 0 ? 6 : currentDay - 1;
+  weeklyDate.setDate(weeklyDate.getDate() - daysSinceMonday);
+  const weeklyLastRunStr = weeklyDate.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 
   return (
     <div className="space-y-6 flex flex-col h-[calc(100vh-6rem)]">
@@ -61,7 +91,7 @@ function ReportsPage() {
               <p className="text-xs text-muted-foreground mb-4">Every Monday 07:00</p>
               <div className="flex justify-between text-xs py-2 border-t border-hairline">
                 <span className="text-muted-foreground">Last run</span>
-                <span className="font-medium">3 May 2026</span>
+                <span className="font-medium">{weeklyLastRunStr}</span>
               </div>
               <div className="flex justify-between text-xs py-2 border-t border-hairline">
                 <span className="text-muted-foreground">Recipients</span>
@@ -74,7 +104,7 @@ function ReportsPage() {
               <p className="text-xs text-muted-foreground mb-4">1st of month</p>
               <div className="flex justify-between text-xs py-2 border-t border-hairline">
                 <span className="text-muted-foreground">Last run</span>
-                <span className="font-medium">1 May 2026</span>
+                <span className="font-medium">{monthlyLastRunStr}</span>
               </div>
               <div className="flex justify-between text-xs py-2 border-t border-hairline">
                 <span className="text-muted-foreground">Format</span>
@@ -87,11 +117,11 @@ function ReportsPage() {
               <p className="text-xs text-muted-foreground mb-4">Daily 23:30</p>
               <div className="flex justify-between text-xs py-2 border-t border-hairline">
                 <span className="text-muted-foreground">Last run</span>
-                <span className="font-medium">5 May 2026</span>
+                <span className="font-medium">{dailyLastRunStr}</span>
               </div>
               <div className="flex justify-between text-xs py-2 border-t border-hairline">
                 <span className="text-muted-foreground">SKUs</span>
-                <span className="font-medium">8,412</span>
+                <span className="font-medium">{products.length} SKUs</span>
               </div>
             </div>
           </div>
