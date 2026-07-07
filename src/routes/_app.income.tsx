@@ -1,8 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ScaffoldPage } from "@/components/scaffold-page";
-import { useState, useEffect } from "react";
-import { useAuth } from "@/lib/auth-context";
-import { getTransactionsServer } from "@/lib/server-transactions";
+import { useBusinessData } from "@/lib/business-context";
 import { fmtINR } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/_app/income")({
@@ -19,38 +17,30 @@ export const Route = createFileRoute("/_app/income")({
 });
 
 function RouteComponent() {
-  const { user } = useAuth();
-  const [grossSales, setGrossSales] = useState(0);
-  const [discounts, setDiscounts] = useState(0);
+  const { transactions, activeDate } = useBusinessData();
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const payload = {
-          data: {
-            role: user?.role || "owner",
-            email: user?.email || "",
-          }
-        };
-        const transactions = await getTransactionsServer(payload);
-        let gross = 0;
-        let disc = 0;
-        transactions.forEach(t => {
-          if (t.status === "Completed") {
-            gross += t.subtotal;
-            disc += t.discount;
-          }
-        });
-        setGrossSales(gross);
-        setDiscounts(disc);
-      } catch (err) {
-        console.error("Failed to load income data");
-      }
-    };
-    if (user) {
-      loadData();
+  // Extract year and month from activeDate (e.g. "2026-05")
+  const activeYearMonth = activeDate.split("T")[0].slice(0, 7);
+  
+  // Format readable month name (e.g. "May 2026")
+  const formattedMonth = new Date(activeDate).toLocaleDateString("en-IN", {
+    month: "long",
+    year: "numeric",
+  });
+
+  // Filter completed transactions to the active month
+  const thisMonthTxns = transactions.filter(
+    (t) => t.date.split("T")[0].startsWith(activeYearMonth)
+  );
+
+  let grossSales = 0;
+  let discounts = 0;
+  thisMonthTxns.forEach((t) => {
+    if (t.status === "Completed") {
+      grossSales += t.subtotal;
+      discounts += t.discount;
     }
-  }, [user]);
+  });
 
   const netSales = grossSales - discounts;
 
@@ -61,7 +51,7 @@ function RouteComponent() {
       sections={[
         {
           title: "Sales Revenue",
-          desc: "This month (Real-time)",
+          desc: `${formattedMonth} (Real-time)`,
           rows: [
             { label: "Gross sales", v: fmtINR(grossSales, { compact: true }) },
             { label: "Discounts", v: "-" + fmtINR(discounts, { compact: true }) },
