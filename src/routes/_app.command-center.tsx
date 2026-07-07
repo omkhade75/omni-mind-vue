@@ -91,6 +91,7 @@ function CommandCenter() {
     scopedTransactions,
     transactions,
     activeDate,
+    timeRange,
   } = useBusinessData();
 
   const [liveKpis, setLiveKpis] = useState<KpiItem[]>([]);
@@ -114,7 +115,7 @@ function CommandCenter() {
   
   useEffect(() => {
     async function load() {
-      const res = await getCommandCenterServer({ data: { role: user?.role || "owner", email: user?.email || "", activeDate } });
+      const res = await getCommandCenterServer({ data: { role: user?.role || "owner", email: user?.email || "", activeDate, timeRange } });
       setLiveKpis([
         { key: "revenue", label: "Gross Revenue", value: res.grossRevenue, delta: 8.4 },
         { key: "profit", label: "Net Profit", value: res.netProfit, delta: 4.1 },
@@ -123,7 +124,7 @@ function CommandCenter() {
       ]);
     }
     load();
-  }, [activeDate, user]);
+  }, [activeDate, user, timeRange]);
 
   const [chartResolution, setChartResolution] = useState<"Hourly" | "Daily" | "Weekly" | "Monthly">(
     "Daily",

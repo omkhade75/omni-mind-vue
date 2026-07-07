@@ -3,27 +3,49 @@ import { prisma } from "./server/prisma";
 import { sendEodReportWhatsApp } from "./server-whatsapp";
 
 export const getCommandCenterServer = createServerFn({ method: "POST" })
-  .validator((data: { role: string; email: string; activeDate?: string }) => data)
+  .validator((data: { role: string; email: string; activeDate?: string; timeRange?: string }) => data)
   .handler(async ({ data }) => {
-    const date = data.activeDate ? new Date(data.activeDate) : new Date();
-    const dateStr = date.toISOString().split("T")[0];
+    const activeDate = data.activeDate ? new Date(data.activeDate) : new Date();
+    const timeRange = data.timeRange || "today";
 
-    // Fetch transactions for the date
+    let startDate = new Date(activeDate);
+    let endDate = new Date(activeDate);
+    endDate.setHours(23, 59, 59, 999);
+
+    if (timeRange === "today") {
+      startDate.setHours(0, 0, 0, 0);
+    } else if (timeRange === "yesterday") {
+      startDate.setDate(startDate.getDate() - 1);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setDate(endDate.getDate() - 1);
+      endDate.setHours(23, 59, 59, 999);
+    } else if (timeRange === "7d") {
+      startDate.setDate(startDate.getDate() - 7);
+      startDate.setHours(0, 0, 0, 0);
+    } else if (timeRange === "30d") {
+      startDate.setDate(startDate.getDate() - 30);
+      startDate.setHours(0, 0, 0, 0);
+    } else {
+      startDate.setDate(startDate.getDate() - 30);
+      startDate.setHours(0, 0, 0, 0);
+    }
+
+    // Fetch transactions for the date range
     const transactions = await prisma.transaction.findMany({
       where: {
         transactionDate: {
-          gte: new Date(`${dateStr}T00:00:00.000Z`),
-          lte: new Date(`${dateStr}T23:59:59.999Z`),
+          gte: startDate,
+          lte: endDate,
         },
       },
     });
 
-    // Fetch expenses for the date
+    // Fetch expenses for the date range
     const expenses = await prisma.expense.findMany({
       where: {
         date: {
-          gte: new Date(`${dateStr}T00:00:00.000Z`),
-          lte: new Date(`${dateStr}T23:59:59.999Z`),
+          gte: startDate,
+          lte: endDate,
         },
       },
     });
@@ -38,8 +60,8 @@ export const getCommandCenterServer = createServerFn({ method: "POST" })
     const activeAnomalies = await prisma.utilityReading.count({
       where: {
         readingDate: {
-          gte: new Date(`${dateStr}T00:00:00.000Z`),
-          lte: new Date(`${dateStr}T23:59:59.999Z`),
+          gte: startDate,
+          lte: endDate,
         },
         value: { gt: 1000 }, // Dummy anomaly logic
       }
