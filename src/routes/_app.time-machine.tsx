@@ -48,9 +48,9 @@ function TimeMachine() {
 
   const parsedDate = new Date(activeDate);
   const [month, setMonth] = useState(parsedDate.getMonth()); // Month (0-11)
-  const year = 2026;
+  const [year, setYear] = useState(parsedDate.getFullYear());
 
-  const cells = useMemo(() => getMonthDays(year, month), [month]);
+  const cells = useMemo(() => getMonthDays(year, month), [month, year]);
 
   const handleSelectDay = (day: number) => {
     const formatted = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -78,14 +78,30 @@ function TimeMachine() {
               <Button
                 size="icon"
                 variant="ghost"
-                onClick={() => setMonth((m) => Math.max(0, m - 1))}
+                onClick={() => {
+                  setMonth((m) => {
+                    if (m === 0) {
+                      setYear((y) => y - 1);
+                      return 11;
+                    }
+                    return m - 1;
+                  });
+                }}
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <Button
                 size="icon"
                 variant="ghost"
-                onClick={() => setMonth((m) => Math.min(11, m + 1))}
+                onClick={() => {
+                  setMonth((m) => {
+                    if (m === 11) {
+                      setYear((y) => y + 1);
+                      return 0;
+                    }
+                    return m + 1;
+                  });
+                }}
               >
                 <ArrowRight className="h-4 w-4" />
               </Button>

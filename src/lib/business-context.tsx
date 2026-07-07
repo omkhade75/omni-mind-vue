@@ -120,12 +120,20 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const openSupplier360 = (id: string | null) => setActiveSupplierId(id);
   const openRecommendation = (id: string | null) => setActiveRecId(id);
 
-  // Active Date defaults to 5 May 2026
+  // Active Date defaults to local today's date
   const [activeDate, setActiveDate] = useState(() => {
+    const getLocalTodayStr = () => {
+      const now = new Date();
+      const offset = now.getTimezoneOffset();
+      const localNow = new Date(now.getTime() - (offset * 60 * 1000));
+      return localNow.toISOString().split("T")[0];
+    };
+    const defaultToday = getLocalTodayStr();
+
     if (typeof window !== "undefined") {
-      return window.localStorage.getItem("omnimind_active_date") || "2026-05-05";
+      return window.localStorage.getItem("omnimind_active_date") || defaultToday;
     }
-    return "2026-05-05";
+    return defaultToday;
   });
 
   const [timeRange, setTimeRange] = useState<TimeRange>(() => {
