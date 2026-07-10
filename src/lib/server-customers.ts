@@ -18,6 +18,7 @@ export interface CustomerListItem {
   segment: string;
   churn: number;
   status: string;
+  lastVisit: string;
 }
 
 export interface Customer360Profile {
@@ -194,6 +195,9 @@ export const getCustomersServer = createServerFn({ method: "POST" })
       if (c.churnRisk === "High") churnPercent = 78;
       else if (c.churnRisk === "Medium") churnPercent = 42;
 
+      const sortedTx = [...completedTx].sort((txA, txB) => txB.transactionDate.getTime() - txA.transactionDate.getTime());
+      const lastVisitDate = sortedTx[0] ? sortedTx[0].transactionDate.toISOString().split("T")[0] : c.joinDate.toISOString().split("T")[0];
+
       return {
         id: c.id,
         customerCode: c.customerCode,
@@ -211,6 +215,7 @@ export const getCustomersServer = createServerFn({ method: "POST" })
         customerType: c.customerType,
         churn: churnPercent,
         status: c.status,
+        lastVisit: lastVisitDate,
       };
     });
 

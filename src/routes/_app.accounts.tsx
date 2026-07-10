@@ -70,8 +70,10 @@ function RouteComponent() {
   const loadData = async () => {
     try {
       const result = await getAccountsDataServer({
-        role: user?.role || "owner",
-        email: user?.email || ""
+        data: {
+          role: user?.role || "owner",
+          email: user?.email || ""
+        }
       });
       setData(result as any);
     } catch (e) {
@@ -235,7 +237,7 @@ function RouteComponent() {
     <div className="space-y-6">
       <PageHeader
         title="Accounts, Loans & Fixed Deposits"
-        description="Comprehensive treasury tracking of mall bank accounts, active FDs, outstanding debts, and customer/supplier ledger balances."
+        subtitle="Comprehensive treasury tracking of mall bank accounts, active FDs, outstanding debts, and customer/supplier ledger balances."
       />
 
       {/* KPI Section */}
@@ -277,7 +279,7 @@ function RouteComponent() {
         
         {/* Left Side: Receivables and Payables */}
         <div className="space-y-6">
-          <SectionCard title="Accounts Receivable (Money to Come)" icon={<Receipt className="h-5 w-5 text-emerald-500" />}>
+          <SectionCard title="Accounts Receivable (Money to Come)">
             {receivables.length === 0 ? (
               <div className="py-8 text-center text-zinc-500">
                 No pending customer payments receivable.
@@ -312,7 +314,7 @@ function RouteComponent() {
             )}
           </SectionCard>
 
-          <SectionCard title="Accounts Payable (Money to Settle)" icon={<CreditCard className="h-5 w-5 text-rose-500" />}>
+          <SectionCard title="Accounts Payable (Money to Settle)">
             {payables.length === 0 ? (
               <div className="py-8 text-center text-zinc-500">
                 No pending supplier invoice payments.
@@ -363,8 +365,7 @@ function RouteComponent() {
         <div className="space-y-6">
           <SectionCard
             title="Treasury Fixed Deposits (GL Asset 1400)"
-            icon={<Landmark className="h-5 w-5 text-indigo-500" />}
-            action={
+            actions={
               <Button size="sm" variant="outline" className="h-7 text-xs flex items-center gap-1" onClick={() => setShowFDModal(true)}>
                 <Plus className="h-3.5 w-3.5" /> Book FD
               </Button>
@@ -407,8 +408,7 @@ function RouteComponent() {
 
           <SectionCard
             title="Corporate Loans & Credit Lines"
-            icon={<Coins className="h-5 w-5 text-amber-500" />}
-            action={
+            actions={
               <Button size="sm" variant="outline" className="h-7 text-xs flex items-center gap-1" onClick={() => setShowLoanModal(true)}>
                 <Plus className="h-3.5 w-3.5" /> Acquire Loan
               </Button>

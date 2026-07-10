@@ -248,7 +248,7 @@ function RouteComponent() {
     <div className="space-y-6">
       <PageHeader
         title="Consolidated Income Dashboard"
-        description="Comprehensive real-time tracking of mall revenue across retail points of sale, sub-lease tenants, parking, and advertising operations."
+        subtitle="Comprehensive real-time tracking of mall revenue across retail points of sale, sub-lease tenants, parking, and advertising operations."
       />
 
       {/* KPI Section */}
@@ -284,7 +284,7 @@ function RouteComponent() {
         
         {/* Left: Monthly Trend Area Chart */}
         <div className="lg:col-span-2">
-          <SectionCard title={`Daily Revenue Trend — ${formattedMonth}`} icon={<TrendingUp className="h-5 w-5 text-indigo-500" />}>
+          <SectionCard title={`Daily Revenue Trend — ${formattedMonth}`}>
             <div className="h-80 w-full pt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={dailyTrendData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
@@ -301,11 +301,11 @@ function RouteComponent() {
                     fontSize={11}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(val) => `₹${val >= 1000 ? (val / 1000).toFixed(0) + "k" : val}`}
+                    tickFormatter={(val: number) => `₹${val >= 1000 ? (val / 1000).toFixed(0) + "k" : val}`}
                   />
                   <Tooltip
-                    formatter={(value) => [fmtINR(Number(value)), "Inflow"]}
-                    labelFormatter={(label) => `Day ${label} of Month`}
+                    formatter={(value: any) => [fmtINR(Number(value)), "Inflow"]}
+                    labelFormatter={(label: any) => `Day ${label} of Month`}
                     contentStyle={{ borderRadius: "8px", borderColor: "#e4e4e7" }}
                   />
                   <Area
@@ -323,7 +323,7 @@ function RouteComponent() {
         </div>
 
         {/* Right: Revenue Stream Allocation Donut Chart */}
-        <SectionCard title="Revenue Stream Allocation" icon={<Layers className="h-5 w-5 text-pink-500" />}>
+        <SectionCard title="Revenue Stream Allocation">
           <div className="h-64 w-full flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -340,7 +340,7 @@ function RouteComponent() {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value) => fmtINR(Number(value))} />
+                <Tooltip formatter={(value: any) => fmtINR(Number(value))} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -364,8 +364,7 @@ function RouteComponent() {
       {/* Ledger of Incoming Payments Log */}
       <SectionCard
         title="Ledger of Incoming Payments"
-        icon={<FileText className="h-5 w-5 text-emerald-500" />}
-        action={
+        actions={
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-400" />

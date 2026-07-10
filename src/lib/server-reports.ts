@@ -38,7 +38,7 @@ export const getPaymentReportsServer = createServerFn({ method: "POST" })
     const accountsReceivable = transactions.map(t => ({
       id: t.id,
       transactionNumber: t.transactionNumber,
-      customerName: t.customer?.name || "Walk-in Customer",
+      customerName: t.customer ? `${t.customer.firstName} ${t.customer.lastName}`.trim() : "Walk-in Customer",
       amountDue: Number(t.totalAmount),
       date: t.transactionDate.toISOString(),
       status: t.paymentStatus

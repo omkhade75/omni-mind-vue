@@ -171,7 +171,7 @@ function MarketIntelligencePage() {
     <div className="space-y-6">
       <PageHeader
         title="Market Intelligence & Corporate Investments"
-        description="Monitor macro-economic commodities and deploy mall treasury reserves in high-yield assets."
+        subtitle="Monitor macro-economic commodities and deploy mall treasury reserves in high-yield assets."
       />
 
       {/* KPI Cards */}
@@ -199,7 +199,7 @@ function MarketIntelligencePage() {
       {/* Live Commodity Board */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <SectionCard title="Macro Market Tickers" icon={<Globe className="h-5 w-5 text-indigo-500" />}>
+          <SectionCard title="Macro Market Tickers">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
               {COMMODITIES.map((c) => (
                 <div
@@ -252,7 +252,7 @@ function MarketIntelligencePage() {
                   <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-100" />
                   <XAxis dataKey="day" className="text-xs text-muted-foreground" />
                   <YAxis className="text-xs text-muted-foreground" domain={["auto", "auto"]} />
-                  <Tooltip formatter={(value) => [fmtINR(Number(value)), activeAsset.symbol]} />
+                  <Tooltip formatter={(value: any) => [fmtINR(Number(value)), activeAsset.symbol]} />
                   <Area
                     type="monotone"
                     dataKey={activeAsset.symbol}
@@ -269,7 +269,7 @@ function MarketIntelligencePage() {
 
         {/* Investment Action Form */}
         <div>
-          <SectionCard title="Deploy Treasury Reserves" icon={<Landmark className="h-5 w-5 text-indigo-500" />}>
+          <SectionCard title="Deploy Treasury Reserves">
             <form onSubmit={handleInvest} className="space-y-4">
               <div className="space-y-1.5">
                 <Label>Select Asset</Label>

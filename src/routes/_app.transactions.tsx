@@ -132,13 +132,13 @@ function Transactions() {
         <KpiCard
           label="Total Transactions"
           value={transactions.length}
-          format="number"
+          format="num"
           icon={<ShoppingCart className="h-5 w-5 text-indigo-500" />}
         />
         <KpiCard
           label="B2B Transactions"
           value={b2bTransactions.length}
-          format="number"
+          format="num"
           icon={<Building2 className="h-5 w-5 text-emerald-500" />}
         />
         <KpiCard
@@ -164,7 +164,6 @@ function Transactions() {
           {/* B2B Section */}
           <SectionCard
             title={`B2B Transactions — Business Customers (${b2bTransactions.length})`}
-            icon={<Building2 className="h-5 w-5 text-emerald-500" />}
           >
             <TransactionTable data={b2bTransactions} emptyMsg="No B2B transactions recorded." />
           </SectionCard>
@@ -172,7 +171,6 @@ function Transactions() {
           {/* B2C Registered Section */}
           <SectionCard
             title={`B2C Transactions — Registered Customers (${b2cRegisteredTransactions.length})`}
-            icon={<ShoppingCart className="h-5 w-5 text-indigo-500" />}
           >
             <TransactionTable data={b2cRegisteredTransactions} emptyMsg="No registered B2C transactions recorded." />
           </SectionCard>
@@ -180,7 +178,6 @@ function Transactions() {
           {/* B2C Walk-in Section */}
           <SectionCard
             title={`B2C Transactions — Walk-in Customers (${b2cWalkinTransactions.length})`}
-            icon={<ShoppingCart className="h-5 w-5 text-pink-500" />}
           >
             <TransactionTable data={b2cWalkinTransactions} emptyMsg="No walk-in transactions recorded." />
           </SectionCard>

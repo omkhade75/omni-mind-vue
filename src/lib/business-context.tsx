@@ -192,7 +192,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
           sold: p.sold,
           revenue: p.revenue,
           margin: p.margin,
-          status: p.status,
+          status: (p.stock <= p.reorder ? (p.stock <= p.reorder / 4 ? "critical" : "low") : "ok") as "ok" | "low" | "critical" | "expiring",
         }));
 
         // Map the PostgreSQL transactions to mock Transactions
@@ -200,7 +200,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
           id: t.id,
           date: t.date,
           time: t.time,
-          customerName: t.customerName,
+          customerName: t.customerName || "Walk-in Customer",
           customerId: t.customerId || "walkin",
           items: t.items.map(it => ({
             productId: it.productId,
@@ -245,6 +245,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
           lead: s.lead,
           risk: s.risk as any,
           score: s.score,
+          phone: s.phone,
         }));
 
         // Map the PostgreSQL expenses to mock Expenses

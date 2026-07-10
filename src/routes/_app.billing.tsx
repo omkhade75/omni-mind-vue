@@ -90,7 +90,7 @@ function RouteComponent() {
     if (!name.trim()) return;
     try {
       setDetectingCategory(true);
-      const res = await autoCategorizeProductServer({ name, brand });
+      const res = await autoCategorizeProductServer({ data: { name, brand } });
       if (res) {
         setCustomProdCatId(res.categoryId);
         setCustomProdCatName(res.categoryName);
@@ -190,34 +190,46 @@ function RouteComponent() {
         const barcode = "BAR-CUST-" + Date.now().toString().slice(-5);
         
         await addProductServer({
-          name: customProdName,
-          sku,
-          barcode,
-          categoryId: customProdCatId || "cat-packagedfoods",
-          departmentId: customProdDeptId || formDepartmentId || "dept-grocery",
-          brand: customProdBrand || "Generic",
-          sellingPrice: Number(customProdPrice),
-          costPrice: Number(customProdCost),
-          reorderLevel: 5,
-          initialStock: Number(customProdStock) || 10,
-          locationId: "loc-retail",
-          role: user?.role || "owner",
-          emailUser: user?.email || "",
+          data: {
+            name: customProdName,
+            sku,
+            barcode,
+            categoryId: customProdCatId || "cat-packagedfoods",
+            departmentId: customProdDeptId || formDepartmentId || "dept-grocery",
+            brand: customProdBrand || "Generic",
+            sellingPrice: Number(customProdPrice),
+            costPrice: Number(customProdCost),
+            reorderLevel: 5,
+            initialStock: Number(customProdStock) || 10,
+            locationId: "loc-retail",
+            role: user?.role || "owner",
+            emailUser: user?.email || "",
+          }
         });
 
         // Add newly registered product locally
         const newProd: ProductListItem = {
           id: sku,
           sku,
-          name: customProdName,
+          barcode,
+          description: null,
           brand: customProdBrand || "Generic",
-          price: Number(customProdPrice),
-          reorderLevel: 5,
-          status: "Active",
-          stock: Number(customProdStock) || 10,
+          name: customProdName,
           category: customProdCatName || "Packaged Foods",
+          categoryId: customProdCatId || "cat-packagedfoods",
           dept: departments.find(d => d.id === (customProdDeptId || formDepartmentId))?.name || "Grocery",
+          departmentId: customProdDeptId || formDepartmentId || "dept-grocery",
+          price: Number(customProdPrice),
+          cost: Number(customProdCost),
+          margin: Math.round(((Number(customProdPrice) - Number(customProdCost)) / Number(customProdPrice)) * 100) || 0,
+          stock: Number(customProdStock) || 10,
+          reorder: 5,
+          status: "Active",
+          unit: "units",
+          expiry: null,
           supplier: "GrandSquare Wholesalers",
+          sold: 0,
+          revenue: 0,
         };
         
         setProducts((prev) => [...prev, newProd]);
@@ -362,7 +374,7 @@ function RouteComponent() {
       <div className="space-y-6 max-w-3xl mx-auto">
         <PageHeader
           title="Checkout Complete"
-          description="Invoice generated successfully. Visit counts and customer spend have been incremented."
+          subtitle="Invoice generated successfully. Visit counts and customer spend have been incremented."
         />
         
         <div className="bg-white border border-zinc-200 shadow-sm rounded-xl overflow-hidden p-8">
@@ -457,13 +469,13 @@ function RouteComponent() {
     <div className="space-y-6">
       <PageHeader
         title="Point of Sale & Billing"
-        description="Process transactions, print GST invoices, and automatically credit customer visits."
+        subtitle="Process transactions, print GST invoices, and automatically credit customer visits."
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* LEFT PANEL: Cart & Actions */}
         <div className="lg:col-span-2 space-y-6">
-          <SectionCard title="Add Products" icon={<ShoppingCart className="h-5 w-5 text-indigo-500" />}>
+          <SectionCard title="Add Products">
             <div className="space-y-4">
               <div className="flex flex-wrap items-end gap-3">
                 <div className="flex-1 min-w-[200px]">
@@ -643,7 +655,7 @@ function RouteComponent() {
 
         {/* RIGHT PANEL: Checkout Summary */}
         <div>
-          <SectionCard title="Checkout & Payment" icon={<Calculator className="h-5 w-5 text-indigo-500" />}>
+          <SectionCard title="Checkout & Payment">
             <form onSubmit={handleCheckout} className="space-y-5">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -807,29 +819,39 @@ function QuickRegisterCustomerDialog({
       setSaving(true);
       const emailValue = email.trim() || `${first.toLowerCase()}.${last.toLowerCase()}@example.com`;
       const res = await addCustomerServer({
-        firstName: first,
-        lastName: last,
-        email: emailValue,
-        phone,
-        loyaltyTier: "Bronze",
-        preferredDepartmentId: dept || null,
-        notes: "Quick registered via POS panel.",
-        role: user?.role || "owner",
-        emailUser: user?.email || "",
+        data: {
+          firstName: first,
+          lastName: last,
+          email: emailValue,
+          phone,
+          loyaltyTier: "Bronze",
+          preferredDepartmentId: dept || null,
+          notes: "Quick registered via POS panel.",
+          role: user?.role || "owner",
+          emailUser: user?.email || "",
+        }
       });
 
       toast.success(`Customer "${first} ${last}" registered successfully!`);
       
       onSuccess({
         id: (res as any).id || "CUST-" + Date.now().toString().slice(-5),
-        name: `${first} ${last}`,
+        customerCode: (res as any).customerCode || "CUST-" + Date.now().toString().slice(-5),
+        name: `${first} ${last}`.trim(),
+        firstName: first,
+        lastName: last,
         email: emailValue,
         phone,
-        joinedDate: new Date().toISOString(),
-        loyaltyTier: "Bronze",
-        visitCount: 0,
-        spendAmount: 0,
-        churnRisk: "Low",
+        joined: new Date().toISOString().split("T")[0],
+        visits: 0,
+        spend: 0,
+        aov: 0,
+        favDept: departments.find(d => d.id === dept)?.name || "Fashion",
+        segment: "Bronze",
+        customerType: "B2C",
+        churn: 12,
+        status: "Active",
+        lastVisit: new Date().toISOString().split("T")[0],
       });
 
       // Clear states

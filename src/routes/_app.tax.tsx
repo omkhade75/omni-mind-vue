@@ -131,10 +131,10 @@ function RouteComponent() {
 
   // 2. Input Tax Credit (from completed purchase orders)
   const thisMonthPOs = purchaseOrders.filter(
-    (po) => po.orderDate.split("T")[0].startsWith(activeYearMonth) && po.status === "Received"
+    (po) => po.date.split("T")[0].startsWith(activeYearMonth) && po.status === "Received"
   );
   // Estimate ITC as 18% of PO total amount if tax field is not explicit
-  const inputTaxCredit = thisMonthPOs.reduce((sum, po) => sum + (Number(po.totalAmount) * 0.18), 0);
+  const inputTaxCredit = thisMonthPOs.reduce((sum, po) => sum + (Number(po.totalCost) * 0.18), 0);
 
   // Net GST Payable
   const gstPayable = Math.max(0, gstCollected - inputTaxCredit);
@@ -187,7 +187,7 @@ function RouteComponent() {
     <div className="space-y-6">
       <PageHeader
         title="Tax & Compliance Control"
-        description="Monitor corporate GST liabilities, Input Tax Credits (ITC), provisional income tax reserves, and challan filing logs."
+        subtitle="Monitor corporate GST liabilities, Input Tax Credits (ITC), provisional income tax reserves, and challan filing logs."
       />
 
       {/* Advisory Banner */}
@@ -230,7 +230,7 @@ function RouteComponent() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* GST Control Card */}
-        <SectionCard title="GST Breakdown (Current Quarter)" icon={<ShieldCheck className="h-5 w-5 text-emerald-500" />}>
+        <SectionCard title="GST Breakdown (Current Quarter)">
           <div className="space-y-4">
             <div className="flex justify-between items-center pb-2 border-b">
               <span className="text-sm text-zinc-500">GST Collected (Sales Outflow):</span>
@@ -248,7 +248,7 @@ function RouteComponent() {
         </SectionCard>
 
         {/* Corporate Direct Tax Provision */}
-        <SectionCard title="Direct Corporate Tax Provision" icon={<FileText className="h-5 w-5 text-indigo-500" />}>
+        <SectionCard title="Direct Corporate Tax Provision">
           <div className="space-y-4">
             <div className="flex justify-between items-center pb-2 border-b">
               <span className="text-sm text-zinc-500">Income Tax Provision (Provisional):</span>
@@ -268,7 +268,7 @@ function RouteComponent() {
         </SectionCard>
 
         {/* Municipal & Compliance Licenses */}
-        <SectionCard title="Local Taxes & Signage Licensing" icon={<Landmark className="h-5 w-5 text-pink-500" />}>
+        <SectionCard title="Local Taxes & Signage Licensing">
           <div className="space-y-4">
             <div className="flex justify-between items-center pb-2 border-b">
               <span className="text-sm text-zinc-500">PCMC Property Tax (Annual):</span>
@@ -292,7 +292,7 @@ function RouteComponent() {
         
         {/* GST Trend Chart */}
         <div className="lg:col-span-2">
-          <SectionCard title="GST Liability Progression Chart" icon={<TrendingUp className="h-5 w-5 text-indigo-500" />}>
+          <SectionCard title="GST Liability Progression Chart">
             <div className="h-72 w-full pt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={gstTrendData}>
@@ -303,9 +303,9 @@ function RouteComponent() {
                     fontSize={11}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(val) => `₹${val >= 1000 ? (val / 1000).toFixed(0) + "k" : val}`}
+                    tickFormatter={(val: number) => `₹${val >= 1000 ? (val / 1000).toFixed(0) + "k" : val}`}
                   />
-                  <Tooltip formatter={(val) => fmtINR(Number(val))} />
+                  <Tooltip formatter={(val: any) => fmtINR(Number(val))} />
                   <Area type="monotone" dataKey="Collected" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.1} strokeWidth={2} />
                   <Area type="monotone" dataKey="Credit" stroke="#10b981" fill="#10b981" fillOpacity={0.05} strokeWidth={1.5} />
                   <Area type="monotone" dataKey="Net" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.1} strokeWidth={2} />
@@ -316,7 +316,7 @@ function RouteComponent() {
         </div>
 
         {/* Tax distribution */}
-        <SectionCard title="Tax Class Breakdown" icon={<Layers className="h-5 w-5 text-pink-500" />}>
+        <SectionCard title="Tax Class Breakdown">
           <div className="h-56 w-full flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -333,7 +333,7 @@ function RouteComponent() {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value) => fmtINR(Number(value))} />
+                <Tooltip formatter={(value: any) => fmtINR(Number(value))} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -355,8 +355,7 @@ function RouteComponent() {
       {/* Challan Filing history */}
       <SectionCard
         title="Tax Challan Filings & Payments Log"
-        icon={<FileText className="h-5 w-5 text-indigo-500" />}
-        action={
+        actions={
           <Button
             size="sm"
             className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold flex items-center gap-1.5 h-9 text-xs"

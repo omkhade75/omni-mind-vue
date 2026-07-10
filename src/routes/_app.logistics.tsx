@@ -69,12 +69,14 @@ function LogisticsPage() {
     try {
       setScheduling(true);
       await createLogisticsDispatchServer({
-        orderNumber,
-        customerName,
-        destination,
-        driverName,
-        vehicleNumber,
-        itemsCount: Number(itemsCount) || 1,
+        data: {
+          orderNumber,
+          customerName,
+          destination,
+          driverName,
+          vehicleNumber,
+          itemsCount: Number(itemsCount) || 1,
+        }
       });
 
       toast.success("Delivery Dispatched!", {
@@ -98,9 +100,11 @@ function LogisticsPage() {
     try {
       setUpdatingId(id);
       await updateLogisticsStatusServer({
-        dispatchId: id,
-        status: newStatus,
-        delayReason: newStatus === "Delayed" ? delayReason : null,
+        data: {
+          dispatchId: id,
+          status: newStatus,
+          delayReason: newStatus === "Delayed" ? delayReason : null,
+        }
       });
 
       toast.success("Delivery Status Updated");
@@ -132,7 +136,7 @@ function LogisticsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Logistics & Dispatch Operations"
-        description="Monitor outgoing customer deliveries, manage vehicle dispatch routes, and mitigate delay risks."
+        subtitle="Monitor outgoing customer deliveries, manage vehicle dispatch routes, and mitigate delay risks."
       />
 
       {/* KPI Cards */}
@@ -140,25 +144,25 @@ function LogisticsPage() {
         <KpiCard
           label="Total Scheduled Shipments"
           value={totalCount}
-          format="number"
+          format="num"
           icon={<Truck className="h-5 w-5 text-indigo-500" />}
         />
         <KpiCard
           label="In Transit / Active"
           value={inTransitCount}
-          format="number"
+          format="num"
           icon={<Navigation className="h-5 w-5 text-blue-500" />}
         />
         <KpiCard
           label="Successfully Delivered"
           value={deliveredCount}
-          format="number"
+          format="num"
           icon={<CheckCircle className="h-5 w-5 text-emerald-500" />}
         />
         <KpiCard
           label="Active Logistics Anomalies"
           value={delayedCount}
-          format="number"
+          format="num"
           icon={<ShieldAlert className="h-5 w-5 text-rose-500" />}
         />
       </div>
@@ -166,7 +170,7 @@ function LogisticsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Active Dispatches Board */}
         <div className="lg:col-span-2 space-y-6">
-          <SectionCard title="Active Logistics Fleet Feed" icon={<Truck className="h-5 w-5 text-indigo-500" />}>
+          <SectionCard title="Active Logistics Fleet Feed">
             {dispatches.length === 0 ? (
               <div className="text-center py-12 text-zinc-500">
                 No active delivery dispatches found. Use the scheduler on the right to dispatch items.
@@ -315,7 +319,7 @@ function LogisticsPage() {
 
         {/* Schedule/Dispatch Form */}
         <div>
-          <SectionCard title="Schedule New Dispatch" icon={<Truck className="h-5 w-5 text-indigo-500" />}>
+          <SectionCard title="Schedule New Dispatch">
             <form onSubmit={handleCreateDispatch} className="space-y-4">
               <div className="space-y-1.5">
                 <Label>Invoice/Order Reference #</Label>

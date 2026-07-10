@@ -47,7 +47,7 @@ function SettingsPage() {
   const [loadingWhatsApp, setLoadingWhatsApp] = useState(true);
   const [savingWhatsApp, setSavingWhatsApp] = useState(false);
 
-  const canEdit = user?.role === "OWNER" || user?.role === "ADMIN" || user?.role === "owner" || user?.role === "admin";
+  const canEdit = user?.role === "owner" || user?.role === "admin";
 
   useEffect(() => {
     getVapiConfigServer()
@@ -94,11 +94,13 @@ function SettingsPage() {
     try {
       setIsSaving(true);
       await updateMallSettingsServer({
-        id: mall.id,
-        name: mall.name,
-        location: mall.location,
-        currency: mall.currency,
-        timezone: mall.timezone,
+        data: {
+          id: mall.id,
+          name: mall.name,
+          location: mall.location,
+          currency: mall.currency,
+          timezone: mall.timezone,
+        }
       });
       toast.success("Settings updated successfully", {
         description: "Your workspace settings have been saved to the database.",

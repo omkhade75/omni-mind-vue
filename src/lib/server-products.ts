@@ -20,6 +20,10 @@ export interface ProductListItem {
   reorder: number;
   status: string;
   unit: string;
+  expiry: string | null;
+  supplier: string;
+  sold: number;
+  revenue: number;
 }
 
 export interface Product360Details {
@@ -96,7 +100,22 @@ export const getProductsServer = createServerFn({ method: "POST" })
             location: true,
           },
         },
+        batches: {
+          where: { quantityRemaining: { gt: 0 } },
+          orderBy: { expiryDate: "asc" },
+          take: 1,
+        },
+        transactionItems: {
+          select: {
+            quantity: true,
+            lineTotal: true,
+          },
+        },
       },
+    });
+
+    const supplierProducts = await prisma.supplierProduct.findMany({
+      include: { supplier: true },
     });
 
     const depts = await prisma.department.findMany();
@@ -107,6 +126,14 @@ export const getProductsServer = createServerFn({ method: "POST" })
       const costPrice = Number(p.costPrice);
       const margin = sellingPrice > 0 ? Math.round(((sellingPrice - costPrice) / sellingPrice) * 100) : 0;
       const deptObj = depts.find((d) => d.id === p.departmentId);
+
+      const supplierInfo = supplierProducts.find((sp) => sp.productId === p.id);
+      const supplierName = supplierInfo ? supplierInfo.supplier.name : "Default Supplier";
+
+      const expiry = p.batches[0]?.expiryDate ? p.batches[0].expiryDate.toISOString().split("T")[0] : null;
+
+      const sold = p.transactionItems.reduce((sum, item) => sum + item.quantity, 0);
+      const revenue = p.transactionItems.reduce((sum, item) => sum + Number(item.lineTotal), 0);
 
       return {
         id: p.id,
@@ -126,6 +153,10 @@ export const getProductsServer = createServerFn({ method: "POST" })
         reorder: p.reorderLevel,
         status: p.status,
         unit: p.unit,
+        expiry,
+        supplier: supplierName,
+        sold,
+        revenue,
       };
     });
 

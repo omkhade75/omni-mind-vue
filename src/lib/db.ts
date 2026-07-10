@@ -44,6 +44,7 @@ export interface Supplier {
   lead: number; // days
   risk: "Low" | "Medium" | "High";
   score: number;
+  phone?: string;
 }
 
 export interface Customer {
@@ -1229,7 +1230,7 @@ export function seedDatabase(): Schema {
 }
 
 class SeededDatabase {
-  private schema: Schema;
+  public schema: Schema;
 
   constructor() {
     this.schema = this.loadFromStorage();
@@ -1251,7 +1252,7 @@ class SeededDatabase {
     return seedData;
   }
 
-  private save(schema: Schema) {
+  public save(schema: Schema) {
     this.schema = schema;
     if (typeof window !== "undefined") {
       window.localStorage.setItem("omnimind_db", JSON.stringify(schema));

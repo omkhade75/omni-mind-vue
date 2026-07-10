@@ -336,7 +336,7 @@ export const createPurchaseOrder = createServerFn({ method: "POST" })
         createdBy: payload.createdBy,
         notes: payload.notes,
         items: {
-          create: payload.items.map(item => ({
+          create: payload.items.map((item: any) => ({
             productId: item.productId,
             quantity: item.quantity,
             receivedQuantity: 0,
@@ -490,7 +490,7 @@ export const receivePurchaseOrderGoodsServer = createServerFn({ method: "POST" }
           purchaseOrderId: po.id,
           receivedBy: user.id,
           items: {
-            create: payload.itemsToReceive.map(i => ({
+            create: payload.itemsToReceive.map((i: any) => ({
               productId: i.productId,
               quantity: i.quantity
             }))
