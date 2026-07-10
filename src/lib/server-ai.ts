@@ -426,6 +426,101 @@ async function executePrismaFallback(query: string, intent: string): Promise<AIR
     };
   }
 
+  // C. Top-selling Product Fallback Intent
+  if (q.includes("selling") || q.includes("sold") || q.includes("popular") || q.includes("max sale") || q.includes("best seller")) {
+    const items = await prisma.transactionItem.findMany({
+      include: {
+        product: {
+          include: {
+            stockItems: true,
+            supplierProducts: {
+              include: {
+                supplier: true
+              }
+            }
+          }
+        },
+        transaction: true
+      }
+    });
+
+    if (items.length === 0) {
+      return {
+        answer: "There are currently no sales recorded in the database, so we cannot identify the top-selling product.",
+        summary: "No sales recorded.",
+        evidence: [],
+        reasoning: ["Queried transaction item history and found 0 entries."],
+        recommendedActions: [],
+        risks: [],
+        confidence: 0.9,
+      };
+    }
+
+    // Group items by product
+    const salesMap = new Map<string, { product: any; totalQty: number; dates: Set<string> }>();
+    for (const item of items) {
+      if (!item.product) continue;
+      const existing = salesMap.get(item.productId) || { product: item.product, totalQty: 0, dates: new Set<string>() };
+      existing.totalQty += item.quantity;
+      if (item.transaction?.transactionDate) {
+        existing.dates.add(item.transaction.transactionDate.toISOString().split("T")[0]);
+      }
+      salesMap.set(item.productId, existing);
+    }
+
+    const sorted = Array.from(salesMap.values()).sort((a, b) => b.totalQty - a.totalQty);
+    const top = sorted[0];
+
+    const totalStock = top.product.stockItems.reduce((sum: number, s: any) => sum + s.availableQty, 0);
+    const isLow = totalStock < top.product.reorderLevel;
+
+    let answer = `The top-selling product is "${top.product.name}" (${top.product.brand}). A total of **${top.totalQty} units** have been sold. Sales occurred on these days: ${Array.from(top.dates).join(", ")}. Remaining available stock is **${totalStock} units** (Reorder threshold: ${top.product.reorderLevel}).`;
+    
+    const recommendedActions = [];
+    if (isLow) {
+      answer += ` Since the stock level (${totalStock}) is below the reorder level (${top.product.reorderLevel}), we recommend placing an immediate restock order.`;
+      
+      const supplier = top.product.supplierProducts?.[0]?.supplier;
+      const supplierId = supplier ? supplier.id : "SUP-001";
+      const supplierName = supplier ? supplier.name : "GrandSquare Wholesalers";
+      const unitCost = Number(top.product.costPrice) || 50;
+
+      const poPayload = {
+        productId: top.product.id,
+        productName: top.product.name,
+        supplierId,
+        supplierName,
+        quantity: top.product.reorderLevel * 2,
+        unitCost,
+      };
+
+      recommendedActions.push({
+        title: `Order Now: Restock ${top.product.name}`,
+        description: `Generate draft PO for ${top.product.reorderLevel * 2} units of ${top.product.name} from ${supplierName}.`,
+        priority: "high",
+        actionType: "CREATE_PO",
+        entityId: JSON.stringify(poPayload),
+      });
+    }
+
+    return {
+      answer,
+      summary: `Top seller: ${top.product.name} (${top.totalQty} sold). Stock: ${totalStock}.`,
+      evidence: [
+        { label: "Top Product", value: top.product.name },
+        { label: "Quantity Sold", value: `${top.totalQty} units` },
+        { label: "Current Stock", value: `${totalStock} units` }
+      ],
+      reasoning: [
+        "Aggregated transaction ledger entries grouped by product ID.",
+        "Checked available stock totals across all inventory locations against reorder triggers."
+      ],
+      recommendedActions,
+      risks: isLow ? [{ title: "Stockout & lost revenue risk", severity: "high" }] : [],
+      confidence: 1.0,
+    };
+  }
+
   // 1. Payment Intent
   if (intent === "payments" || q.includes("pay") || q.includes("owe") || q.includes("pending")) {
     const suppliers = await prisma.supplier.findMany({
