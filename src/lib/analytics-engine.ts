@@ -114,7 +114,7 @@ export function compareDates(dateA: string, dateB: string, roleScope?: string) {
 
 export function getReorderCandidates(date: string, roleScope?: string): Product[] {
   const products = scopeFilter(db.getProducts(), roleScope);
-  return products.filter((p) => p.stock > 0 && p.stock <= p.reorder);
+  return products.filter((p) => p.stock >= 0 && p.stock <= p.reorder);
 }
 
 export function getExpiryRisks(date: string, daysAhead: number, roleScope?: string) {

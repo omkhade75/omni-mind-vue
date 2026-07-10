@@ -86,6 +86,11 @@ export function buildAIContext(query: string, activeDate: string, roleScope?: st
     q.includes("stockout") ||
     q.includes("low stock") ||
     q.includes("out of stock") ||
+    q.includes("outofstock") ||
+    q.includes("out-of-stock") ||
+    q.includes("outoff stock") ||
+    q.includes("outoffstock") ||
+    q.includes("outoff-stock") ||
     q.includes("outof stock") ||
     q.includes("outof stck") ||
     q.includes("stcks") ||
@@ -277,6 +282,10 @@ export function localQueryFallback(
   // 1. Reorder Intent
   if (ctx.intent === "reorder") {
     const candidates = getReorderCandidates(ctx.resolvedDate, roleScope);
+    const outOfStock = candidates.filter((p) => p.stock === 0);
+    const lowStock = candidates.filter((p) => p.stock > 0);
+    const isOutofStockQuery = q.includes("out of") || q.includes("outof") || q.includes("outoff") || q.includes("empty") || q.includes("shortage") || q.includes("zero") || q.includes("stockout");
+
     const amul = candidates.find((p) => p.name.includes("Amul"));
     const lakme = candidates.find((p) => p.name.includes("Lakmé"));
 
@@ -310,9 +319,22 @@ export function localQueryFallback(
       });
     }
 
+    let answer = "";
+    if (isOutofStockQuery) {
+      if (outOfStock.length > 0) {
+        answer = `There are currently ${outOfStock.length} completely out-of-stock products: ${outOfStock.map((p) => `${p.name} (${p.id})`).join(", ")}. Immediate restock is recommended.`;
+      } else {
+        answer = `There are currently 0 completely out-of-stock products in the system. However, there are ${lowStock.length} low-stock products currently below their reorder levels: ${lowStock.slice(0, 3).map((p) => `${p.name} (${p.stock} units)`).join(", ")}.`;
+      }
+    } else {
+      answer = `There are currently ${candidates.length} low-stock products requiring attention. The most critical item is ${amul ? "Amul Taaza Milk 1L (128 units on hand, reorder trigger 200)" : "Lakmé Foundation (4 units left)"}.`;
+    }
+
     return {
-      answer: `There are currently ${candidates.length} low-stock products in the system. The most critical item is ${amul ? "Amul Taaza Milk 1L (128 units on hand, reorder trigger 200)" : "Lakmé Foundation (4 units left)"}.`,
-      summary: `${candidates.length} SKUs require reordering to prevent category sales disruption.`,
+      answer,
+      summary: isOutofStockQuery
+        ? `${outOfStock.length} products are out of stock, ${lowStock.length} are low stock.`
+        : `${candidates.length} SKUs require reordering to prevent category sales disruption.`,
       evidence: evidence.slice(0, 4),
       reasoning: [
         "Customer footfall count rose in the current period, accelerating stock velocity.",
