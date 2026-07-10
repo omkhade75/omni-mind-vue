@@ -8,6 +8,7 @@ export interface TransactionListItem {
   transactionNumber: string;
   customerName: string | null;
   customerId: string | null;
+  customerType: string | null;
   dept: string;
   departmentId: string;
   date: string;
@@ -379,6 +380,7 @@ export const getTransactionsServer = createServerFn({ method: "POST" })
         transactionNumber: t.transactionNumber,
         customerName: t.customer ? `${t.customer.firstName} ${t.customer.lastName}`.trim() : "Walk-in Customer",
         customerId: t.customerId,
+        customerType: t.customer?.customerType || null,
         dept: deptObj ? deptObj.name : "Others",
         departmentId: t.departmentId,
         date: t.transactionDate.toISOString().split("T")[0],

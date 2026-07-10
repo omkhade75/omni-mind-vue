@@ -47,12 +47,14 @@ function Transactions() {
     loadTransactions();
   }, [user]);
 
-  // Split into B2B (registered customer) and B2C (walk-in)
-  const b2bTransactions = transactions.filter(t => t.customerId);
-  const b2cTransactions = transactions.filter(t => !t.customerId);
+  // Split into B2B (business customer), B2C (registered), and Walk-in (unregistered)
+  const b2bTransactions = transactions.filter(t => t.customerType === "B2B");
+  const b2cRegisteredTransactions = transactions.filter(t => t.customerId && t.customerType !== "B2B");
+  const b2cWalkinTransactions = transactions.filter(t => !t.customerId);
 
   const b2bTotal = b2bTransactions.reduce((sum, t) => sum + t.total, 0);
-  const b2cTotal = b2cTransactions.reduce((sum, t) => sum + t.total, 0);
+  const b2cTotal = b2cRegisteredTransactions.reduce((sum, t) => sum + t.total, 0) + 
+                   b2cWalkinTransactions.reduce((sum, t) => sum + t.total, 0);
 
   const TransactionTable = ({ data, emptyMsg }: { data: TransactionListItem[]; emptyMsg: string }) => {
     if (data.length === 0) {
@@ -157,18 +159,26 @@ function Transactions() {
         <>
           {/* B2B Section */}
           <SectionCard
-            title={`B2B Transactions — Registered Business Customers (${b2bTransactions.length})`}
+            title={`B2B Transactions — Business Customers (${b2bTransactions.length})`}
             icon={<Building2 className="h-5 w-5 text-emerald-500" />}
           >
             <TransactionTable data={b2bTransactions} emptyMsg="No B2B transactions recorded." />
           </SectionCard>
 
-          {/* B2C Section */}
+          {/* B2C Registered Section */}
           <SectionCard
-            title={`B2C Transactions — Walk-in Customers (${b2cTransactions.length})`}
+            title={`B2C Transactions — Registered Customers (${b2cRegisteredTransactions.length})`}
+            icon={<ShoppingCart className="h-5 w-5 text-indigo-500" />}
+          >
+            <TransactionTable data={b2cRegisteredTransactions} emptyMsg="No registered B2C transactions recorded." />
+          </SectionCard>
+
+          {/* B2C Walk-in Section */}
+          <SectionCard
+            title={`B2C Transactions — Walk-in Customers (${b2cWalkinTransactions.length})`}
             icon={<ShoppingCart className="h-5 w-5 text-pink-500" />}
           >
-            <TransactionTable data={b2cTransactions} emptyMsg="No walk-in transactions recorded." />
+            <TransactionTable data={b2cWalkinTransactions} emptyMsg="No walk-in transactions recorded." />
           </SectionCard>
         </>
       )}

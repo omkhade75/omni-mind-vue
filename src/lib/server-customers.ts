@@ -10,6 +10,7 @@ export interface CustomerListItem {
   email: string;
   phone: string;
   joined: string;
+  customerType: string;
   visits: number;
   spend: number;
   aov: number;
@@ -29,6 +30,7 @@ export interface Customer360Profile {
   phone: string;
   joined: string;
   loyaltyTier: string;
+  customerType: string;
   loyaltyPoints: number;
   status: string;
   notes: string | null;
@@ -206,6 +208,7 @@ export const getCustomersServer = createServerFn({ method: "POST" })
         aov,
         favDept: favDeptName,
         segment: c.loyaltyTier,
+        customerType: c.customerType,
         churn: churnPercent,
         status: c.status,
       };
@@ -236,6 +239,7 @@ export const addCustomerServer = createServerFn({ method: "POST" })
     email: string;
     phone: string;
     loyaltyTier: string;
+    customerType?: string;
     preferredDepartmentId?: string | null;
     notes?: string;
     role: string;
@@ -269,6 +273,7 @@ export const addCustomerServer = createServerFn({ method: "POST" })
           email: data.email,
           phone: data.phone,
           loyaltyTier: data.loyaltyTier,
+          customerType: data.customerType || "B2C",
           preferredDepartmentId: data.preferredDepartmentId || null,
           notes: data.notes || null,
           status: "Active",
@@ -315,6 +320,7 @@ export const editCustomerServer = createServerFn({ method: "POST" })
     email: string;
     phone: string;
     loyaltyTier: string;
+    customerType?: string;
     preferredDepartmentId?: string | null;
     notes?: string;
     role: string;
@@ -347,6 +353,7 @@ export const editCustomerServer = createServerFn({ method: "POST" })
           email: data.email,
           phone: data.phone,
           loyaltyTier: data.loyaltyTier,
+          customerType: data.customerType || "B2C",
           preferredDepartmentId: data.preferredDepartmentId || null,
           notes: data.notes || null,
         }
@@ -451,7 +458,7 @@ export const getCustomer360Server = createServerFn({ method: "POST" })
     const visits = completedTx.length;
     const spend = completedTx.reduce((sum, t) => sum + Number(t.totalAmount), 0);
     const aov = visits > 0 ? Math.round(spend / visits) : 0;
-    const lastVisit = completedTx[0] ? completedTx[0].transactionDate.toISOString().split("T")[0] : "No visits";
+    const lastVisit = completedTx[0];
 
     // Transactions list
     const transactionsList = customer.transactions.map(t => ({
@@ -562,8 +569,9 @@ export const getCustomer360Server = createServerFn({ method: "POST" })
       visits,
       spend,
       aov,
-      lastVisit,
-      preferredDept,
+      lastVisit: lastVisit ? lastVisit.transactionDate.toISOString().split("T")[0] : "Never",
+      customerType: customer.customerType,
+      preferredDept: preferredDept,
       transactions: transactionsList,
       recentProducts,
       spendingTrend,

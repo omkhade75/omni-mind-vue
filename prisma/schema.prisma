@@ -52,6 +52,7 @@ model Customer {
   joinDate               DateTime      @default(now())
   preferredDepartmentId  String?
   status                 String        @default("Active") // Active, Archived
+  customerType           String        @default("B2C") // B2C, B2B
   notes                  String?
   churnRisk              String        @default("Low") // Low, Medium, High
   transactions           Transaction[]

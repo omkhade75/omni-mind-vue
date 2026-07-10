@@ -98,6 +98,7 @@ function Customers() {
   const [formEmail, setFormEmail] = useState("");
   const [formPhone, setFormPhone] = useState("");
   const [formLoyaltyTier, setFormLoyaltyTier] = useState("Regular");
+  const [formCustomerType, setFormCustomerType] = useState("B2C");
   const [formPrefDept, setFormPrefDept] = useState("dept-fashion");
   const [formNotes, setFormNotes] = useState("");
 
@@ -228,6 +229,7 @@ function Customers() {
     setFormEmail("");
     setFormPhone("");
     setFormLoyaltyTier("Regular");
+    setFormCustomerType("B2C");
     setFormPrefDept("dept-fashion");
     setFormNotes("");
   };
