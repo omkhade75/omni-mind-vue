@@ -35,6 +35,23 @@ export async function seedLedgerAccounts(tx: any) {
       });
     }
   }
+
+  // Ensure Cash ledger account (1000) has an initial capital deposit so owners can invest
+  const cashAc = await tx.ledgerAccount.findUnique({
+    where: { code: "1000" },
+    include: { entries: true },
+  });
+  if (cashAc && cashAc.entries.length === 0) {
+    await tx.ledgerEntry.create({
+      data: {
+        journalId: "JNL-INIT-CAPITAL",
+        accountId: cashAc.id,
+        debitAmount: 5000000,
+        creditAmount: 0,
+        description: "Initial owner equity capital deposit for treasury operations",
+      },
+    });
+  }
 }
 
 /**
@@ -102,23 +119,15 @@ export async function recordDoubleEntry(
  */
 export const getLedgerBalancesServer = createServerFn({ method: "GET" })
   .handler(async () => {
-    let accounts = await prisma.ledgerAccount.findMany({
+    await prisma.$transaction(async (tx) => {
+      await seedLedgerAccounts(tx);
+    });
+
+    const accounts = await prisma.ledgerAccount.findMany({
       include: {
         entries: true,
       },
     });
-
-    // Seed default accounts if empty
-    if (accounts.length === 0) {
-      await prisma.$transaction(async (tx) => {
-        await seedLedgerAccounts(tx);
-      });
-      accounts = await prisma.ledgerAccount.findMany({
-        include: {
-          entries: true,
-        },
-      });
-    }
 
     const trialBalance = accounts.map((ac) => {
       const totalDebits = ac.entries.reduce((sum, e) => sum + Number(e.debitAmount), 0);
