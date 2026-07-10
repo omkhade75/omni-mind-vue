@@ -330,7 +330,7 @@ export const repayLoanServer = createServerFn({ method: "POST" })
       return updated;
     });
 
-    return { success: true, loan: result };
+    return { success: true, loanId: result.id };
   });
 
 export const payPurchaseOrderServer = createServerFn({ method: "POST" })
@@ -398,6 +398,6 @@ export const payPurchaseOrderServer = createServerFn({ method: "POST" })
       return updatedPo;
     });
 
-    return { success: true, po: result };
+    return { success: true, poId: result.id };
   });
 
