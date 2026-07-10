@@ -69,8 +69,9 @@ function MarketIntelligencePage() {
   const loadData = async () => {
     try {
       // 1. Load general ledger balances to find Cash (code 1000)
-      const balances = await getLedgerBalancesServer() as any[];
-      const cashAc = balances.find((b) => b.code === "1000");
+      const res = await getLedgerBalancesServer() as any;
+      const trialBalance = res?.trialBalance || [];
+      const cashAc = trialBalance.find((b: any) => b.code === "1000");
       setCashBalance(cashAc ? Number(cashAc.balance) : 0);
 
       // 2. Load investment holdings
