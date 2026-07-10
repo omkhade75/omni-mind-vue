@@ -53,6 +53,11 @@ function PurchaseOrders() {
 
   // Pay state
   const [payingPoId, setPayingPoId] = useState<string | null>(null);
+  
+  // Pay Password State
+  const [payPasswordOpen, setPayPasswordOpen] = useState(false);
+  const [payPassword, setPayPassword] = useState("");
+  const [targetPayPoId, setTargetPayPoId] = useState<string | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -185,18 +190,30 @@ function PurchaseOrders() {
     }
   };
 
-  const handlePayPO = async (poId: string) => {
-    if (!user) return;
+  const promptPayPO = (poId: string) => {
+    setTargetPayPoId(poId);
+    setPayPassword("");
+    setPayPasswordOpen(true);
+  };
+
+  const handlePayPO = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (payPassword !== "1416") {
+      toast.error("Incorrect password.");
+      return;
+    }
+    if (!user || !targetPayPoId) return;
     try {
-      setPayingPoId(poId);
+      setPayingPoId(targetPayPoId);
       await payPurchaseOrderServer({
         data: {
-          poId,
+          poId: targetPayPoId,
           role: user.role,
           emailUser: user.email,
         }
       });
       toast.success("Supplier invoice paid! Cash balance updated.");
+      setPayPasswordOpen(false);
       loadData();
     } catch (e: any) {
       toast.error(e.message || "Failed to pay supplier");
@@ -305,7 +322,7 @@ function PurchaseOrders() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handlePayPO(po.dbId)}
+                              onClick={() => promptPayPO(po.dbId)}
                               disabled={payingPoId === po.dbId}
                               className="h-7 text-[10px] px-2 bg-amber-500/10 text-amber-600 border-amber-500/30 hover:bg-amber-500/20"
                             >
@@ -318,9 +335,22 @@ function PurchaseOrders() {
                         </>
                       )}
                       {po.status === "Received" && (
-                        <span className="text-[10px] text-emerald-500 font-semibold flex items-center justify-end gap-1">
-                          <Check className="h-3 w-3" /> {po.isPaid ? "Paid & Received" : "Received (Unpaid)"}
-                        </span>
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="text-[10px] text-emerald-500 font-semibold flex items-center gap-1">
+                            <Check className="h-3 w-3" /> {po.isPaid ? "Paid & Received" : "Received (Unpaid)"}
+                          </span>
+                          {!po.isPaid && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => promptPayPO(po.dbId)}
+                              disabled={payingPoId === po.dbId}
+                              className="h-7 text-[10px] px-2 bg-amber-500/10 text-amber-600 border-amber-500/30 hover:bg-amber-500/20"
+                            >
+                              {payingPoId === po.dbId ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Banknote className="h-3 w-3 mr-1" />Pay Now</>}
+                            </Button>
+                          )}
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -472,6 +502,35 @@ function PurchaseOrders() {
               <Button type="button" variant="ghost" onClick={() => setReceiveOpen(false)}>Cancel</Button>
               <Button type="submit" disabled={receiving} className="bg-success hover:bg-success/90 text-success-foreground font-semibold">
                 {receiving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Confirm Receipt
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pay PO Password Dialog */}
+      <Dialog open={payPasswordOpen} onOpenChange={setPayPasswordOpen}>
+        <DialogContent className="sm:max-w-[400px] bg-sidebar border border-hairline text-foreground">
+          <DialogHeader>
+            <DialogTitle>Confirm Payment</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handlePayPO} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Enter Authorization Pin</Label>
+              <Input
+                type="password"
+                className="bg-surface border-hairline"
+                value={payPassword}
+                onChange={(e) => setPayPassword(e.target.value)}
+                placeholder="****"
+                required
+                autoFocus
+              />
+            </div>
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="ghost" onClick={() => setPayPasswordOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={payingPoId !== null} className="bg-primary text-primary-foreground font-semibold">
+                {payingPoId !== null && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Authorize Payment
               </Button>
             </DialogFooter>
           </form>
