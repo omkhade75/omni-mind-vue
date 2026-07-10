@@ -147,20 +147,26 @@
 }
 
 @utility card-elevated {
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--color-surface) 100%, transparent),
-    color-mix(in oklab, var(--color-surface-2) 100%, transparent)
-  );
-  border: 1px solid var(--color-hairline);
+  background: color-mix(in oklab, var(--color-surface) 40%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid oklch(1 0 0 / 7%);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-elevated);
+  box-shadow: 0 8px 32px -4px oklch(0 0 0 / 25%), inset 0 1px 0 0 oklch(1 0 0 / 6%);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+@utility card-elevated:hover {
+  background: color-mix(in oklab, var(--color-surface) 50%, transparent);
+  border-color: oklch(1 0 0 / 12%);
+  box-shadow: 0 12px 40px -4px oklch(0 0 0 / 35%), inset 0 1px 0 0 oklch(1 0 0 / 10%);
+  transform: translateY(-2px);
 }
 
 @utility glass {
-  background: color-mix(in oklab, var(--color-surface) 70%, transparent);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--color-hairline);
+  background: color-mix(in oklab, var(--color-surface) 40%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid oklch(1 0 0 / 7%);
 }
 
 @utility gradient-primary {
@@ -239,5 +245,75 @@
 
 @utility animate-pulse-slow {
   animation: pulse-slow 8s ease-in-out infinite;
+}
+
+/* Custom premium glassmorphic UI overrides */
+body {
+  position: relative;
+  overflow-x: hidden;
+}
+body::before {
+  content: "";
+  position: fixed;
+  top: -10%;
+  left: -10%;
+  width: 60%;
+  height: 60%;
+  background: radial-gradient(circle, oklch(0.66 0.2 275 / 10%) 0%, transparent 70%);
+  filter: blur(100px);
+  z-index: -2;
+  pointer-events: none;
+}
+body::after {
+  content: "";
+  position: fixed;
+  bottom: -10%;
+  right: -10%;
+  width: 60%;
+  height: 60%;
+  background: radial-gradient(circle, oklch(0.62 0.22 300 / 8%) 0%, transparent 70%);
+  filter: blur(100px);
+  z-index: -2;
+  pointer-events: none;
+}
+
+/* Glassy Sidebar */
+aside.bg-sidebar {
+  background-color: oklch(0.11 0.03 270 / 55%) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-right: 1px solid oklch(1 0 0 / 6%) !important;
+}
+
+/* Glassy Header & Navbars */
+header.glass {
+  background-color: oklch(0.16 0.02 265 / 40%) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+}
+
+/* Glassy Popovers & Dropdowns */
+.bg-popover {
+  background-color: oklch(0.22 0.024 265 / 75%) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid oklch(1 0 0 / 10%) !important;
+}
+
+/* Glassy Dialog Modals */
+.fixed.z-50.grid.w-full.max-w-lg.bg-background,
+[role="dialog"] {
+  background-color: oklch(0.2 0.022 265 / 75%) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid oklch(1 0 0 / 12%) !important;
+}
+
+/* Glassy Drawers / Sheets */
+.fixed.z-50.gap-4.bg-background {
+  background-color: oklch(0.18 0.022 265 / 75%) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border-color: oklch(1 0 0 / 10%) !important;
 }
 
