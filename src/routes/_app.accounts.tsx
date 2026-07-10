@@ -341,20 +341,14 @@ function RouteComponent() {
                           </StatusPill>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          {p.status !== "Received" ? (
-                            <Button
-                              size="sm"
-                              className="h-7 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
-                              onClick={() => promptPayPO(p.id)}
-                              disabled={payingPOId === p.id}
-                            >
-                              {payingPOId === p.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Pay"}
-                            </Button>
-                          ) : (
-                            <span className="text-xs text-emerald-600 font-semibold flex items-center justify-center gap-0.5">
-                              <CheckCircle className="h-3 w-3" /> Settled
-                            </span>
-                          )}
+                          <Button
+                            size="sm"
+                            className="h-7 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                            onClick={() => promptPayPO(p.id)}
+                            disabled={payingPOId === p.id}
+                          >
+                            {payingPOId === p.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Pay"}
+                          </Button>
                         </td>
                       </tr>
                     ))}
