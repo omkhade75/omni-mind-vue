@@ -143,6 +143,18 @@ function RouteComponent() {
     loadData();
   }, [user]);
 
+  // Auto-detect department based on cart items
+  useEffect(() => {
+    if (cartItems.length > 0 && products.length > 0) {
+      // Find the departmentId of the most recently added product in the cart
+      const latestItemProductId = cartItems[cartItems.length - 1].productId;
+      const product = products.find(p => p.id === latestItemProductId);
+      if (product && product.departmentId) {
+        setFormDepartmentId(product.departmentId);
+      }
+    }
+  }, [cartItems, products]);
+
   const addToCart = async (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
     if (!selectedItemSku) {
