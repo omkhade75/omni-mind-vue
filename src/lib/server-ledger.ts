@@ -9,6 +9,8 @@ export const DEFAULT_ACCOUNTS = [
   { code: "2000", name: "Accounts Payable", type: "LIABILITY" },
   { code: "4000", name: "Sales Revenue", type: "REVENUE" },
   { code: "4100", name: "Investment Revenues & Gains", type: "REVENUE" },
+  { code: "4200", name: "Rent & Lease Revenue", type: "REVENUE" },
+  { code: "4300", name: "Other Revenue / Parking", type: "REVENUE" },
   { code: "5000", name: "Cost of Goods Sold", type: "EXPENSE" },
   { code: "5100", name: "Utility Expense", type: "EXPENSE" },
   { code: "5200", name: "Salaries Expense", type: "EXPENSE" },
@@ -167,4 +169,64 @@ export const getLedgerBalancesServer = createServerFn({ method: "GET" })
       totalDebits,
       totalCredits,
     };
+  });
+
+export const recordIncomingRevenueServer = createServerFn({ method: "POST" })
+  .validator(
+    (data: {
+      amount: number;
+      category: "Rent" | "Other";
+      description: string;
+      role: string;
+      emailUser: string;
+    }) => data
+  )
+  .handler(async ({ data }) => {
+    return prisma.$transaction(async (tx) => {
+      await seedLedgerAccounts(tx);
+
+      const revenueCode = data.category === "Rent" ? "4200" : "4300";
+      const journalId = `JNL-REV-${Date.now()}`;
+
+      await recordDoubleEntry(tx, {
+        journalId,
+        referenceType: "IncomingRevenue",
+        referenceId: journalId,
+        description: data.description,
+        debits: [{ code: "1000", amount: data.amount }], // Debit Cash (asset increase)
+        credits: [{ code: revenueCode, amount: data.amount }], // Credit Revenue (income increase)
+      });
+
+      return { success: true };
+    });
+  });
+
+export const getIncomingPaymentsServer = createServerFn({ method: "GET" })
+  .handler(async () => {
+    const entries = await prisma.ledgerEntry.findMany({
+      where: {
+        account: {
+          code: { in: ["4000", "4100", "4200", "4300"] },
+        },
+        creditAmount: { gt: 0 } // Credits represent revenue inflow
+      },
+      include: {
+        account: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return entries.map(e => ({
+      id: e.id,
+      journalId: e.journalId,
+      accountCode: e.account.code,
+      accountName: e.account.name,
+      amount: Number(e.creditAmount),
+      description: e.description || "Inflow payment received",
+      date: e.createdAt.toISOString(),
+      referenceType: e.referenceType,
+      referenceId: e.referenceId,
+    }));
   });
