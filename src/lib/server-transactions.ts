@@ -400,5 +400,42 @@ export const getTransactionsServer = createServerFn({ method: "POST" })
       };
     });
 
-    return mappedList;
+    const investments = await prisma.investment.findMany({
+      orderBy: { purchasedAt: "desc" }
+    });
+
+    const investmentItems: TransactionListItem[] = investments.map(inv => ({
+      id: inv.id,
+      transactionNumber: `INV-${inv.id.slice(0, 6).toUpperCase()}`,
+      customerName: "Corporate Treasury",
+      customerId: "TREASURY-01",
+      customerType: "B2B",
+      dept: "Investments",
+      departmentId: "dept-investments",
+      date: inv.purchasedAt.toISOString().split("T")[0],
+      time: inv.purchasedAt.toTimeString().split(" ")[0].slice(0, 5),
+      subtotal: Number(inv.totalCost),
+      discount: 0,
+      tax: 0,
+      total: Number(inv.totalCost),
+      payment: "Ledger 1000",
+      status: inv.status === "Active" ? "Completed" : "Refunded",
+      items: [{
+        productId: inv.id,
+        productName: `${inv.assetName} (${inv.symbol})`,
+        quantity: Number(inv.quantity),
+        price: Number(inv.purchasePrice)
+      }]
+    }));
+
+    const combinedList = [...mappedList, ...investmentItems];
+    
+    // Sort combined list by date and time descending
+    combinedList.sort((a, b) => {
+      const dateA = new Date(`${a.date}T${a.time}`);
+      const dateB = new Date(`${b.date}T${b.time}`);
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    return combinedList;
   });

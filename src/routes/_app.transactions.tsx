@@ -88,12 +88,16 @@ function Transactions() {
                 <td className="py-3 text-muted-foreground">{t.date} {t.time}</td>
                 <td className="py-3">
                   {t.customerId ? (
-                    <button
-                      onClick={() => openCustomer360(t.customerId)}
-                      className="font-medium hover:text-primary transition-colors text-left hover:underline"
-                    >
-                      {t.customerName}
-                    </button>
+                    t.customerId === "TREASURY-01" ? (
+                      <span className="font-medium text-emerald-500">{t.customerName}</span>
+                    ) : (
+                      <button
+                        onClick={() => openCustomer360(t.customerId)}
+                        className="font-medium hover:text-primary transition-colors text-left hover:underline"
+                      >
+                        {t.customerName}
+                      </button>
+                    )
                   ) : (
                     <span className="text-muted-foreground">Walk-in Customer</span>
                   )}
