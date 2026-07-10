@@ -166,7 +166,20 @@ function AppShell() {
     products,
     customers,
     suppliers,
+    activeDate,
   } = useBusinessData();
+
+  const isEndOfMonth = useMemo(() => {
+    if (!activeDate) return false;
+    const d = new Date(activeDate);
+    const nextDay = new Date(d);
+    nextDay.setDate(d.getDate() + 3);
+    return nextDay.getMonth() !== d.getMonth();
+  }, [activeDate]);
+
+  const endOfMonthNotifId = `eom-bills-${activeDate?.slice(0, 7)}`;
+  const hasEomNotif = isEndOfMonth && !readNotifs.has(endOfMonthNotifId);
+  const totalUnreadNotifs = ANOMALIES.length + LIVE_FEED.length - readNotifs.size + (hasEomNotif ? 1 : 0);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -561,9 +574,9 @@ function AppShell() {
                   onClick={() => setNotifOpen((o) => !o)}
                 >
                   <Bell className="h-4 w-4" />
-                  {ANOMALIES.length + LIVE_FEED.length - readNotifs.size > 0 && (
+                  {totalUnreadNotifs > 0 && (
                     <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground">
-                      {Math.min(ANOMALIES.length + LIVE_FEED.length - readNotifs.size, 99)}
+                      {Math.min(totalUnreadNotifs, 99)}
                     </span>
                   )}
                 </Button>
@@ -575,7 +588,7 @@ function AppShell() {
                       <div>
                         <p className="text-sm font-bold">Notifications</p>
                         <p className="text-[11px] text-muted-foreground">
-                          {ANOMALIES.length + LIVE_FEED.length - readNotifs.size} unread
+                          {totalUnreadNotifs} unread
                         </p>
                       </div>
                       <button
@@ -584,6 +597,7 @@ function AppShell() {
                             ...ANOMALIES.map((a) => a.id),
                             ...LIVE_FEED.map((_, i) => `feed-${i}`),
                           ];
+                          if (isEndOfMonth) allIds.push(endOfMonthNotifId);
                           setReadNotifs(new Set(allIds));
                         }}
                         className="text-[11px] font-medium text-primary hover:underline"
@@ -594,6 +608,41 @@ function AppShell() {
 
                     {/* Scrollable list */}
                     <div className="flex-1 overflow-y-auto divide-y divide-hairline">
+                      {/* End of Month Bill Alert */}
+                      {isEndOfMonth && (
+                        <button
+                          key={endOfMonthNotifId}
+                          onClick={() => {
+                            setReadNotifs((prev) => new Set([...prev, endOfMonthNotifId]));
+                            setNotifOpen(false);
+                            navigate({ to: "/expenses" });
+                          }}
+                          className={cn(
+                            "w-full text-left px-4 py-3 hover:bg-surface transition-colors flex gap-3",
+                            !readNotifs.has(endOfMonthNotifId) && "bg-primary/5",
+                          )}
+                        >
+                          <div className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-indigo-500/10">
+                            <Receipt className="h-4 w-4 text-indigo-500" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold truncate">Utility Bills Due</span>
+                              <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold bg-warning/15 text-warning">
+                                Action Required
+                              </span>
+                            </div>
+                            <p className="mt-0.5 text-[11px] text-muted-foreground">
+                              End of month approaching. Please review and pay all outstanding utility bills (Electricity, Water, Internet, etc).
+                            </p>
+                            <p className="mt-0.5 text-[10px] text-muted-foreground">System Reminder</p>
+                          </div>
+                          {!readNotifs.has(endOfMonthNotifId) && (
+                            <div className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                          )}
+                        </button>
+                      )}
+
                       {/* Anomaly alerts */}
                       {ANOMALIES.map((a) => {
                         const isRead = readNotifs.has(a.id);
