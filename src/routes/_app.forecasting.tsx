@@ -107,6 +107,74 @@ function Forecasting() {
 
   const summary = getForecastSummary();
 
+  const getScenarioExplanation = () => {
+    switch (scenario) {
+      case "Festival Demand":
+        return {
+          model: "Prophet + LSTM Ensemble (Seasonal Overlay)",
+          confidence: "88% (Medium-High)",
+          factors: [
+            "Festive season shopping patterns (historical peak shopping volumes)",
+            "Promotional events and festive decorations spike footfall (+24.5%)",
+            "High correlation with premium Fashion cart size additions (+18.4%)",
+            "Accelerated cashier processing speed override at POS"
+          ],
+          narrative: "The AI forecasts a substantial surge in overall revenue, heavily weighted towards the first floor Fashion and Beauty departments. Footfall conversion rate is modeled at 42% (up from 32% baseline), driving a projected ₹84.2L peak week. Retail inventory draws will increase by 28.4%, so immediate replenishment is advised for top-selling SKUs."
+        };
+      case "Promotion Campaign":
+        return {
+          model: "Elasticity Multiplier + Gradient Boosting",
+          confidence: "92% (High)",
+          factors: [
+            "Active marketing campaign discount factors (15-20% average markdown)",
+            "Push notification click-through rate models from CRM loyalty lists",
+            "Basket size expansion (+15.6% orders) offset by slightly lower margins",
+            "Spike in walk-in customer conversion rate"
+          ],
+          narrative: "Under this scenario, the model predicts high transaction volume driven by discount elasticities. While the average order value is compressed by ~5%, the increased order counts (+15.6%) will secure a net positive revenue return of ₹74.8L. The AI recommends cross-promoting high-margin cosmetics to beauty segments to buffer the promotional margins."
+        };
+      case "Rainy Weekend":
+        return {
+          model: "Weather-Integrated Auto-ARIMA Regressor",
+          confidence: "75% (Medium)",
+          factors: [
+            "Local meteorological precipitation models (>15mm rainfall forecast)",
+            "Negative transit friction coefficient (diminishing out-of-town footfall)",
+            "Increased average customer dwell time (+45 minutes in-mall)",
+            "Food Court and Cinema transactional spike offsets"
+          ],
+          narrative: "Heavy rain alters customer behavior inside the mall. While retail fashion dispatches drop due to lower overall visitor counts, food and beverage/entertainment revenues historically experience a +12% increase. The forecast predicts a total revenue of ₹48.6L. The AI suggests optimizing HVAC temperatures to conserve energy during lower occupancy hours."
+        };
+      case "Supplier Delay":
+        return {
+          model: "Supply Chain Risk Network Model",
+          confidence: "68% (Medium-Low)",
+          factors: [
+            "Delayed supplier shipping logs (average +5.2 days backlog)",
+            "Rising out-of-stock count on primary anchor-tenant items",
+            "Substituted buying behavior coefficients",
+            "Lead time volatility overrides"
+          ],
+          narrative: "This scenario represents supply chain constraints. Delays in replenishment lead to stockouts in key high-margin electronics and grocery items, causing a projected -8.8% decline in total orders. Estimated weekly revenue drops to ₹53.0L. The AI urges immediate diversification of vendors to mitigate category stock exhaustion."
+        };
+      case "Normal":
+      default:
+        return {
+          model: "Standard Seasonal Auto-ARIMA Baseline",
+          confidence: "95% (High)",
+          factors: [
+            "90-day moving average historical baseline data",
+            "Standard calendar adjustments (weekends vs weekdays)",
+            "Stable utility usage and baseline footfall velocity (+9.4% YoY)",
+            "Zero active external disruption parameters"
+          ],
+          narrative: "This baseline forecast represents the mall operating under ordinary conditions. Using a 90-day historical moving average, the AI expects steady growth with a projected weekly revenue of ₹62.4L. Utility baselines, logistics dispatches, and customer segments are anticipated to follow stable historical trends."
+        };
+    }
+  };
+
+  const explanation = getScenarioExplanation();
+
   const getForecastStats = () => {
     let baseFootfall = 34200;
     let baseOrders = 13820;
@@ -294,6 +362,38 @@ function Forecasting() {
           </div>
         ))}
       </div>
+
+      <SectionCard title="AI Forecast Diagnostics & Model Variables" subtitle="Model details, confidence weights, and variables analyzed">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="space-y-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Prediction Model</p>
+              <p className="text-sm font-semibold text-foreground mt-1">{explanation.model}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Model Confidence Index</p>
+              <p className="text-sm font-semibold text-primary mt-1">{explanation.confidence}</p>
+            </div>
+          </div>
+          <div className="md:col-span-2 space-y-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Key Variables Scoped</p>
+              <ul className="mt-2 space-y-1.5">
+                {explanation.factors.map((f, idx) => (
+                  <li key={idx} className="text-xs text-foreground/80 flex items-start gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="pt-3 border-t border-hairline">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Analytical Insights & Outlook</p>
+              <p className="text-xs text-muted-foreground leading-relaxed mt-1">{explanation.narrative}</p>
+            </div>
+          </div>
+        </div>
+      </SectionCard>
     </div>
   );
 }
