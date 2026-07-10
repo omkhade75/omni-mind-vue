@@ -101,11 +101,13 @@ function RouteComponent() {
     try {
       setSaving(true);
       await recordIncomingRevenueServer({
-        amount: Number(amount),
-        category,
-        description,
-        role: user?.role || "owner",
-        emailUser: user?.email || "",
+        data: {
+          amount: Number(amount),
+          category,
+          description,
+          role: user?.role || "owner",
+          emailUser: user?.email || "",
+        }
       });
 
       toast.success("Incoming revenue receipt recorded in General Ledger!");

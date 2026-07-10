@@ -93,12 +93,14 @@ function RouteComponent() {
     try {
       setSaving(true);
       await recordTaxPaymentServer({
-        amount: Number(amount),
-        category,
-        description,
-        challanNumber,
-        role: user?.role || "owner",
-        emailUser: user?.email || "",
+        data: {
+          amount: Number(amount),
+          category,
+          description,
+          challanNumber,
+          role: user?.role || "owner",
+          emailUser: user?.email || "",
+        }
       });
 
       toast.success("Tax Challan payment recorded in General Ledger!");

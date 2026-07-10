@@ -92,12 +92,14 @@ function RouteComponent() {
     try {
       setSavingFD(true);
       await createFixedDepositServer({
-        bankName: fdBank,
-        principal: Number(fdPrincipal),
-        interestRate: Number(fdRate),
-        duration: Number(fdDuration),
-        role: user?.role || "owner",
-        emailUser: user?.email || "",
+        data: {
+          bankName: fdBank,
+          principal: Number(fdPrincipal),
+          interestRate: Number(fdRate),
+          duration: Number(fdDuration),
+          role: user?.role || "owner",
+          emailUser: user?.email || "",
+        }
       });
 
       toast.success("Bank Fixed Deposit booked successfully!");
@@ -124,12 +126,14 @@ function RouteComponent() {
     try {
       setSavingLoan(true);
       await createCorporateLoanServer({
-        bankName: loanBank,
-        principal: Number(loanPrincipal),
-        interestRate: Number(loanRate),
-        duration: Number(loanDuration),
-        role: user?.role || "owner",
-        emailUser: user?.email || "",
+        data: {
+          bankName: loanBank,
+          principal: Number(loanPrincipal),
+          interestRate: Number(loanRate),
+          duration: Number(loanDuration),
+          role: user?.role || "owner",
+          emailUser: user?.email || "",
+        }
       });
 
       toast.success("Loan disbursed successfully & Cash credited!");
@@ -153,10 +157,12 @@ function RouteComponent() {
     try {
       setSavingRepay(true);
       await repayLoanServer({
-        loanId: selectedLoan.id,
-        amount: Number(repayAmount),
-        role: user?.role || "owner",
-        emailUser: user?.email || "",
+        data: {
+          loanId: selectedLoan.id,
+          amount: Number(repayAmount),
+          role: user?.role || "owner",
+          emailUser: user?.email || "",
+        }
       });
 
       toast.success("Loan repayment logged & Cash debited!");
@@ -175,9 +181,11 @@ function RouteComponent() {
     try {
       setPayingPOId(poId);
       await payPurchaseOrderServer({
-        poId,
-        role: user?.role || "owner",
-        emailUser: user?.email || "",
+        data: {
+          poId,
+          role: user?.role || "owner",
+          emailUser: user?.email || "",
+        }
       });
       toast.success("Supplier invoice settled from Cash reserves!");
       await loadData();
