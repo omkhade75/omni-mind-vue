@@ -23,6 +23,7 @@ import { useAuth } from "@/lib/auth-context";
 import { fmtINR, fmtNum } from "@/lib/mock-data";
 import { toast } from "sonner";
 import { askOmniMindServer, AIResponseContract } from "@/lib/server-ai";
+import { initiateVapiCallServer } from "@/lib/server-vapi";
 import { buildAIContext, localQueryFallback } from "@/lib/ai-context-builder";
 
 export const Route = createFileRoute("/_app/ai-decisions")({
@@ -234,6 +235,32 @@ function AskOmniMind() {
         toast.info("Navigating to anomalies layout.");
       } else if (action.actionType === "NAVIGATE" && action.entityId) {
         navigate({ to: action.entityId as any });
+      } else if (action.actionType === "CALL_SUPPLIER" || action.actionType === "CALL_CUSTOMER") {
+        const isSupplier = action.actionType === "CALL_SUPPLIER";
+        const entityName = action.entityName || (isSupplier ? "Supplier" : "Customer");
+        const phoneNumber = action.phoneNumber || (isSupplier ? "+919876543210" : "+919876543211");
+        
+        toast.promise(
+          initiateVapiCallServer({
+            data: {
+              phoneNumber,
+              recipientName: entityName,
+              role: isSupplier ? "supplier" : "customer",
+              messageContext: action.description || `AI automated outreach to discuss current metrics, promotions, and operations for GrandSquare Mall.`,
+            }
+          }),
+          {
+            loading: `Triggering AI Outbound Call to ${entityName}...`,
+            success: (res) => {
+              if (res.success) {
+                return `AI voice call triggered successfully! Ref ID: ${res.callId}`;
+              } else {
+                throw new Error(res.error);
+              }
+            },
+            error: (err) => `Failed to call: ${err.message}`,
+          }
+        );
       }
       setPendingAction(null);
     } catch (e: any) {

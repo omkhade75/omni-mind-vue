@@ -419,3 +419,40 @@ model FootfallReading {
   value        Int
   departmentId String?
 }
+
+model MessageLog {
+  id            String   @id @default(uuid())
+  channel       String   // WHATSAPP, VOICE
+  recipientName String
+  recipientPhone String
+  messageType   String   // BILL, EOD_REPORT, LOW_STOCK_ALERT, CRM_OUTREACH
+  body          String
+  status        String   // PENDING, SENT, DELIVERED, FAILED
+  error         String?
+  providerId    String?  // Twilio SID / Vapi call ID
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model LedgerAccount {
+  id          String        @id @default(uuid())
+  code        String        @unique // e.g. "1000" for Cash, "4000" for Sales Revenue
+  name        String        // Cash, Inventory Asset, Cost of Goods Sold, Accounts Payable, Accounts Receivable, Sales Revenue, Utility Expense
+  type        String        // ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE
+  entries     LedgerEntry[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model LedgerEntry {
+  id               String        @id @default(uuid())
+  accountId        String
+  account          LedgerAccount @relation(fields: [accountId], references: [id])
+  journalId        String        // Groups the debit and credit sides together
+  debitAmount      Decimal       @db.Decimal(14, 2)
+  creditAmount     Decimal       @db.Decimal(14, 2)
+  referenceType    String?       // Transaction, PurchaseOrder, Expense, Payment
+  referenceId      String?
+  description      String
+  createdAt        DateTime      @default(now())
+}

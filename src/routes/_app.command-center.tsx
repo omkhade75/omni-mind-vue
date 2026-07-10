@@ -41,7 +41,9 @@ import { FORECAST, HEATMAP, HOURLY_DEMAND, fmtINR, fmtNum } from "@/lib/mock-dat
 import { useAuth } from "@/lib/auth-context";
 import { useBusinessData, type KpiItem } from "@/lib/business-context";
 import { getCommandCenterServer, dispatchEodReportServer } from "@/lib/server-analytics";
+import { getMessageLogsServer } from "@/lib/server-whatsapp-logs";
 import { useEffect } from "react";
+import { MessageSquare, PhoneCall, RefreshCw, Send, ShieldAlert, Mail, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/_app/command-center")({
   head: () => ({
@@ -96,6 +98,26 @@ export function CommandCenter() {
 
   const [liveKpis, setLiveKpis] = useState<KpiItem[]>([]);
   const [isSendingEod, setIsSendingEod] = useState(false);
+  
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(true);
+  const [activeTab, setActiveTab] = useState<"ALL" | "WHATSAPP" | "VOICE" | "FAILED">("ALL");
+
+  const loadLogs = async () => {
+    try {
+      setLoadingLogs(true);
+      const res = await getMessageLogsServer();
+      if (res) setLogs(res);
+    } catch (err) {
+      console.error("Failed to load communication logs:", err);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  useEffect(() => {
+    loadLogs();
+  }, []);
   
   const handleSendEodReport = async () => {
     try {
@@ -440,6 +462,111 @@ export function CommandCenter() {
           {scopedRecommendations.slice(0, 3).map((r) => (
             <RecCard key={r.id} r={r} />
           ))}
+        </div>
+      </SectionCard>
+
+      {/* Communication Hub Ledger */}
+      <SectionCard
+        title="Communication Hub Ledger"
+        subtitle="Real-time transaction bills, manager alerts, EOD reports, and AI voice campaign triggers"
+        actions={
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-hairline bg-surface text-xs font-semibold gap-1.5"
+            onClick={loadLogs}
+            disabled={loadingLogs}
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loadingLogs ? "animate-spin" : ""}`} />
+            Refresh Logs
+          </Button>
+        }
+      >
+        <div className="space-y-4">
+          {/* Filters */}
+          <div className="flex gap-2 border-b border-hairline pb-2 text-xs">
+            {(["ALL", "WHATSAPP", "VOICE", "FAILED"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`pb-1 px-2 font-semibold transition-colors ${
+                  activeTab === tab
+                    ? "border-b-2 border-primary text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          {loadingLogs ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : logs.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-6 text-center">No communication logs recorded yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-hairline text-muted-foreground">
+                    <th className="py-2 font-semibold">Channel</th>
+                    <th className="py-2 font-semibold">Recipient</th>
+                    <th className="py-2 font-semibold">Phone</th>
+                    <th className="py-2 font-semibold">Type</th>
+                    <th className="py-2 font-semibold">Message / Summary</th>
+                    <th className="py-2 font-semibold">Status</th>
+                    <th className="py-2 font-semibold">Time</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-hairline">
+                  {logs
+                    .filter((log) => {
+                      if (activeTab === "ALL") return true;
+                      if (activeTab === "WHATSAPP") return log.channel === "WHATSAPP";
+                      if (activeTab === "VOICE") return log.channel === "VOICE";
+                      if (activeTab === "FAILED") return log.status === "FAILED";
+                      return true;
+                    })
+                    .map((log) => (
+                      <tr key={log.id} className="hover:bg-surface/50">
+                        <td className="py-3 flex items-center gap-1.5 font-medium">
+                          {log.channel === "WHATSAPP" ? (
+                            <MessageSquare className="h-3.5 w-3.5 text-[#25D366]" />
+                          ) : (
+                            <PhoneCall className="h-3.5 w-3.5 text-violet" />
+                          )}
+                          {log.channel}
+                        </td>
+                        <td className="py-3">{log.recipientName}</td>
+                        <td className="py-3 text-muted-foreground">{log.recipientPhone}</td>
+                        <td className="py-3 font-semibold">{log.messageType}</td>
+                        <td className="py-3 max-w-[240px] truncate text-muted-foreground" title={log.body}>
+                          {log.body}
+                        </td>
+                        <td className="py-3">
+                          <StatusPill
+                            tone={
+                              log.status === "SENT" || log.status === "DELIVERED"
+                                ? "success"
+                                : log.status === "PENDING"
+                                ? "warning"
+                                : "danger"
+                            }
+                          >
+                            {log.status}
+                          </StatusPill>
+                        </td>
+                        <td className="py-3 text-muted-foreground">
+                          {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </SectionCard>
     </div>

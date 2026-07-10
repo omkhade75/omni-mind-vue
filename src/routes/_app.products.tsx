@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   TrendingUp,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import { PageHeader, SectionCard, StatusPill } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ import {
   editProductServer,
   archiveProductServer,
   getProductOptionsServer,
+  autoCategorizeProductServer,
   type ProductListItem,
 } from "@/lib/server-products";
 import { toast } from "sonner";
@@ -79,6 +81,14 @@ function Products() {
 
   // Add Product form state
   const [formName, setFormName] = useState("");
+  const [autoCategoryResult, setAutoCategoryResult] = useState<{
+    categoryName: string;
+    categoryId: string;
+    departmentId: string;
+    confidence: number;
+    method: string;
+  } | null>(null);
+  const [isCategorizing, setIsCategorizing] = useState(false);
   const [formSku, setFormSku] = useState("");
   const [formBarcode, setFormBarcode] = useState("");
   const [formCategory, setFormCategory] = useState("");
@@ -96,6 +106,32 @@ function Products() {
   const [formBatchNo, setFormBatchNo] = useState("");
   const [formMfgDate, setFormMfgDate] = useState("");
   const [formExpDate, setFormExpDate] = useState("");
+
+  useEffect(() => {
+    if (formName.trim().length < 3) {
+      setAutoCategoryResult(null);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        setIsCategorizing(true);
+        const res = await autoCategorizeProductServer({
+          data: { name: formName, brand: formBrand || "Generic" }
+        });
+        if (res) {
+          setAutoCategoryResult(res);
+          setFormCategory(res.categoryId);
+          setFormDepartment(res.departmentId);
+        }
+      } catch (err) {
+        console.warn("Auto-categorization error:", err);
+      } finally {
+        setIsCategorizing(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [formName, formBrand]);
 
   const loadProducts = async () => {
     setLoading(true);
@@ -460,6 +496,26 @@ function Products() {
                 />
               </div>
             </div>
+
+            {isCategorizing && (
+              <p className="text-[10px] text-muted-foreground animate-pulse flex items-center gap-1">
+                <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                Analyzing product traits for automatic categorization...
+              </p>
+            )}
+
+            {!isCategorizing && autoCategoryResult && (
+              <div className="rounded border border-primary/20 bg-primary/5 p-2 text-[10px] text-muted-foreground flex flex-col gap-0.5">
+                <span className="font-semibold text-primary flex items-center gap-1">
+                  <Sparkles className="h-3 w-3 text-primary animate-pulse" />
+                  Auto-categorized: {autoCategoryResult.categoryName}
+                </span>
+                <span>
+                  Confidence: <strong className="text-foreground">{(autoCategoryResult.confidence * 100).toFixed(0)}%</strong> · 
+                  Method: <strong className="text-foreground">{autoCategoryResult.method}</strong>
+                </span>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">

@@ -1,11 +1,13 @@
+import { createServerFn } from "@tanstack/react-start";
+import { prisma } from "./server/prisma";
+
 /**
- * WhatsApp Notification Service (Mock / Sandbox)
+ * WhatsApp Notification Service (Mock / Real Twilio Integration)
  * 
  * This service handles sending WhatsApp notifications for the OmniMind platform.
  * To enable real Twilio WhatsApp delivery:
  * 1. Set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN in the .env file.
  * 2. Set TWILIO_WHATSAPP_SENDER to your registered WhatsApp business number (e.g. "whatsapp:+14155238886").
- * 3. Uncomment the Twilio fetch logic inside the functions.
  */
 
 // Format INR correctly for notifications
@@ -26,25 +28,38 @@ export async function sendCustomerBillWhatsApp(
     customerName: string;
   }
 ) {
-  // Format phone to E.164 if necessary (assuming Indian numbers for this demo)
   const formattedPhone = customerPhone.startsWith("+") ? customerPhone : `+91${customerPhone}`;
-  
   const messageBody = `*OmniMind POS Receipt* 🧾\n\nHi ${transaction.customerName},\nThank you for shopping with us! Here are your transaction details:\n\n*Receipt No:* ${transaction.transactionNumber}\n*Items Purchased:* ${transaction.itemsCount}\n*Total Amount Paid:* ${fmtINR(transaction.totalAmount)}\n\nHave a great day!`;
 
-  // --- MOCK LOGGING FOR DEMO ---
   console.log("==========================================");
   console.log("📱 [WHATSAPP OUTBOUND: CUSTOMER RECEIPT]");
   console.log(`To: ${formattedPhone}`);
   console.log(`Message:\n${messageBody}`);
   console.log("==========================================");
-  
-  // --- PRODUCTION TWILIO IMPLEMENTATION ---
-  /*
+
+  // Initialize DB Log
+  let logId = "";
+  try {
+    const log = await prisma.messageLog.create({
+      data: {
+        channel: "WHATSAPP",
+        recipientName: transaction.customerName,
+        recipientPhone: formattedPhone,
+        messageType: "BILL",
+        body: messageBody,
+        status: "PENDING",
+      },
+    });
+    logId = log.id;
+  } catch (dbErr) {
+    console.error("⚠️ Failed to write initial message log to DB:", dbErr);
+  }
+
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const senderNumber = process.env.TWILIO_WHATSAPP_SENDER;
+  const senderNumber = process.env.TWILIO_WHATSAPP_SENDER || "whatsapp:+14155238886";
 
-  if (accountSid && authToken && senderNumber) {
+  if (accountSid && authToken) {
     const params = new URLSearchParams({
       To: `whatsapp:${formattedPhone}`,
       From: senderNumber,
@@ -63,14 +78,45 @@ export async function sendCustomerBillWhatsApp(
           body: params.toString(),
         }
       );
+
       if (!response.ok) {
-        console.error("Twilio WhatsApp Error:", await response.text());
+        const errText = await response.text();
+        console.error("❌ Twilio WhatsApp Error:", errText);
+        if (logId) {
+          await prisma.messageLog.update({
+            where: { id: logId },
+            data: { status: "FAILED", error: `Twilio Error: ${errText}` },
+          });
+        }
+      } else {
+        const resData = await response.json();
+        console.log("✅ Twilio message dispatched successfully:", resData.sid);
+        if (logId) {
+          await prisma.messageLog.update({
+            where: { id: logId },
+            data: { status: "SENT", providerId: resData.sid },
+          });
+        }
       }
-    } catch (err) {
-      console.error("Failed to dispatch Twilio WhatsApp message:", err);
+    } catch (err: any) {
+      console.error("❌ Failed to dispatch Twilio WhatsApp message:", err);
+      if (logId) {
+        await prisma.messageLog.update({
+          where: { id: logId },
+          data: { status: "FAILED", error: err.message || "Network request failed" },
+        });
+      }
+    }
+  } else {
+    // If not configured, complete simulation
+    console.log("⚠️ Twilio credentials missing - message log marked as SENT (Simulated)");
+    if (logId) {
+      await prisma.messageLog.update({
+        where: { id: logId },
+        data: { status: "SENT", error: "Simulated sending (Twilio credentials missing)" },
+      });
     }
   }
-  */
 }
 
 export async function sendOwnerStockAlertWhatsApp(
@@ -80,23 +126,36 @@ export async function sendOwnerStockAlertWhatsApp(
   sku: string
 ) {
   const ownerPhone = process.env.OWNER_WHATSAPP_NUMBER || "+919876543210"; 
-  
   const messageBody = `🚨 *EMERGENCY LOW STOCK ALERT* 🚨\n\n*Product:* ${productName}\n*SKU:* ${sku}\n\n*Current Stock:* ${remainingStock}\n*Reorder Threshold:* ${reorderLevel}\n\nThis product has fallen below the safety threshold. Please generate a Purchase Order immediately to avoid a complete stockout.`;
 
-  // --- MOCK LOGGING FOR DEMO ---
   console.log("==========================================");
   console.log("🚨 [WHATSAPP OUTBOUND: OWNER ALERT]");
   console.log(`To: ${ownerPhone}`);
   console.log(`Message:\n${messageBody}`);
   console.log("==========================================");
 
-  // --- PRODUCTION TWILIO IMPLEMENTATION ---
-  /*
+  let logId = "";
+  try {
+    const log = await prisma.messageLog.create({
+      data: {
+        channel: "WHATSAPP",
+        recipientName: "Aarav Mehra (Owner)",
+        recipientPhone: ownerPhone,
+        messageType: "LOW_STOCK_ALERT",
+        body: messageBody,
+        status: "PENDING",
+      },
+    });
+    logId = log.id;
+  } catch (dbErr) {
+    console.error("⚠️ Failed to write initial message log to DB:", dbErr);
+  }
+
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const senderNumber = process.env.TWILIO_WHATSAPP_SENDER;
+  const senderNumber = process.env.TWILIO_WHATSAPP_SENDER || "whatsapp:+14155238886";
 
-  if (accountSid && authToken && senderNumber) {
+  if (accountSid && authToken) {
     const params = new URLSearchParams({
       To: `whatsapp:${ownerPhone}`,
       From: senderNumber,
@@ -115,14 +174,44 @@ export async function sendOwnerStockAlertWhatsApp(
           body: params.toString(),
         }
       );
+
       if (!response.ok) {
-        console.error("Twilio WhatsApp Error:", await response.text());
+        const errText = await response.text();
+        console.error("❌ Twilio WhatsApp Error:", errText);
+        if (logId) {
+          await prisma.messageLog.update({
+            where: { id: logId },
+            data: { status: "FAILED", error: `Twilio Error: ${errText}` },
+          });
+        }
+      } else {
+        const resData = await response.json();
+        console.log("✅ Twilio stock alert dispatched successfully:", resData.sid);
+        if (logId) {
+          await prisma.messageLog.update({
+            where: { id: logId },
+            data: { status: "SENT", providerId: resData.sid },
+          });
+        }
       }
-    } catch (err) {
-      console.error("Failed to dispatch Twilio WhatsApp owner alert:", err);
+    } catch (err: any) {
+      console.error("❌ Failed to dispatch Twilio WhatsApp owner alert:", err);
+      if (logId) {
+        await prisma.messageLog.update({
+          where: { id: logId },
+          data: { status: "FAILED", error: err.message || "Network request failed" },
+        });
+      }
+    }
+  } else {
+    console.log("⚠️ Twilio credentials missing - stock alert marked as SENT (Simulated)");
+    if (logId) {
+      await prisma.messageLog.update({
+        where: { id: logId },
+        data: { status: "SENT", error: "Simulated sending (Twilio credentials missing)" },
+      });
     }
   }
-  */
 }
 
 export async function sendEodReportWhatsApp(
@@ -140,20 +229,34 @@ export async function sendEodReportWhatsApp(
   for (const phone of recipients) {
     const formattedPhone = phone.startsWith("+") ? phone : `+91${phone}`;
 
-    // --- MOCK LOGGING FOR DEMO ---
     console.log("==========================================");
     console.log("📈 [WHATSAPP OUTBOUND: EOD REPORT]");
     console.log(`To: ${formattedPhone}`);
     console.log(`Message:\n${messageBody}`);
     console.log("==========================================");
 
-    // --- PRODUCTION TWILIO IMPLEMENTATION ---
-    /*
+    let logId = "";
+    try {
+      const log = await prisma.messageLog.create({
+        data: {
+          channel: "WHATSAPP",
+          recipientName: phone.includes("9876543210") ? "Aarav Mehra (Owner)" : "Priya Nair (Admin)",
+          recipientPhone: formattedPhone,
+          messageType: "EOD_REPORT",
+          body: messageBody,
+          status: "PENDING",
+        },
+      });
+      logId = log.id;
+    } catch (dbErr) {
+      console.error("⚠️ Failed to write initial message log to DB:", dbErr);
+    }
+
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
     const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const senderNumber = process.env.TWILIO_WHATSAPP_SENDER;
+    const senderNumber = process.env.TWILIO_WHATSAPP_SENDER || "whatsapp:+14155238886";
 
-    if (accountSid && authToken && senderNumber) {
+    if (accountSid && authToken) {
       const params = new URLSearchParams({
         To: `whatsapp:${formattedPhone}`,
         From: senderNumber,
@@ -172,13 +275,43 @@ export async function sendEodReportWhatsApp(
             body: params.toString(),
           }
         );
+
         if (!response.ok) {
-          console.error("Twilio WhatsApp Error:", await response.text());
+          const errText = await response.text();
+          console.error("❌ Twilio WhatsApp Error:", errText);
+          if (logId) {
+            await prisma.messageLog.update({
+              where: { id: logId },
+              data: { status: "FAILED", error: `Twilio Error: ${errText}` },
+            });
+          }
+        } else {
+          const resData = await response.json();
+          console.log("✅ Twilio EOD report dispatched successfully:", resData.sid);
+          if (logId) {
+            await prisma.messageLog.update({
+              where: { id: logId },
+              data: { status: "SENT", providerId: resData.sid },
+            });
+          }
         }
-      } catch (err) {
-        console.error("Failed to dispatch Twilio WhatsApp EOD report:", err);
+      } catch (err: any) {
+        console.error("❌ Failed to dispatch Twilio WhatsApp EOD report:", err);
+        if (logId) {
+          await prisma.messageLog.update({
+            where: { id: logId },
+            data: { status: "FAILED", error: err.message || "Network request failed" },
+          });
+        }
+      }
+    } else {
+      console.log("⚠️ Twilio credentials missing - EOD report marked as SENT (Simulated)");
+      if (logId) {
+        await prisma.messageLog.update({
+          where: { id: logId },
+          data: { status: "SENT", error: "Simulated sending (Twilio credentials missing)" },
+        });
       }
     }
-    */
   }
 }

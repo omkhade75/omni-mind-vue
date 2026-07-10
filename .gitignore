@@ -35,3 +35,5 @@ dist-ssr
 .env.local
 .env.*.local
 
+# Vapi Integration Configurations
+src/lib/vapi-config.json

@@ -51,18 +51,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // On mount, check server session (not localStorage!)
   useEffect(() => {
+    console.log("🔍 [AuthContext] Mounting AuthProvider. Checking server session...");
     getCurrentSessionServer()
       .then((res) => {
+        console.log("🔍 [AuthContext] Session resolved successfully:", res);
         if (res.user) {
           setUser(mapAuthUserToUser(res.user));
         } else {
           setUser(null);
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("❌ [AuthContext] Session check failed:", err);
         setUser(null);
       })
       .finally(() => {
+        console.log("🔍 [AuthContext] Session check complete. Setting loading = false");
         setLoading(false);
       });
   }, []);

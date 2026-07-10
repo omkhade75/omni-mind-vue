@@ -17,6 +17,8 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { initiateVapiCallServer } from "@/lib/server-vapi";
+import { toast } from "sonner";
 import {
   Package,
   Users,
@@ -28,6 +30,8 @@ import {
   Calendar,
   Clock,
   Star,
+  Phone,
+  Loader2,
 } from "lucide-react";
 
 interface DetailDrawerProps {
@@ -316,6 +320,8 @@ export const Product360Drawer: React.FC<DetailDrawerProps & { productId: string 
   );
 };
 
+
+
 export const Customer360Drawer: React.FC<DetailDrawerProps & { customerId: string | null }> = ({
   open,
   onOpenChange,
@@ -324,6 +330,35 @@ export const Customer360Drawer: React.FC<DetailDrawerProps & { customerId: strin
   const { user } = useAuth();
   const [profile, setProfile] = useState<Customer360Profile | null>(null);
   const [loading, setLoading] = useState(false);
+  const [calling, setCalling] = useState(false);
+
+  const handleCall = async () => {
+    if (!profile || !profile.phone) {
+      toast.error("Customer phone number is missing.");
+      return;
+    }
+    setCalling(true);
+    try {
+      const res = await initiateVapiCallServer({
+        data: {
+          phoneNumber: profile.phone,
+          recipientName: profile.name,
+          role: "customer",
+          messageContext: `Calling customer ${profile.name} to check on their recent shopping experience, offer loyalty discounts, and invite them back to GrandSquare Mall.`,
+        }
+      });
+      if (res.success) {
+        toast.success(`AI voice call triggered! Reference ID: ${res.callId}`);
+      } else {
+        toast.error(`Failed to trigger voice call: ${res.error}`);
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to start voice call: " + err.message);
+    } finally {
+      setCalling(false);
+    }
+  };
 
   useEffect(() => {
     if (!customerId || !open) {
@@ -549,10 +584,21 @@ export const Customer360Drawer: React.FC<DetailDrawerProps & { customerId: strin
                     ))}
                   </div>
                 )}
+              {/* Outreach Actions */}
+              <div className="pt-4 border-t border-hairline mt-4">
+                <Button
+                  onClick={handleCall}
+                  disabled={calling}
+                  className="w-full bg-violet hover:bg-violet/90 text-white font-semibold flex items-center justify-center gap-2 animate-pulse-subtle"
+                >
+                  {calling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4" />}
+                  Call Customer with AI Voice Agent
+                </Button>
               </div>
             </div>
-          </>
-        )}
+          </div>
+        </>
+      )}
       </SheetContent>
     </Sheet>
   );
@@ -565,6 +611,36 @@ export const Supplier360Drawer: React.FC<DetailDrawerProps & { supplierId: strin
 }) => {
   const { suppliers, purchaseOrders } = useBusinessData();
   const supplier = suppliers.find((s) => s.id === supplierId);
+  const [calling, setCalling] = useState(false);
+
+  const handleCall = async () => {
+    if (!supplier || !supplier.phone) {
+      toast.error("Supplier phone number is missing.");
+      return;
+    }
+    setCalling(true);
+    try {
+      const res = await initiateVapiCallServer({
+        data: {
+          phoneNumber: supplier.phone,
+          recipientName: supplier.name,
+          role: "supplier",
+          messageContext: `Calling supplier ${supplier.name} to discuss stock reordering status, fulfillment rates, and delivery logistics for GrandSquare Mall.`,
+        }
+      });
+      if (res.success) {
+        toast.success(`AI voice call triggered! Reference ID: ${res.callId}`);
+      } else {
+        toast.error(`Failed to trigger voice call: ${res.error}`);
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to start voice call: " + err.message);
+    } finally {
+      setCalling(false);
+    }
+  };
+
   if (!supplier) return null;
 
   // Filter purchase orders from this supplier
@@ -726,13 +802,21 @@ export const Supplier360Drawer: React.FC<DetailDrawerProps & { supplierId: strin
           </div>
 
           {/* Actions */}
-          <div className="pt-4 border-t border-hairline">
+          <div className="pt-4 border-t border-hairline space-y-2">
             <Link to="/purchase-orders" onClick={() => onOpenChange(false)}>
-              <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-2">
+              <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center justify-center gap-2">
                 <Package className="h-4 w-4" />
                 Give Order / Create PO
               </Button>
             </Link>
+            <Button
+              onClick={handleCall}
+              disabled={calling}
+              className="w-full bg-violet hover:bg-violet/90 text-white font-semibold flex items-center justify-center gap-2"
+            >
+              {calling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4" />}
+              Call Supplier with AI Voice Agent
+            </Button>
           </div>
         </div>
       </SheetContent>

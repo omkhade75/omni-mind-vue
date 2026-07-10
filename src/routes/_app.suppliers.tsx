@@ -3,11 +3,12 @@ import { PageHeader, SectionCard, StatusPill } from "@/components/page-header";
 import { useBusinessData } from "@/lib/business-context";
 import { useAuth } from "@/lib/auth-context";
 import { fmtINR } from "@/lib/mock-data";
-import { Sparkles, Truck, Plus, Loader2, Edit, Archive, FileText } from "lucide-react";
+import { Sparkles, Truck, Plus, Loader2, Edit, Archive, FileText, Phone } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { getSuppliers, addSupplier, editSupplierServer, archiveSupplierServer } from "@/lib/server-suppliers";
+import { initiateVapiCallServer } from "@/lib/server-vapi";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -38,6 +39,36 @@ function Suppliers() {
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [sel, setSel] = useState<any>(null);
+
+  const [callingId, setCallingId] = useState<string | null>(null);
+
+  const handleVapiCall = async (recipientName: string, phoneNumber: string) => {
+    if (!phoneNumber) {
+      toast.error("This supplier does not have a phone number registered.");
+      return;
+    }
+    setCallingId(phoneNumber);
+    try {
+      const res = await initiateVapiCallServer({
+        data: {
+          phoneNumber,
+          recipientName,
+          role: "supplier",
+          messageContext: `Calling supplier ${recipientName} to discuss stock reordering status, fulfillment rates, and delivery logistics for GrandSquare Mall.`,
+        }
+      });
+      if (res.success) {
+        toast.success(`AI voice call triggered successfully to ${recipientName}! Reference ID: ${res.callId}`);
+      } else {
+        toast.error(`Failed to initiate call: ${res.error}`);
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Failed to initiate call: " + e.message);
+    } finally {
+      setCallingId(null);
+    }
+  };
 
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -297,6 +328,20 @@ function Suppliers() {
                     <Plus className="h-3 w-3 mr-1" /> Place Order
                   </Button>
                 </Link>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-hairline bg-surface text-xs font-semibold text-violet hover:bg-violet/10 gap-1"
+                  onClick={() => handleVapiCall(sel.name, sel.phone)}
+                  disabled={callingId === sel.phone}
+                >
+                  {callingId === sel.phone ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Phone className="h-3 w-3" />
+                  )}
+                  Call with AI
+                </Button>
                 <Button
                   size="sm"
                   variant="outline"

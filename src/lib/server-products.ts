@@ -547,3 +547,87 @@ export const getProductOptionsServer = createServerFn({ method: "POST" })
     };
   });
 
+export const autoCategorizeProductServer = createServerFn({ method: "POST" })
+  .validator((data: { name: string; brand: string }) => data)
+  .handler(async ({ data }) => {
+    const name = data.name.toLowerCase().trim();
+    const brand = data.brand.toLowerCase().trim();
+
+    // 1. Keyword mapping rules
+    const rules = [
+      { keywords: ["milk", "cheese", "butter", "paneer", "curd", "yogurt", "taaza", "amul", "dairy"], categoryId: "cat-dairy", departmentId: "dept-grocery", categoryName: "Dairy" },
+      { keywords: ["cola", "juice", "beverage", "soda", "pepsi", "water", "drink", "fanta", "limca", "sprite", "tea", "coffee"], categoryId: "cat-beverages", departmentId: "dept-grocery", categoryName: "Beverages" },
+      { keywords: ["bread", "bun", "cookie", "cake", "pastry", "croissant", "bakery", "biscuit", "toast"], categoryId: "cat-bakery", departmentId: "dept-grocery", categoryName: "Bakery" },
+      { keywords: ["noodle", "chips", "pasta", "sauce", "ketchup", "maggi", "kurkure", "snack"], categoryId: "cat-packagedfoods", departmentId: "dept-grocery", categoryName: "Packaged Foods" },
+      { keywords: ["soap", "toothpaste", "brush", "surf", "detergent", "shampoo", "wash", "fmcg"], categoryId: "cat-fmcg", departmentId: "dept-grocery", categoryName: "FMCG" },
+      { keywords: ["shirt", "t-shirt", "jeans", "trousers", "dress", "jacket", "suit", "clothing", "apparel"], categoryId: "cat-apparel", departmentId: "dept-fashion", categoryName: "Apparel" },
+      { keywords: ["saree", "kurta", "ethnic", "sherwani", "kurti"], categoryId: "cat-ethnic", departmentId: "dept-fashion", categoryName: "Ethnic" },
+      { keywords: ["denim", "levis", "wrangler"], categoryId: "cat-denim", departmentId: "dept-fashion", categoryName: "Denim" },
+      { keywords: ["shoe", "sneaker", "slipper", "sandal", "heel", "nike", "adidas", "puma", "footwear"], categoryId: "cat-footwear", departmentId: "dept-fashion", categoryName: "Footwear" },
+      { keywords: ["lipstick", "kajal", "makeup", "nail", "eyeliner", "cosmetics"], categoryId: "cat-cosmetics", departmentId: "dept-beauty", categoryName: "Cosmetics" },
+      { keywords: ["cream", "lotion", "moisturizer", "serum", "skincare", "sunscreen", "face"], categoryId: "cat-skincare", departmentId: "dept-beauty", categoryName: "Skincare" },
+      { keywords: ["phone", "smartphone", "laptop", "samsung", "apple", "charger", "cable", "electronics", "mobile"], categoryId: "cat-electronics", departmentId: "dept-electronics", categoryName: "Electronics" },
+      { keywords: ["tv", "television", "screen", "display", "monitor", "sony", "lg"], categoryId: "cat-television", departmentId: "dept-electronics", categoryName: "Television" },
+      { keywords: ["speaker", "headphone", "earphone", "audio", "soundbar", "boat", "jbl"], categoryId: "cat-audio", departmentId: "dept-electronics", categoryName: "Audio" },
+      { keywords: ["bat", "ball", "racket", "tent", "sports", "gym", "dumbell", "cricket", "football"], categoryId: "cat-sports", departmentId: "dept-sports", categoryName: "Sports & Outdoors" }
+    ];
+
+    for (const rule of rules) {
+      const match = rule.keywords.some(kw => name.includes(kw) || brand.includes(kw));
+      if (match) {
+        return {
+          categoryId: rule.categoryId,
+          departmentId: rule.departmentId,
+          categoryName: rule.categoryName,
+          confidence: 0.99,
+          method: "Rule/Keyword mapping"
+        };
+      }
+    }
+
+    // 2. Fallback to Gemini if key is configured
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (geminiKey) {
+      try {
+        const prompt = `Classify the product "${data.name}" (Brand: "${data.brand}") into one of these category IDs:
+cat-dairy, cat-packagedfoods, cat-electronics, cat-apparel, cat-fmcg, cat-bakery, cat-sports, cat-television, cat-denim, cat-beverages, cat-footwear, cat-cosmetics, cat-audio, cat-ethnic, cat-skincare.
+
+Also classify it into one of these department IDs:
+dept-grocery, dept-electronics, dept-fashion, dept-beauty, dept-sports, dept-others.
+
+Respond with a raw, valid JSON object containing exactly these fields: { "categoryId": "...", "departmentId": "...", "categoryName": "...", "confidence": 0.8 }. No markdown formatting or extra text.`;
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+
+        if (response.ok) {
+          const resJson = await response.json();
+          const text = resJson.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          const cleanedText = text.replace(/```json/g, "").replace(/```/g, "").trim();
+          const parsed = JSON.parse(cleanedText);
+          return {
+            categoryId: parsed.categoryId || "cat-packagedfoods",
+            departmentId: parsed.departmentId || "dept-grocery",
+            categoryName: parsed.categoryName || "Packaged Foods",
+            confidence: parsed.confidence || 0.85,
+            method: "Gemini AI Classification"
+          };
+        }
+      } catch (err) {
+        console.warn("⚠️ Gemini auto-classification failed:", err);
+      }
+    }
+
+    // 3. Default fallback
+    return {
+      categoryId: "cat-packagedfoods",
+      departmentId: "dept-grocery",
+      categoryName: "Packaged Foods",
+      confidence: 0.50,
+      method: "Default classification fallback"
+    };
+  });
+

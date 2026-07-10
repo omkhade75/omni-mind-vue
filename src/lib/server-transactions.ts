@@ -92,6 +92,30 @@ export const createTransactionServer = createServerFn({ method: "POST" })
         totalDiscount += itemDiscount;
         totalTax += itemTax;
 
+        // FIFO Product Batch depletion
+        const productBatches = await tx.productBatch.findMany({
+          where: { productId: prod.id, quantityRemaining: { gt: 0 } },
+          orderBy: { expiryDate: "asc" }
+        });
+
+        let batchDeductRemaining = item.quantity;
+        let assignedBatchId: string | null = null;
+
+        for (const batch of productBatches) {
+          if (batchDeductRemaining <= 0) break;
+          const qtyToDeduct = Math.min(batch.quantityRemaining, batchDeductRemaining);
+          if (qtyToDeduct > 0) {
+            await tx.productBatch.update({
+              where: { id: batch.id },
+              data: { quantityRemaining: { decrement: qtyToDeduct } }
+            });
+            if (!assignedBatchId) {
+              assignedBatchId = batch.id;
+            }
+            batchDeductRemaining -= qtyToDeduct;
+          }
+        }
+
         txItemsData.push({
           productId: prod.id,
           quantity: item.quantity,
@@ -100,6 +124,7 @@ export const createTransactionServer = createServerFn({ method: "POST" })
           discountAmount: itemDiscount,
           taxAmount: itemTax,
           lineTotal,
+          batchId: assignedBatchId,
         });
 
         // Deduct from stock locations sequentially
@@ -167,6 +192,7 @@ export const createTransactionServer = createServerFn({ method: "POST" })
           data: {
             transactionId: transaction.id,
             productId: txi.productId,
+            batchId: txi.batchId,
             quantity: txi.quantity,
             unitPrice: txi.unitPrice,
             costPriceSnapshot: txi.costPriceSnapshot,
@@ -230,6 +256,24 @@ export const createTransactionServer = createServerFn({ method: "POST" })
           },
         });
       }
+
+      // 7.5 Record Double-Entry Ledger Entries
+      const totalCost = txItemsData.reduce((sum, item) => sum + (Number(item.costPriceSnapshot) * item.quantity), 0);
+      const { recordDoubleEntry } = await import("./server-ledger");
+      await recordDoubleEntry(tx, {
+        journalId: `JNL-SALE-${transaction.id}`,
+        referenceType: "Transaction",
+        referenceId: transaction.id,
+        description: `POS Sale Receipt: ${transaction.transactionNumber}`,
+        debits: [
+          { code: "1000", amount: totalAmount }, // Debit Cash
+          { code: "5000", amount: totalCost },   // Debit COGS
+        ],
+        credits: [
+          { code: "4000", amount: totalAmount }, // Credit Sales Revenue
+          { code: "1300", amount: totalCost },   // Credit Inventory Asset
+        ],
+      });
 
       // 8. Create BusinessEvent
       await tx.businessEvent.create({
