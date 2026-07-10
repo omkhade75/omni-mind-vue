@@ -528,74 +528,74 @@ export function localQueryFallback(
 
   // 7. Budget Allocation Scenario
   if (ctx.intent === "budget_allocation") {
+    const reorders = getReorderCandidates(ctx.resolvedDate, roleScope);
+    const anomalies = getUtilityAnomalies(ctx.resolvedDate, roleScope);
+    const expiry = getExpiryRisks(ctx.resolvedDate, 7, roleScope);
+
+    if (reorders.length === 0 && anomalies.length === 0) {
+      return {
+        answer: `There are currently no critical anomalies or reorder candidates requiring immediate budget allocation.`,
+        summary: "Operations are fully funded and stable.",
+        evidence: [],
+        reasoning: ["No active utility anomalies detected.", "No stock items below reorder thresholds."],
+        recommendedActions: [],
+        risks: [],
+        confidence: 0.95,
+      };
+    }
+
     return {
-      answer: `Given next week's ₹2 Lakh budget, I recommend allocating: (1) ₹35,000 for critical HVAC compressor maintenance to stop electricity waste, (2) ₹12,960 to reorder Amul Taaza Milk to avoid grocery stockouts, (3) ₹1,50,000 as working capital for high-margin Fashion restocks before the weekend peak.`,
-      summary: "Allocate capital directly to margin protection and utility leak mitigation.",
+      answer: `Based on active data, you should allocate budget to address ${anomalies.length} active anomalies and ${reorders.length} low-stock products.`,
+      summary: "Allocate capital to mitigate active risks.",
       evidence: [
-        { label: "HVAC Waste (est.)", value: "₹38,400/month loss" },
-        { label: "Amul Milk reorder cost", value: "₹12,960" },
-        { label: "Fashion inventory buffer", value: "₹1.5L allocation" },
+        { label: "Active Anomalies", value: anomalies.length.toString() },
+        { label: "Low Stock Items", value: reorders.length.toString() },
       ],
       reasoning: [
-        "HVAC compressor dispatch delivers immediate 110% ROI by preventing grid electricity charges.",
-        "Protecting Grocery shelf stocks defends daily high-frequency transaction volumes.",
+        "Resolving anomalies prevents ongoing revenue leaks.",
+        "Restocking inventory protects future transaction volume.",
       ],
-      recommendedActions: [
-        {
-          title: "Dispatch HVAC Crew",
-          description: "Dispatch team to HVAC Zone B to fix the overnight leak.",
-          priority: "high",
-          actionType: "INVESTIGATE_ANOMALY",
-          entityId: "anom-elec-001",
-        },
-        {
-          title: "Reorder Amul Taaza Milk 1L",
-          description: "Create draft purchase order for 240 units.",
-          priority: "high",
-          actionType: "CREATE_PO",
-          entityId: "rec-dairy-reorder-001",
-        },
-      ],
-      risks: [{ title: "Loss of ₹38K/mo if HVAC is postponed", severity: "high" }],
-      confidence: 0.93,
+      recommendedActions: [],
+      risks: [{ title: "Delaying budget allocation increases risk exposure", severity: "medium" }],
+      confidence: 0.85,
     };
   }
 
   // 8. Consequence Analysis / Do Nothing Scenario
   if (ctx.intent === "consequence_analysis") {
+    const reorders = getReorderCandidates(ctx.resolvedDate, roleScope);
+    const anomalies = getUtilityAnomalies(ctx.resolvedDate, roleScope);
+    const expiry = getExpiryRisks(ctx.resolvedDate, 7, roleScope);
+
+    if (reorders.length === 0 && anomalies.length === 0 && expiry.length === 0) {
+      return {
+        answer: "There are currently no active risks, anomalies, or stockouts detected in the system.",
+        summary: "Operations are running smoothly.",
+        evidence: [],
+        reasoning: ["Scanned active anomalies, stock levels, and expiry dates and found 0 risks."],
+        recommendedActions: [],
+        risks: [],
+        confidence: 0.95,
+      };
+    }
+
     return {
-      answer: `If you do nothing about current risks today: (1) You will lose ₹1,280 per day in HVAC Zone B energy leaks, (2) Nestlé Yogurt stock worth ₹1,764 will expire in 2 days and require complete write-off, (3) Amul Taaza Milk shelf will run out of stock in 3 days, causing ₹16.3K grocery revenue loss.`,
+      answer: `If you do nothing today, you face consequences from ${anomalies.length} active anomalies, ${expiry.length} expiring batches, and ${reorders.length} stockouts.`,
       summary: "Delaying operational responses will result in margin bleed and product shortages.",
       evidence: [
-        { label: "Yogurt expiry value", value: "₹1,764 (in 2 days)" },
-        { label: "HVAC daily cost leak", value: "₹1,280 / day" },
-        { label: "Amul Milk stock risk", value: "₹16.3K revenue risk" },
+        { label: "Expiring Batches", value: expiry.length.toString() },
+        { label: "Active Anomalies", value: anomalies.length.toString() },
+        { label: "Low Stock Items", value: reorders.length.toString() },
       ],
       reasoning: [
-        "Dampers and compressor valves on rooftop units do not fix themselves.",
-        "Yogurt batches are past their shelf-life peak and velocity is too low to clear at normal price.",
+        "Anomalies continue to accrue costs if left unresolved.",
+        "Expiring batches become complete write-offs if not sold or returned.",
       ],
-      recommendedActions: [
-        {
-          title: "Reorder Amul Taaza Milk 1L",
-          description: "Create PO to protect grocery stocks.",
-          priority: "high",
-          actionType: "CREATE_PO",
-          entityId: "rec-dairy-reorder-001",
-        },
-        {
-          title: "Apply Yogurt Expiry Markdown",
-          description: "Markdown Nestlé Yogurt batch by 20% to clear remaining units.",
-          priority: "high",
-          actionType: "APPLY_MARKDOWN",
-          entityId: "rec-dairy-markdown-002",
-        },
-      ],
+      recommendedActions: [],
       risks: [
-        { title: "Immediate write-off penalty", severity: "medium" },
-        { title: "Dairy shelf depletion", severity: "high" },
+        { title: "Margin erosion from inaction", severity: "high" },
       ],
-      confidence: 0.95,
+      confidence: 0.9,
     };
   }
 
@@ -633,12 +633,14 @@ export function localQueryFallback(
   const actions = getRecommendedActions(ctx.resolvedDate, roleScope);
 
   return {
-    answer:
-      roleScope === "manager"
+    answer: summary.orders === 0 
+      ? `There is currently no transaction activity recorded for ${ctx.resolvedDate}. Revenue and profit are at ₹0.`
+      : roleScope === "manager"
         ? `GrandSquare Mall (Fashion scoped) is running steadily on ${ctx.resolvedDate}. Scoped sales total ₹${summary.grossRevenue} with a net profit margin estimate of 16%.`
         : `GrandSquare Mall is performing steadily on ${ctx.resolvedDate}. Total gross revenue reached ₹${summary.grossRevenue} with a net profit of ₹${summary.netProfit} across ${summary.orders} orders.`,
-    summary:
-      roleScope === "manager"
+    summary: summary.orders === 0
+      ? "No business activity recorded."
+      : roleScope === "manager"
         ? "Fashion department metrics are within standard guidelines."
         : "GrandSquare Mall operations are performing within normal parameters.",
     evidence: [
@@ -646,10 +648,12 @@ export function localQueryFallback(
       { label: "Net Profit", value: `₹${summary.netProfit}` },
       { label: "Active recommendations", value: `${summary.activeRecommendations} pending` },
     ],
-    reasoning: [
-      "Footfall baseline correlates with seasonal shopping indices.",
-      "Cost structures remain optimal, but HVAC Zone B energy leakage requires dispatch.",
-    ],
+    reasoning: summary.orders === 0
+      ? ["No sales transactions found in the database for this date."]
+      : [
+          "Calculated from daily transaction ledgers.",
+          "Profit margins derived from standard COGS deductions.",
+        ],
     recommendedActions: actions.slice(0, 2).map((r) => ({
       title: r.title,
       description: r.explanation,
