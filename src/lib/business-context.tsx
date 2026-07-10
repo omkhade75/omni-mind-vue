@@ -284,8 +284,8 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
           suppliers: mappedSuppliers,
           expenses: mappedExpenses,
           purchaseOrders: mappedPurchaseOrders,
-          recommendations: [],
-          anomalies: [],
+          recommendations: currentSchema.recommendations,
+          anomalies: currentSchema.anomalies,
         });
 
         setSyncRev(prev => prev + 1);
