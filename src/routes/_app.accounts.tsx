@@ -63,6 +63,9 @@ function RouteComponent() {
 
   // Purchase Order Payment State
   const [payingPOId, setPayingPOId] = useState<string | null>(null);
+  const [payPasswordOpen, setPayPasswordOpen] = useState(false);
+  const [payPassword, setPayPassword] = useState("");
+  const [targetPayPoId, setTargetPayPoId] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
@@ -177,17 +180,31 @@ function RouteComponent() {
     }
   };
 
-  const handlePayPO = async (poId: string) => {
+  const promptPayPO = (poId: string) => {
+    setTargetPayPoId(poId);
+    setPayPassword("");
+    setPayPasswordOpen(true);
+  };
+
+  const handlePayPO = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (payPassword !== "1416") {
+      toast.error("Incorrect password.");
+      return;
+    }
+    if (!targetPayPoId) return;
+
     try {
-      setPayingPOId(poId);
+      setPayingPOId(targetPayPoId);
       await payPurchaseOrderServer({
         data: {
-          poId,
+          poId: targetPayPoId,
           role: user?.role || "owner",
           emailUser: user?.email || "",
         }
       });
       toast.success("Supplier invoice settled from Cash reserves!");
+      setPayPasswordOpen(false);
       await loadData();
     } catch (err: any) {
       toast.error(err.message || "Failed to settle supplier invoice.");
@@ -328,7 +345,7 @@ function RouteComponent() {
                             <Button
                               size="sm"
                               className="h-7 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
-                              onClick={() => handlePayPO(p.id)}
+                              onClick={() => promptPayPO(p.id)}
                               disabled={payingPOId === p.id}
                             >
                               {payingPOId === p.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Pay"}
@@ -594,6 +611,35 @@ function RouteComponent() {
               <Button type="submit" className="bg-amber-600 hover:bg-amber-700 text-white font-semibold" disabled={savingRepay}>
                 {savingRepay ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Authorize Repayment
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pay PO Password Dialog */}
+      <Dialog open={payPasswordOpen} onOpenChange={setPayPasswordOpen}>
+        <DialogContent className="sm:max-w-[400px] bg-white text-zinc-900 border border-zinc-200">
+          <DialogHeader>
+            <DialogTitle>Confirm Payment</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handlePayPO} className="space-y-4 py-2">
+            <div className="space-y-1">
+              <Label>Enter Authorization Pin</Label>
+              <Input
+                type="password"
+                value={payPassword}
+                onChange={(e) => setPayPassword(e.target.value)}
+                placeholder="****"
+                required
+                autoFocus
+                className="bg-white"
+              />
+            </div>
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" onClick={() => setPayPasswordOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={payingPOId !== null} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
+                {payingPOId !== null && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Authorize Payment
               </Button>
             </DialogFooter>
           </form>

@@ -39,15 +39,28 @@ export const getAccountsDataServer = createServerFn({ method: "POST" })
     });
 
     // 2. Accounts Payable (We owe Supplier)
+    // First, find POs that have already been paid
+    const paidEntries = await prisma.ledgerEntry.findMany({
+      where: {
+        referenceType: "PurchaseOrderPayment",
+      },
+      select: {
+        referenceId: true,
+      },
+    });
+    const paidPoIds = new Set(paidEntries.map(e => e.referenceId).filter(Boolean));
+
     const payables = await prisma.purchaseOrder.findMany({
       where: {
-        status: { in: ["Ordered", "Draft"] }
+        status: { in: ["Submitted", "Ordered", "Partially_Received", "Sent", "Received"] } // Exclude Draft
       },
       include: {
         supplier: true
       },
       orderBy: { orderDate: "desc" }
     });
+
+    const unpaidPayables = payables.filter(p => !paidPoIds.has(p.id));
 
     // 3. Fixed Deposits
     let fds = await prisma.fixedDeposit.findMany({
@@ -141,14 +154,15 @@ export const getAccountsDataServer = createServerFn({ method: "POST" })
         customerName: r.customer ? `${r.customer.firstName} ${r.customer.lastName}`.trim() : "Walk-in Customer",
         customerId: r.customerId
       })),
-      payables: payables.map(p => ({
+      payables: unpaidPayables.map(p => ({
         id: p.id,
         poNumber: p.poNumber,
         date: p.orderDate.toISOString(),
         amount: Number(p.totalAmount),
         status: p.status,
         supplierName: p.supplier ? p.supplier.name : "Unknown Supplier",
-        supplierId: p.supplierId
+        supplierId: p.supplierId,
+        isPaid: false // By definition, we only filtered unpaid payables
       })),
       fds: fds.map(f => ({
         id: f.id,
