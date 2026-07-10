@@ -21,11 +21,13 @@ export const DEFAULT_ACCOUNTS = [
  * Seed default ledger accounts if none exist in the database yet.
  */
 export async function seedLedgerAccounts(tx: any) {
+  // 1. Fetch all existing accounts in a single batch query
+  const existingAccounts = await tx.ledgerAccount.findMany();
+  const existingCodes = new Set(existingAccounts.map((a: any) => a.code));
+
+  // 2. Sequentially create only the missing accounts
   for (const ac of DEFAULT_ACCOUNTS) {
-    const existing = await tx.ledgerAccount.findUnique({
-      where: { code: ac.code },
-    });
-    if (!existing) {
+    if (!existingCodes.has(ac.code)) {
       await tx.ledgerAccount.create({
         data: {
           code: ac.code,
@@ -36,21 +38,25 @@ export async function seedLedgerAccounts(tx: any) {
     }
   }
 
-  // Ensure Cash ledger account (1000) has an initial capital deposit so owners can invest
-  const cashAc = await tx.ledgerAccount.findUnique({
-    where: { code: "1000" },
-    include: { entries: true },
-  });
-  if (cashAc && cashAc.entries.length === 0) {
-    await tx.ledgerEntry.create({
-      data: {
-        journalId: "JNL-INIT-CAPITAL",
-        accountId: cashAc.id,
-        debitAmount: 5000000,
-        creditAmount: 0,
-        description: "Initial owner equity capital deposit for treasury operations",
-      },
+  // 3. Seed initial cash reserves if Cash account exists but has no ledger entries recorded
+  const cashAc = existingAccounts.find((a: any) => a.code === "1000") || 
+                 await tx.ledgerAccount.findUnique({ where: { code: "1000" } });
+                 
+  if (cashAc) {
+    const entriesCount = await tx.ledgerEntry.count({
+      where: { accountId: cashAc.id },
     });
+    if (entriesCount === 0) {
+      await tx.ledgerEntry.create({
+        data: {
+          journalId: "JNL-INIT-CAPITAL",
+          accountId: cashAc.id,
+          debitAmount: 5000000,
+          creditAmount: 0,
+          description: "Initial owner equity capital deposit for treasury operations",
+        },
+      });
+    }
   }
 }
 
