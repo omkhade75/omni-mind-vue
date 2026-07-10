@@ -111,13 +111,15 @@ function MarketIntelligencePage() {
     try {
       setInvesting(true);
       await investCorporateCashServer({
-        assetName: activeAsset.name,
-        symbol: activeAsset.symbol,
-        purchasePrice: activeAsset.price,
-        quantity: qty,
-        totalCost,
-        role: user?.role || "owner",
-        emailUser: user?.email || "",
+        data: {
+          assetName: activeAsset.name,
+          symbol: activeAsset.symbol,
+          purchasePrice: activeAsset.price,
+          quantity: qty,
+          totalCost,
+          role: user?.role || "owner",
+          emailUser: user?.email || "",
+        }
       });
 
       toast.success(`Treasury Purchase Complete!`, {
@@ -137,10 +139,12 @@ function MarketIntelligencePage() {
     try {
       setLiquidatingId(id);
       await liquidateInvestmentServer({
-        investmentId: id,
-        liquidatedPrice: price,
-        role: user?.role || "owner",
-        emailUser: user?.email || "",
+        data: {
+          investmentId: id,
+          liquidatedPrice: price,
+          role: user?.role || "owner",
+          emailUser: user?.email || "",
+        }
       });
 
       toast.success(`Asset Liquidated!`, {
