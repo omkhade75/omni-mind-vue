@@ -133,9 +133,8 @@ function RouteComponent() {
   const thisMonthPOs = purchaseOrders.filter(
     (po) => po.orderDate.split("T")[0].startsWith(activeYearMonth) && po.status === "Received"
   );
-  // Estimate ITC as 18% of PO total amount if tax field is not explicit, otherwise default seeded baseline of 2,14,000 INR
-  const computedITC = thisMonthPOs.reduce((sum, po) => sum + (Number(po.totalAmount) * 0.18), 0);
-  const inputTaxCredit = computedITC > 0 ? computedITC : 214000;
+  // Estimate ITC as 18% of PO total amount if tax field is not explicit
+  const inputTaxCredit = thisMonthPOs.reduce((sum, po) => sum + (Number(po.totalAmount) * 0.18), 0);
 
   // Net GST Payable
   const gstPayable = Math.max(0, gstCollected - inputTaxCredit);
@@ -157,16 +156,16 @@ function RouteComponent() {
   // TDS and Advance Tax Paid (from tax payments logs)
   const advanceTaxPaid = taxPayments
     .filter((tp) => tp.description.includes("Advance") && tp.date.startsWith(activeYearMonth))
-    .reduce((sum, tp) => sum + tp.amount, 0) || 360000;
+    .reduce((sum, tp) => sum + tp.amount, 0);
 
   const tdsDeducted = taxPayments
     .filter((tp) => tp.description.includes("TDS") && tp.date.startsWith(activeYearMonth))
-    .reduce((sum, tp) => sum + tp.amount, 0) || 112000;
+    .reduce((sum, tp) => sum + tp.amount, 0);
 
   // Property Tax (PCMC)
   const propertyTax = taxPayments
     .filter((tp) => tp.description.includes("Property") && tp.date.startsWith(activeYearMonth))
-    .reduce((sum, tp) => sum + tp.amount, 0) || 186000;
+    .reduce((sum, tp) => sum + tp.amount, 0);
 
   // --- Graph 1: GST Inflow vs Outflow Trend ---
   const gstTrendData = [

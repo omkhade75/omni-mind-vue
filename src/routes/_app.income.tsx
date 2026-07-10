@@ -147,16 +147,14 @@ function RouteComponent() {
     .filter((p) => p.accountCode === "4200" && p.date.startsWith(activeYearMonth))
     .reduce((sum, p) => sum + p.amount, 0);
 
-  // If no transactions in DB, show a seeded rent context of 18,80,000 INR
-  const totalRent = rentLedgerSum > 0 ? rentLedgerSum : 1880000;
+  const totalRent = rentLedgerSum;
 
-  // 3. Other ancillary revenue (plus seeded placeholders if no entries)
+  // 3. Other ancillary revenue
   const otherLedgerSum = payments
     .filter((p) => p.accountCode === "4300" && p.date.startsWith(activeYearMonth))
     .reduce((sum, p) => sum + p.amount, 0);
 
-  // If no transactions in DB, show a seeded ancillary context of 6,62,000 INR
-  const totalOther = otherLedgerSum > 0 ? otherLedgerSum : 662000;
+  const totalOther = otherLedgerSum;
 
   const totalIncome = netSales + totalRent + totalOther;
 

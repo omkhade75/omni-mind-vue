@@ -65,32 +65,7 @@ export const getLogisticsDispatchesServer = createServerFn({ method: "POST" })
       orderBy: { dispatchedAt: "desc" },
     });
 
-    // Seed mock active dispatches if table is completely empty
-    if (dispatches.length === 0) {
-      await prisma.$transaction(async (tx) => {
-        for (const mock of MOCK_DISPATCHES) {
-          const deliveredAtDate = mock.status === "Delivered" ? new Date() : null;
-          await tx.deliveryDispatch.create({
-            data: {
-              orderNumber: mock.orderNumber,
-              customerName: mock.customerName,
-              destination: mock.destination,
-              driverName: mock.driverName,
-              vehicleNumber: mock.vehicleNumber,
-              itemsCount: mock.itemsCount,
-              status: mock.status,
-              delayReason: mock.delayReason,
-              dispatchedAt: new Date(Date.now() - 3 * 3600 * 1000), // 3 hours ago
-              deliveredAt: deliveredAtDate,
-            },
-          });
-        }
-      });
 
-      dispatches = await prisma.deliveryDispatch.findMany({
-        orderBy: { dispatchedAt: "desc" },
-      });
-    }
 
     return dispatches.map((d) => ({
       id: d.id,

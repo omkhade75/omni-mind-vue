@@ -67,68 +67,14 @@ export const getAccountsDataServer = createServerFn({ method: "POST" })
       orderBy: { startDate: "desc" }
     });
 
-    // Seed mock active FDs if empty
-    if (fds.length === 0) {
-      await prisma.fixedDeposit.createMany({
-        data: [
-          {
-            bankName: "HDFC Treasury FD",
-            principal: 300000,
-            interestRate: 7.25,
-            duration: 12,
-            status: "Active",
-            startDate: new Date(Date.now() - 90 * 24 * 3600 * 1000), // 3 months ago
-            matureDate: new Date(Date.now() + 270 * 24 * 3600 * 1000), // 9 months left
-          },
-          {
-            bankName: "SBI Corporate Bond",
-            principal: 200000,
-            interestRate: 6.90,
-            duration: 24,
-            status: "Active",
-            startDate: new Date(Date.now() - 180 * 24 * 3600 * 1000), // 6 months ago
-            matureDate: new Date(Date.now() + 540 * 24 * 3600 * 1000), // 18 months left
-          }
-        ]
-      });
-      fds = await prisma.fixedDeposit.findMany({
-        orderBy: { startDate: "desc" }
-      });
-    }
+
 
     // 4. Corporate Loans
     let loans = await prisma.corporateLoan.findMany({
       orderBy: { takenDate: "desc" }
     });
 
-    // Seed mock active Loans if empty
-    if (loans.length === 0) {
-      await prisma.corporateLoan.createMany({
-        data: [
-          {
-            bankName: "SBI Business Expansion Loan",
-            principal: 1200000,
-            interestRate: 9.50,
-            balance: 850000,
-            duration: 36,
-            status: "Active",
-            takenDate: new Date(Date.now() - 365 * 24 * 3600 * 1000), // 1 year ago
-          },
-          {
-            bankName: "ICICI Equipment Line",
-            principal: 300000,
-            interestRate: 11.20,
-            balance: 240000,
-            duration: 12,
-            status: "Active",
-            takenDate: new Date(Date.now() - 60 * 24 * 3600 * 1000), // 2 months ago
-          }
-        ]
-      });
-      loans = await prisma.corporateLoan.findMany({
-        orderBy: { takenDate: "desc" }
-      });
-    }
+
 
     // 5. Fetch General Cash Ledger Account Balance (Code 1000)
     await seedLedgerAccounts(prisma);
