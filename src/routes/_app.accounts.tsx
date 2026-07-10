@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth-context";
 import { useState, useEffect } from "react";
-import { getAccountsDataServer, createFixedDepositServer, createCorporateLoanServer, repayLoanServer, type FixedDepositItem, type CorporateLoanItem } from "@/lib/server-accounts";
+import { getAccountsDataServer, createFixedDepositServer, createCorporateLoanServer, repayLoanServer, payPurchaseOrderServer, type FixedDepositItem, type CorporateLoanItem } from "@/lib/server-accounts";
 import { toast } from "sonner";
 import { Loader2, ArrowUpRight, ArrowDownRight, Wallet, Receipt, CreditCard, Landmark, Coins, Plus, CheckCircle } from "lucide-react";
 import { fmtINR } from "@/lib/mock-data";
@@ -60,6 +60,9 @@ function RouteComponent() {
   const [selectedLoan, setSelectedLoan] = useState<CorporateLoanItem | null>(null);
   const [repayAmount, setRepayAmount] = useState("");
   const [savingRepay, setSavingRepay] = useState(false);
+
+  // Purchase Order Payment State
+  const [payingPOId, setPayingPOId] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
@@ -165,6 +168,23 @@ function RouteComponent() {
       toast.error(err.message || "Failed to repay loan.");
     } finally {
       setSavingRepay(false);
+    }
+  };
+
+  const handlePayPO = async (poId: string) => {
+    try {
+      setPayingPOId(poId);
+      await payPurchaseOrderServer({
+        poId,
+        role: user?.role || "owner",
+        emailUser: user?.email || "",
+      });
+      toast.success("Supplier invoice settled from Cash reserves!");
+      await loadData();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to settle supplier invoice.");
+    } finally {
+      setPayingPOId(null);
     }
   };
 
@@ -281,6 +301,7 @@ function RouteComponent() {
                       <th className="px-4 py-3">Supplier</th>
                       <th className="px-4 py-3 text-right">Amount</th>
                       <th className="px-4 py-3 text-center">Status</th>
+                      <th className="px-4 py-3 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100">
@@ -290,9 +311,25 @@ function RouteComponent() {
                         <td className="px-4 py-3 text-zinc-600">{p.supplierName}</td>
                         <td className="px-4 py-3 text-right font-semibold text-zinc-900">{fmtINR(p.amount)}</td>
                         <td className="px-4 py-3 text-center">
-                          <StatusPill tone={p.status === "Pending" ? "warning" : "danger"}>
+                          <StatusPill tone={p.status === "Pending" || p.status === "Ordered" || p.status === "Draft" ? "warning" : p.status === "Received" ? "success" : "danger"}>
                             {p.status}
                           </StatusPill>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {p.status !== "Received" ? (
+                            <Button
+                              size="sm"
+                              className="h-7 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                              onClick={() => handlePayPO(p.id)}
+                              disabled={payingPOId === p.id}
+                            >
+                              {payingPOId === p.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Pay"}
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-emerald-600 font-semibold flex items-center justify-center gap-0.5">
+                              <CheckCircle className="h-3 w-3" /> Settled
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}
