@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { prisma } from "./server/prisma";
 import { fmtINR } from "./mock-data";
 import { getDepartmentScope } from "./server-customers";
+import { formatDiagnosticResponse } from "./ai-context-builder";
 
 // ─── AIResponseContract ───────────────────────────────────────────────────────
 export interface AIResponseContract {
@@ -956,7 +957,8 @@ Return a structured JSON output matching the requested schema. Ensure recommende
       let confidence = typeof rawParsed.confidence === "number" ? rawParsed.confidence : 0.5;
       confidence = Math.max(0, Math.min(1, confidence));
 
-      return { answer, summary, evidence, reasoning, recommendedActions, risks, confidence } as AIResponseContract;
+      const result = { answer, summary, evidence, reasoning, recommendedActions, risks, confidence } as AIResponseContract;
+      return formatDiagnosticResponse(result, data.resolvedDate);
     } catch (err: any) {
       clearTimeout(timeoutId);
       throw err;
@@ -968,6 +970,18 @@ Return a structured JSON output matching the requested schema. Ensure recommende
 // from the database without needing an external AI API.
 
 async function executePrismaFallback(
+  query: string,
+  intent: string,
+  resolvedDate: string,
+  role?: string,
+  email?: string,
+  preBuiltContext?: string,
+): Promise<AIResponseContract> {
+  const raw = await executePrismaFallbackRaw(query, intent, resolvedDate, role, email, preBuiltContext);
+  return formatDiagnosticResponse(raw, resolvedDate);
+}
+
+async function executePrismaFallbackRaw(
   query: string,
   intent: string,
   resolvedDate: string,
