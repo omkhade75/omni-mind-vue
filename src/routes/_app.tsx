@@ -21,6 +21,7 @@ import {
   Warehouse,
   Timer,
   Truck,
+  Globe,
   ClipboardList,
   Wallet,
   Calculator,
@@ -91,6 +92,7 @@ const NAV: NavSection[] = [
     items: [
       { to: "/analytics", label: "Analytics", icon: BarChart3 },
       { to: "/ai-decisions", label: "AI Decision Center", icon: Brain },
+      { to: "/market-intelligence", label: "Market Intelligence", icon: Globe },
       { to: "/forecasting", label: "Forecasting", icon: LineChart },
       { to: "/anomalies", label: "Anomaly & Risk", icon: ShieldAlert },
     ],
@@ -112,6 +114,7 @@ const NAV: NavSection[] = [
       { to: "/expiry", label: "Expiry Intelligence", icon: Timer },
       { to: "/suppliers", label: "Suppliers", icon: Truck },
       { to: "/purchase-orders", label: "Purchase Orders", icon: ClipboardList },
+      { to: "/logistics", label: "Logistics & Dispatch", icon: Truck },
     ],
   },
   {

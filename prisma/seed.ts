@@ -80,65 +80,65 @@ async function main() {
     console.log("[SEED 2/12] Seeding Categories, Products, and stock setups...");
 
     // Categories
-    const categoryCount = await prisma.category.count();
     const categoriesMap = new Map<string, string>();
-    if (categoryCount === 0) {
-      const categoriesList = Array.from(new Set(rawSeed.products.map((p) => p.category)));
-      for (const catName of categoriesList) {
-        const matchedProduct = rawSeed.products.find((p) => p.category === catName)!;
-        const deptCode = matchedProduct.dept.toUpperCase();
-        const depts = await prisma.department.findMany();
-        const dept = depts.find((d) => d.code === deptCode || d.name === matchedProduct.dept) || depts[depts.length - 1];
-        
-        const catId = `cat-${catName.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
-        await prisma.category.create({
-          data: {
-            id: catId,
-            name: catName,
-            departmentId: dept.id,
-          }
-        });
-        categoriesMap.set(catName, catId);
-      }
-      console.log(`Seeded ${categoriesList.length} Categories.`);
-    } else {
-      // Rebuild map for product linking
-      const cats = await prisma.category.findMany();
-      cats.forEach(c => categoriesMap.set(c.name, c.id));
-      console.log("Categories already seeded, skipping write.");
+    const categoriesList = Array.from(new Set(rawSeed.products.map((p) => p.category)));
+    for (const catName of categoriesList) {
+      const matchedProduct = rawSeed.products.find((p) => p.category === catName)!;
+      const deptCode = matchedProduct.dept.toUpperCase();
+      const depts = await prisma.department.findMany();
+      const dept = depts.find((d) => d.code === deptCode || d.name === matchedProduct.dept) || depts[depts.length - 1];
+      
+      const catId = `cat-${catName.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
+      await prisma.category.upsert({
+        where: { id: catId },
+        update: { name: catName, departmentId: dept.id },
+        create: {
+          id: catId,
+          name: catName,
+          departmentId: dept.id,
+        }
+      });
+      categoriesMap.set(catName, catId);
     }
+    console.log(`Synced ${categoriesList.length} Categories.`);
 
     // Products
-    const productCount = await prisma.product.count();
-    if (productCount === 0) {
-      const depts = await prisma.department.findMany();
-      for (const p of rawSeed.products) {
-        const deptCode = p.dept.toUpperCase();
-        const dept = depts.find((d) => d.code === deptCode || d.name === p.dept) || depts[depts.length - 1];
-        const catId = categoriesMap.get(p.category) || "cat-others";
+    const depts = await prisma.department.findMany();
+    for (const p of rawSeed.products) {
+      const deptCode = p.dept.toUpperCase();
+      const dept = depts.find((d) => d.code === deptCode || d.name === p.dept) || depts[depts.length - 1];
+      const catId = categoriesMap.get(p.category) || "cat-others";
 
-        await prisma.product.create({
-          data: {
-            id: p.id,
-            sku: p.id,
-            barcode: `BAR-${p.id.split("-")[1]}`,
-            name: p.name,
-            brand: p.brand,
-            categoryId: catId,
-            departmentId: dept.id,
-            sellingPrice: p.price,
-            costPrice: p.cost,
-            taxRate: 18.0,
-            reorderLevel: p.reorder,
-            reorderQuantity: p.reorder * 2,
-            status: "Active",
-          }
-        });
-      }
-      console.log(`Seeded ${rawSeed.products.length} Products.`);
-    } else {
-      console.log("Products already seeded, skipping.");
+      await prisma.product.upsert({
+        where: { id: p.id },
+        update: {
+          name: p.name,
+          brand: p.brand,
+          categoryId: catId,
+          departmentId: dept.id,
+          sellingPrice: p.price,
+          costPrice: p.cost,
+          reorderLevel: p.reorder,
+          reorderQuantity: p.reorder * 2,
+        },
+        create: {
+          id: p.id,
+          sku: p.id,
+          barcode: `BAR-${p.id.split("-")[1]}`,
+          name: p.name,
+          brand: p.brand,
+          categoryId: catId,
+          departmentId: dept.id,
+          sellingPrice: p.price,
+          costPrice: p.cost,
+          taxRate: 18.0,
+          reorderLevel: p.reorder,
+          reorderQuantity: p.reorder * 2,
+          status: "Active",
+        }
+      });
     }
+    console.log(`Synced ${rawSeed.products.length} Products.`);
 
     // Inventory Locations
     const locCount = await prisma.inventoryLocation.count();
@@ -155,30 +155,39 @@ async function main() {
     }
 
     // Inventory Stocks
-    const stockCount = await prisma.inventoryStock.count();
-    if (stockCount === 0) {
-      for (const p of rawSeed.products) {
-        await prisma.inventoryStock.createMany({
-          data: [
-            { productId: p.id, locationId: "loc-warehouse", quantityOnHand: p.stock, availableQty: p.stock },
-            { productId: p.id, locationId: "loc-retail", quantityOnHand: Math.floor(p.stock * 0.2), availableQty: Math.floor(p.stock * 0.2) }
-          ]
+    for (const p of rawSeed.products) {
+      const whStock = await prisma.inventoryStock.findFirst({
+        where: { productId: p.id, locationId: "loc-warehouse" }
+      });
+      if (!whStock) {
+        await prisma.inventoryStock.create({
+          data: { productId: p.id, locationId: "loc-warehouse", quantityOnHand: p.stock, availableQty: p.stock }
         });
       }
-      console.log("Seeded Inventory Stocks.");
-    } else {
-      console.log("Inventory stock entries already seeded.");
+
+      const retStock = await prisma.inventoryStock.findFirst({
+        where: { productId: p.id, locationId: "loc-retail" }
+      });
+      if (!retStock) {
+        await prisma.inventoryStock.create({
+          data: { productId: p.id, locationId: "loc-retail", quantityOnHand: Math.floor(p.stock * 0.2), availableQty: Math.floor(p.stock * 0.2) }
+        });
+      }
     }
+    console.log("Synced Inventory Stocks.");
 
     // Supplier Product relation
-    const supProdCount = await prisma.supplierProduct.count();
-    if (supProdCount === 0) {
-      for (const p of rawSeed.products) {
-        const supplier = rawSeed.suppliers.find((s) => s.name === p.supplier);
-        if (supplier) {
+    for (const p of rawSeed.products) {
+      const supplier = rawSeed.suppliers.find((s) => s.name === p.supplier);
+      if (supplier) {
+        const relationId = `sp-${supplier.id}-${p.id}`;
+        const relationExists = await prisma.supplierProduct.findUnique({
+          where: { id: relationId }
+        });
+        if (!relationExists) {
           await prisma.supplierProduct.create({
             data: {
-              id: `sp-${supplier.id}-${p.id}`,
+              id: relationId,
               supplierId: supplier.id,
               productId: p.id,
               supplierPrice: p.cost,
@@ -189,10 +198,8 @@ async function main() {
           });
         }
       }
-      console.log("Seeded Supplier-Product links.");
-    } else {
-      console.log("Supplier-Product relations already seeded.");
     }
+    console.log("Synced Supplier-Product relations.");
 
     console.log(`[SEED 2/12] Completed in ${((Date.now() - phaseStart) / 1000).toFixed(2)}s`);
   }
@@ -358,9 +365,11 @@ async function main() {
     }
 
     // Product batches
-    const batchCount = await prisma.productBatch.count();
-    if (batchCount === 0) {
-      for (const b of rawSeed.batches) {
+    for (const b of rawSeed.batches) {
+      const batchExists = await prisma.productBatch.findUnique({
+        where: { id: b.id }
+      });
+      if (!batchExists) {
         const p = rawSeed.products.find((prod) => prod.id === b.productId);
         const supplierName = p ? p.supplier : "";
         const supplier = await prisma.supplier.findFirst({ where: { name: supplierName } });
@@ -382,10 +391,8 @@ async function main() {
           }
         });
       }
-      console.log(`Seeded ${rawSeed.batches.length} Product Batches.`);
-    } else {
-      console.log("Product Batches already seeded.");
     }
+    console.log(`Synced Product Batches.`);
 
     console.log(`[SEED 7/12] Completed in ${((Date.now() - phaseStart) / 1000).toFixed(2)}s`);
   }

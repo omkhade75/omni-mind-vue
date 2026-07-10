@@ -347,6 +347,85 @@ Return a structured JSON output matching the requested schema. Ensure recommende
 async function executePrismaFallback(query: string, intent: string): Promise<AIResponseContract> {
   const q = query.toLowerCase();
 
+  // A. Investments & Commodities Fallback
+  if (q.includes("invest") || q.includes("market") || q.includes("gold") || q.includes("silver") || q.includes("holding") || q.includes("commodity")) {
+    const investments = await prisma.investment.findMany();
+    const active = investments.filter(i => i.status === "Active");
+    const activeValue = active.reduce((sum, i) => sum + Number(i.totalCost), 0);
+    const liquidated = investments.filter(i => i.status === "Liquidated");
+    
+    let totalPnl = 0;
+    liquidated.forEach(i => {
+      totalPnl += Number(i.liquidatedAmount) - Number(i.totalCost);
+    });
+
+    return {
+      answer: `OmniMind currently holds ${active.length} active investments valued at ${fmtINR(activeValue)} in commodities. Historically, liquidated investments have generated a net return of ${fmtINR(totalPnl)} for the corporate treasury.`,
+      summary: `Active investments: ${active.length} (${fmtINR(activeValue)}). Liquidated PnL: ${fmtINR(totalPnl)}.`,
+      evidence: active.slice(0, 3).map(i => ({
+        label: `${i.assetName} (${i.symbol})`,
+        value: `${i.quantity} units @ ${fmtINR(Number(i.purchasePrice))}`,
+        sourceType: "investment",
+        sourceId: i.id,
+      })),
+      reasoning: [
+        "Retrieved portfolio from Investment ledger records.",
+        "Aggregated active asset values and historical liquidated gains/losses."
+      ],
+      recommendedActions: [
+        {
+          title: "Go to Market Intelligence",
+          description: "Deploy treasury cash or liquidate active commodity positions.",
+          priority: "medium",
+          actionType: "NAVIGATE",
+          entityId: "/market-intelligence",
+        }
+      ],
+      risks: [
+        { title: "Commodity Price Volatility", severity: "medium" }
+      ],
+      confidence: 1.0,
+    };
+  }
+
+  // B. Logistics & Dispatch Fallback
+  if (q.includes("deliver") || q.includes("dispatch") || q.includes("logistics") || q.includes("transit") || q.includes("driver") || q.includes("vehicle") || q.includes("transport")) {
+    const dispatches = await prisma.deliveryDispatch.findMany();
+    const active = dispatches.filter(d => d.status !== "Delivered");
+    const delayed = dispatches.filter(d => d.status === "Delayed");
+    const delivered = dispatches.filter(d => d.status === "Delivered");
+
+    const answerText = `We have ${dispatches.length} total deliveries logged. ${delivered.length} have been successfully delivered. There are ${active.length} active dispatches, with ${delayed.length} flagged as delayed due to road traffic or vehicle constraints.`;
+
+    return {
+      answer: answerText,
+      summary: `${active.length} active dispatches (${delayed.length} delayed).`,
+      evidence: delayed.map(d => ({
+        label: `Delayed: ${d.orderNumber}`,
+        value: `${d.driverName} - ${d.delayReason || "No details"}`,
+        sourceType: "delivery",
+        sourceId: d.id,
+      })),
+      reasoning: [
+        "Scanned fleet dispatches table for non-Delivered and Delayed rows.",
+        "Extracted driver names and telemetry delay logs."
+      ],
+      recommendedActions: [
+        {
+          title: "Check Logistics Fleet Feed",
+          description: "Track driver positions and resolve shipment delays.",
+          priority: "high",
+          actionType: "NAVIGATE",
+          entityId: "/logistics",
+        }
+      ],
+      risks: [
+        { title: "SLA breach on delayed shipments", severity: "high" }
+      ],
+      confidence: 1.0,
+    };
+  }
+
   // 1. Payment Intent
   if (intent === "payments" || q.includes("pay") || q.includes("owe") || q.includes("pending")) {
     const suppliers = await prisma.supplier.findMany({

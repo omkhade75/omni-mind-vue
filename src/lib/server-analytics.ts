@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { prisma } from "./server/prisma";
 import { sendEodReportWhatsApp } from "./server-whatsapp";
+import { readWhatsAppConfig } from "./server-whatsapp-config";
 
 export const getCommandCenterServer = createServerFn({ method: "POST" })
   .validator((data: { role: string; email: string; activeDate?: string; timeRange?: string }) => data)
@@ -221,8 +222,9 @@ export const dispatchEodReportServer = createServerFn({ method: "POST" })
       anomalies: activeAnomalies,
     };
 
-    const ownerPhone = process.env.OWNER_WHATSAPP_NUMBER || "+919876543210";
-    const managerPhone = process.env.MANAGER_WHATSAPP_NUMBER || "+919876543211";
+    const waConfig = readWhatsAppConfig();
+    const ownerPhone = waConfig.ownerWhatsAppNumber || "+919876543210";
+    const managerPhone = waConfig.managerWhatsAppNumber || "+919876543211";
 
     await sendEodReportWhatsApp(stats, [ownerPhone, managerPhone]);
 

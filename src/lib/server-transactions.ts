@@ -31,6 +31,7 @@ export const createTransactionServer = createServerFn({ method: "POST" })
   .validator(
     (data: {
       customerId?: string | null;
+      walkinPhone?: string | null;
       departmentId: string;
       items: Array<{ productId: string; quantity: number; discount: number }>;
       paymentMethod: string;
@@ -323,6 +324,15 @@ export const createTransactionServer = createServerFn({ method: "POST" })
           console.error("Failed to send customer bill:", err);
         });
       }
+    } else if (data.walkinPhone) {
+      sendCustomerBillWhatsApp(data.walkinPhone, {
+        transactionNumber: result.transaction.transactionNumber,
+        totalAmount: result.transaction.totalAmount,
+        itemsCount: data.items.length,
+        customerName: "Walk-in Customer",
+      }).catch(err => {
+        console.error("Failed to send walk-in customer bill:", err);
+      });
     }
 
     return {

@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { prisma } from "./server/prisma";
+import { readWhatsAppConfig } from "./server-whatsapp-config";
 
 /**
  * WhatsApp Notification Service (Mock / Real Twilio Integration)
@@ -55,9 +56,10 @@ export async function sendCustomerBillWhatsApp(
     console.error("⚠️ Failed to write initial message log to DB:", dbErr);
   }
 
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const senderNumber = process.env.TWILIO_WHATSAPP_SENDER || "whatsapp:+14155238886";
+  const config = readWhatsAppConfig();
+  const accountSid = config.twilioAccountSid;
+  const authToken = config.twilioAuthToken;
+  const senderNumber = config.twilioWhatsAppSender || "whatsapp:+14155238886";
 
   if (accountSid && authToken) {
     const params = new URLSearchParams({
@@ -151,9 +153,10 @@ export async function sendOwnerStockAlertWhatsApp(
     console.error("⚠️ Failed to write initial message log to DB:", dbErr);
   }
 
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const senderNumber = process.env.TWILIO_WHATSAPP_SENDER || "whatsapp:+14155238886";
+  const config = readWhatsAppConfig();
+  const accountSid = config.twilioAccountSid;
+  const authToken = config.twilioAuthToken;
+  const senderNumber = config.twilioWhatsAppSender || "whatsapp:+14155238886";
 
   if (accountSid && authToken) {
     const params = new URLSearchParams({
@@ -252,9 +255,10 @@ export async function sendEodReportWhatsApp(
       console.error("⚠️ Failed to write initial message log to DB:", dbErr);
     }
 
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const senderNumber = process.env.TWILIO_WHATSAPP_SENDER || "whatsapp:+14155238886";
+    const config = readWhatsAppConfig();
+    const accountSid = config.twilioAccountSid;
+    const authToken = config.twilioAuthToken;
+    const senderNumber = config.twilioWhatsAppSender || "whatsapp:+14155238886";
 
     if (accountSid && authToken) {
       const params = new URLSearchParams({

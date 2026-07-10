@@ -24,6 +24,8 @@ import { Route as AppSalesRouteImport } from './routes/_app.sales'
 import { Route as AppReportsRouteImport } from './routes/_app.reports'
 import { Route as AppPurchaseOrdersRouteImport } from './routes/_app.purchase-orders'
 import { Route as AppProductsRouteImport } from './routes/_app.products'
+import { Route as AppMarketIntelligenceRouteImport } from './routes/_app.market-intelligence'
+import { Route as AppLogisticsRouteImport } from './routes/_app.logistics'
 import { Route as AppLive_opsRouteImport } from './routes/_app.live_ops'
 import { Route as AppLiveOpsRouteImport } from './routes/_app.live-ops'
 import { Route as AppInventoryRouteImport } from './routes/_app.inventory'
@@ -115,6 +117,16 @@ const AppPurchaseOrdersRoute = AppPurchaseOrdersRouteImport.update({
 const AppProductsRoute = AppProductsRouteImport.update({
   id: '/products',
   path: '/products',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMarketIntelligenceRoute = AppMarketIntelligenceRouteImport.update({
+  id: '/market-intelligence',
+  path: '/market-intelligence',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLogisticsRoute = AppLogisticsRouteImport.update({
+  id: '/logistics',
+  path: '/logistics',
   getParentRoute: () => AppRoute,
 } as any)
 const AppLive_opsRoute = AppLive_opsRouteImport.update({
@@ -229,6 +241,8 @@ export interface FileRoutesByFullPath {
   '/inventory': typeof AppInventoryRoute
   '/live-ops': typeof AppLiveOpsRoute
   '/live_ops': typeof AppLive_opsRoute
+  '/logistics': typeof AppLogisticsRoute
+  '/market-intelligence': typeof AppMarketIntelligenceRoute
   '/products': typeof AppProductsRoute
   '/purchase-orders': typeof AppPurchaseOrdersRoute
   '/reports': typeof AppReportsRoute
@@ -263,6 +277,8 @@ export interface FileRoutesByTo {
   '/inventory': typeof AppInventoryRoute
   '/live-ops': typeof AppLiveOpsRoute
   '/live_ops': typeof AppLive_opsRoute
+  '/logistics': typeof AppLogisticsRoute
+  '/market-intelligence': typeof AppMarketIntelligenceRoute
   '/products': typeof AppProductsRoute
   '/purchase-orders': typeof AppPurchaseOrdersRoute
   '/reports': typeof AppReportsRoute
@@ -299,6 +315,8 @@ export interface FileRoutesById {
   '/_app/inventory': typeof AppInventoryRoute
   '/_app/live-ops': typeof AppLiveOpsRoute
   '/_app/live_ops': typeof AppLive_opsRoute
+  '/_app/logistics': typeof AppLogisticsRoute
+  '/_app/market-intelligence': typeof AppMarketIntelligenceRoute
   '/_app/products': typeof AppProductsRoute
   '/_app/purchase-orders': typeof AppPurchaseOrdersRoute
   '/_app/reports': typeof AppReportsRoute
@@ -335,6 +353,8 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/live-ops'
     | '/live_ops'
+    | '/logistics'
+    | '/market-intelligence'
     | '/products'
     | '/purchase-orders'
     | '/reports'
@@ -369,6 +389,8 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/live-ops'
     | '/live_ops'
+    | '/logistics'
+    | '/market-intelligence'
     | '/products'
     | '/purchase-orders'
     | '/reports'
@@ -404,6 +426,8 @@ export interface FileRouteTypes {
     | '/_app/inventory'
     | '/_app/live-ops'
     | '/_app/live_ops'
+    | '/_app/logistics'
+    | '/_app/market-intelligence'
     | '/_app/products'
     | '/_app/purchase-orders'
     | '/_app/reports'
@@ -529,6 +553,20 @@ declare module '@tanstack/react-router' {
       path: '/products'
       fullPath: '/products'
       preLoaderRoute: typeof AppProductsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/market-intelligence': {
+      id: '/_app/market-intelligence'
+      path: '/market-intelligence'
+      fullPath: '/market-intelligence'
+      preLoaderRoute: typeof AppMarketIntelligenceRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/logistics': {
+      id: '/_app/logistics'
+      path: '/logistics'
+      fullPath: '/logistics'
+      preLoaderRoute: typeof AppLogisticsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/live_ops': {
@@ -679,6 +717,8 @@ interface AppRouteChildren {
   AppInventoryRoute: typeof AppInventoryRoute
   AppLiveOpsRoute: typeof AppLiveOpsRoute
   AppLive_opsRoute: typeof AppLive_opsRoute
+  AppLogisticsRoute: typeof AppLogisticsRoute
+  AppMarketIntelligenceRoute: typeof AppMarketIntelligenceRoute
   AppProductsRoute: typeof AppProductsRoute
   AppPurchaseOrdersRoute: typeof AppPurchaseOrdersRoute
   AppReportsRoute: typeof AppReportsRoute
@@ -712,6 +752,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppInventoryRoute: AppInventoryRoute,
   AppLiveOpsRoute: AppLiveOpsRoute,
   AppLive_opsRoute: AppLive_opsRoute,
+  AppLogisticsRoute: AppLogisticsRoute,
+  AppMarketIntelligenceRoute: AppMarketIntelligenceRoute,
   AppProductsRoute: AppProductsRoute,
   AppPurchaseOrdersRoute: AppPurchaseOrdersRoute,
   AppReportsRoute: AppReportsRoute,

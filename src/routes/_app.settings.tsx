@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getMallSettingsServer, updateMallSettingsServer } from "@/lib/server-settings";
 import { getVapiConfigServer, updateVapiConfigServer } from "@/lib/server-vapi";
+import { getWhatsAppConfigServer, updateWhatsAppConfigServer } from "@/lib/server-whatsapp-config";
 import { PageHeader, SectionCard } from "@/components/page-header";
 import { useAuth } from "@/lib/auth-context";
 import { useState, useEffect } from "react";
@@ -36,6 +37,16 @@ function SettingsPage() {
   const [loadingVapi, setLoadingVapi] = useState(true);
   const [savingVapi, setSavingVapi] = useState(false);
 
+  const [whatsapp, setWhatsapp] = useState({
+    twilioAccountSid: "",
+    twilioAuthToken: "",
+    twilioWhatsAppSender: "",
+    ownerWhatsAppNumber: "",
+    managerWhatsAppNumber: "",
+  });
+  const [loadingWhatsApp, setLoadingWhatsApp] = useState(true);
+  const [savingWhatsApp, setSavingWhatsApp] = useState(false);
+
   const canEdit = user?.role === "OWNER" || user?.role === "ADMIN" || user?.role === "owner" || user?.role === "admin";
 
   useEffect(() => {
@@ -49,6 +60,17 @@ function SettingsPage() {
       .finally(() => {
         setLoadingVapi(false);
       });
+
+    getWhatsAppConfigServer()
+      .then((res) => {
+        if (res) setWhatsapp(res);
+      })
+      .catch((err) => {
+        console.error("Failed to load WhatsApp config:", err);
+      })
+      .finally(() => {
+        setLoadingWhatsApp(false);
+      });
   }, []);
 
   const handleChange = (field: keyof typeof mall, value: string) => {
@@ -57,6 +79,10 @@ function SettingsPage() {
 
   const handleVapiChange = (field: keyof typeof vapi, value: string) => {
     setVapi({ ...vapi, [field]: value });
+  };
+
+  const handleWhatsAppChange = (field: keyof typeof whatsapp, value: string) => {
+    setWhatsapp({ ...whatsapp, [field]: value });
   };
 
   const handleSave = async () => {
@@ -104,6 +130,28 @@ function SettingsPage() {
       toast.error("Failed to update Vapi credentials");
     } finally {
       setSavingVapi(false);
+    }
+  };
+
+  const handleSaveWhatsApp = async () => {
+    if (!canEdit) {
+      toast.error("You don't have permission to edit integrations.");
+      return;
+    }
+
+    try {
+      setSavingWhatsApp(true);
+      await updateWhatsAppConfigServer({
+        data: whatsapp,
+      });
+      toast.success("WhatsApp credentials updated successfully", {
+        description: "Your Twilio WhatsApp configurations have been saved.",
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update WhatsApp configurations");
+    } finally {
+      setSavingWhatsApp(false);
     }
   };
 
@@ -256,6 +304,98 @@ function SettingsPage() {
                     <Button onClick={handleSaveVapi} disabled={savingVapi} className="gap-2 bg-violet hover:bg-violet/90 text-white font-semibold">
                       {savingVapi ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                       Save Credentials
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </SectionCard>
+
+          {/* Twilio WhatsApp Form */}
+          <SectionCard
+            title="Twilio WhatsApp Integration"
+            subtitle="Configure Twilio WhatsApp settings and Administrator alerts recipient phones"
+          >
+            {loadingWhatsApp ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Twilio Account SID</Label>
+                    <div className="relative">
+                      <ShieldCheck className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        className="pl-9"
+                        value={whatsapp.twilioAccountSid}
+                        onChange={(e) => handleWhatsAppChange("twilioAccountSid", e.target.value)}
+                        placeholder="AC..."
+                        disabled={!canEdit || savingWhatsApp}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Twilio Auth Token</Label>
+                    <div className="relative">
+                      <Key className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        className="pl-9"
+                        type="password"
+                        value={whatsapp.twilioAuthToken}
+                        onChange={(e) => handleWhatsAppChange("twilioAuthToken", e.target.value)}
+                        placeholder="Twilio secret auth token"
+                        disabled={!canEdit || savingWhatsApp}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Twilio WhatsApp Sender Number</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        className="pl-9"
+                        value={whatsapp.twilioWhatsAppSender}
+                        onChange={(e) => handleWhatsAppChange("twilioWhatsAppSender", e.target.value)}
+                        placeholder="e.g. whatsapp:+14155238886"
+                        disabled={!canEdit || savingWhatsApp}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Owner Alert Number (Aarav Mehra)</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        className="pl-9"
+                        value={whatsapp.ownerWhatsAppNumber}
+                        onChange={(e) => handleWhatsAppChange("ownerWhatsAppNumber", e.target.value)}
+                        placeholder="e.g. +919876543210"
+                        disabled={!canEdit || savingWhatsApp}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>Manager Alert Number (Priya Nair)</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        className="pl-9"
+                        value={whatsapp.managerWhatsAppNumber}
+                        onChange={(e) => handleWhatsAppChange("managerWhatsAppNumber", e.target.value)}
+                        placeholder="e.g. +919876543211"
+                        disabled={!canEdit || savingWhatsApp}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {canEdit && (
+                  <div className="pt-4 flex justify-end">
+                    <Button onClick={handleSaveWhatsApp} disabled={savingWhatsApp} className="gap-2 bg-emerald-600 hover:bg-emerald-600/90 text-white font-semibold">
+                      {savingWhatsApp ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      Save WhatsApp Settings
                     </Button>
                   </div>
                 )}

@@ -5,13 +5,16 @@ export const DEFAULT_ACCOUNTS = [
   { code: "1000", name: "Cash", type: "ASSET" },
   { code: "1200", name: "Accounts Receivable", type: "ASSET" },
   { code: "1300", name: "Inventory Asset", type: "ASSET" },
+  { code: "1400", name: "Investment Assets", type: "ASSET" },
   { code: "2000", name: "Accounts Payable", type: "LIABILITY" },
   { code: "4000", name: "Sales Revenue", type: "REVENUE" },
+  { code: "4100", name: "Investment Revenues & Gains", type: "REVENUE" },
   { code: "5000", name: "Cost of Goods Sold", type: "EXPENSE" },
   { code: "5100", name: "Utility Expense", type: "EXPENSE" },
   { code: "5200", name: "Salaries Expense", type: "EXPENSE" },
   { code: "5300", name: "Rent & Lease Expense", type: "EXPENSE" },
   { code: "5400", name: "Procurement Expense", type: "EXPENSE" },
+  { code: "5500", name: "Investment Losses", type: "EXPENSE" },
 ];
 
 /**
