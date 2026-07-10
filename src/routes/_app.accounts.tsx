@@ -166,10 +166,15 @@ function RouteComponent() {
     }
   };
 
-  const totalReceivables = data.receivables.reduce((sum, r) => sum + r.amount, 0);
-  const totalPayables = data.payables.reduce((sum, p) => sum + p.amount, 0);
-  const totalFDs = data.fds.reduce((sum, f) => sum + f.principal, 0);
-  const totalLoans = data.loans.filter(l => l.status === "Active").reduce((sum, l) => sum + l.balance, 0);
+  const receivables = data?.receivables || [];
+  const payables = data?.payables || [];
+  const fds = data?.fds || [];
+  const loans = data?.loans || [];
+
+  const totalReceivables = receivables.reduce((sum, r) => sum + (r?.amount || 0), 0);
+  const totalPayables = payables.reduce((sum, p) => sum + (p?.amount || 0), 0);
+  const totalFDs = fds.reduce((sum, f) => sum + (f?.principal || 0), 0);
+  const totalLoans = loans.filter(l => l?.status === "Active").reduce((sum, l) => sum + (l?.balance || 0), 0);
 
   if (loading) {
     return (
@@ -220,7 +225,7 @@ function RouteComponent() {
         {/* Left Side: Receivables and Payables */}
         <div className="space-y-6">
           <SectionCard title="Accounts Receivable (Money to Come)" icon={<Receipt className="h-5 w-5 text-emerald-500" />}>
-            {data.receivables.length === 0 ? (
+            {receivables.length === 0 ? (
               <div className="py-8 text-center text-zinc-500">
                 No pending customer payments receivable.
               </div>
@@ -236,7 +241,7 @@ function RouteComponent() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100">
-                    {data.receivables.map((r) => (
+                    {receivables.map((r) => (
                       <tr key={r.id} className="hover:bg-zinc-50/50">
                         <td className="px-4 py-3 font-semibold text-zinc-900">{r.transactionNumber}</td>
                         <td className="px-4 py-3 text-zinc-600">{r.customerName}</td>
@@ -255,7 +260,7 @@ function RouteComponent() {
           </SectionCard>
 
           <SectionCard title="Accounts Payable (Money to Settle)" icon={<CreditCard className="h-5 w-5 text-rose-500" />}>
-            {data.payables.length === 0 ? (
+            {payables.length === 0 ? (
               <div className="py-8 text-center text-zinc-500">
                 No pending supplier invoice payments.
               </div>
@@ -271,7 +276,7 @@ function RouteComponent() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100">
-                    {data.payables.map((p) => (
+                    {payables.map((p) => (
                       <tr key={p.id} className="hover:bg-zinc-50/50">
                         <td className="px-4 py-3 font-semibold text-zinc-900">{p.poNumber}</td>
                         <td className="px-4 py-3 text-zinc-600">{p.supplierName}</td>
@@ -301,7 +306,7 @@ function RouteComponent() {
               </Button>
             }
           >
-            {data.fds.length === 0 ? (
+            {fds.length === 0 ? (
               <div className="py-8 text-center text-zinc-500">
                 No bank fixed deposits booked.
               </div>
@@ -317,7 +322,7 @@ function RouteComponent() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100">
-                    {data.fds.map((f) => (
+                    {fds.map((f) => (
                       <tr key={f.id} className="hover:bg-zinc-50/50">
                         <td className="px-4 py-3">
                           <div className="font-semibold text-zinc-900">{f.bankName}</div>
@@ -345,7 +350,7 @@ function RouteComponent() {
               </Button>
             }
           >
-            {data.loans.length === 0 ? (
+            {loans.length === 0 ? (
               <div className="py-8 text-center text-zinc-500">
                 No active loans logged in treasury reserves.
               </div>
@@ -361,7 +366,7 @@ function RouteComponent() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100">
-                    {data.loans.map((l) => (
+                    {loans.map((l) => (
                       <tr key={l.id} className="hover:bg-zinc-50/50">
                         <td className="px-4 py-3">
                           <div className="font-semibold text-zinc-900">{l.bankName}</div>
