@@ -154,12 +154,13 @@
   border-radius: var(--radius-lg);
   box-shadow: 0 8px 32px -4px oklch(0 0 0 / 25%), inset 0 1px 0 0 oklch(1 0 0 / 6%);
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-@utility card-elevated:hover {
-  background: color-mix(in oklab, var(--color-surface) 50%, transparent);
-  border-color: oklch(1 0 0 / 12%);
-  box-shadow: 0 12px 40px -4px oklch(0 0 0 / 35%), inset 0 1px 0 0 oklch(1 0 0 / 10%);
-  transform: translateY(-2px);
+
+  &:hover {
+    background: color-mix(in oklab, var(--color-surface) 50%, transparent);
+    border-color: oklch(1 0 0 / 12%);
+    box-shadow: 0 12px 40px -4px oklch(0 0 0 / 35%), inset 0 1px 0 0 oklch(1 0 0 / 10%);
+    transform: translateY(-2px);
+  }
 }
 
 @utility glass {
