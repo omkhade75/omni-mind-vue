@@ -1,26 +1,17 @@
 import { prisma } from "./server/prisma";
-import { seedLedgerAccounts } from "./server-ledger";
 
 async function main() {
-  console.log("Running server function checks...");
+  console.log("Checking accounts and database schemas...");
   try {
-    const accounts = await prisma.ledgerAccount.findMany({
-      include: { entries: true },
-    });
-    console.log(`Found ${accounts.length} ledger accounts.`);
-    
-    const investments = await prisma.investment.findMany();
-    console.log(`Found ${investments.length} investments.`);
+    const fds = await prisma.fixedDeposit.findMany();
+    console.log(`Found ${fds.length} FDs.`);
 
-    // Run seed check
-    await prisma.$transaction(async (tx) => {
-      await seedLedgerAccounts(tx);
-    });
-    console.log("seedLedgerAccounts completed successfully!");
+    const loans = await prisma.corporateLoan.findMany();
+    console.log(`Found ${loans.length} loans.`);
 
-    console.log("Checks finished successfully!");
+    console.log("All DB tables accessible successfully!");
   } catch (err) {
-    console.error("Check failed with error:", err);
+    console.error("Database query failed with error:", err);
   }
 }
 
