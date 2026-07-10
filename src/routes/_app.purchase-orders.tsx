@@ -6,8 +6,9 @@ import { fmtINR } from "@/lib/mock-data";
 import { useState, useEffect } from "react";
 import { getPurchaseOrders, receivePurchaseOrderGoodsServer, updatePurchaseOrderStatusServer, createPurchaseOrder, getSuppliers } from "@/lib/server-suppliers";
 import { getProductsServer } from "@/lib/server-products";
+import { payPurchaseOrderServer } from "@/lib/server-accounts";
 import { toast } from "sonner";
-import { Loader2, Check, Plus, Trash2, Eye } from "lucide-react";
+import { Loader2, Check, Plus, Trash2, Eye, Banknote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -49,6 +50,9 @@ function PurchaseOrders() {
   const [receivingPo, setReceivingPo] = useState<any>(null);
   const [receiveItems, setReceiveItems] = useState<Record<string, number>>({});
   const [receiving, setReceiving] = useState(false);
+
+  // Pay state
+  const [payingPoId, setPayingPoId] = useState<string | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -181,6 +185,26 @@ function PurchaseOrders() {
     }
   };
 
+  const handlePayPO = async (poId: string) => {
+    if (!user) return;
+    try {
+      setPayingPoId(poId);
+      await payPurchaseOrderServer({
+        data: {
+          poId,
+          role: user.role,
+          emailUser: user.email,
+        }
+      });
+      toast.success("Supplier invoice paid! Cash balance updated.");
+      loadData();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to pay supplier");
+    } finally {
+      setPayingPoId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -272,9 +296,31 @@ function PurchaseOrders() {
                         <Button size="sm" variant="outline" onClick={() => handleUpdateStatus(po.dbId, "Ordered")} className="h-7 text-[10px] px-2 bg-primary/10 text-primary">Order</Button>
                       )}
                       {(po.status === "Ordered" || po.status === "Partially_Received" || po.status === "Sent") && (
-                        <Button size="sm" variant="outline" onClick={() => openReceiveModal(po)} className="h-7 text-[10px] px-2 bg-success/10 text-success border-success/30 hover:bg-success/20">
-                          Receive Goods
-                        </Button>
+                        <>
+                          {po.isPaid ? (
+                            <span className="text-[10px] text-amber-500 font-semibold inline-flex items-center gap-0.5 mr-2">
+                              <Check className="h-3 w-3" /> Paid
+                            </span>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handlePayPO(po.dbId)}
+                              disabled={payingPoId === po.dbId}
+                              className="h-7 text-[10px] px-2 bg-amber-500/10 text-amber-600 border-amber-500/30 hover:bg-amber-500/20"
+                            >
+                              {payingPoId === po.dbId ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Banknote className="h-3 w-3 mr-1" />Pay Now</>}
+                            </Button>
+                          )}
+                          <Button size="sm" variant="outline" onClick={() => openReceiveModal(po)} className="h-7 text-[10px] px-2 bg-success/10 text-success border-success/30 hover:bg-success/20">
+                            Receive Goods
+                          </Button>
+                        </>
+                      )}
+                      {po.status === "Received" && (
+                        <span className="text-[10px] text-emerald-500 font-semibold flex items-center justify-end gap-1">
+                          <Check className="h-3 w-3" /> {po.isPaid ? "Paid & Received" : "Received (Unpaid)"}
+                        </span>
                       )}
                     </td>
                   </tr>

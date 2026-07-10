@@ -256,6 +256,17 @@ export const getPurchaseOrders = createServerFn({ method: "GET" })
       orderBy: { orderDate: "desc" },
     });
 
+    // Check which POs have been paid by querying ledger entries
+    const paidEntries = await prisma.ledgerEntry.findMany({
+      where: {
+        referenceType: "PurchaseOrderPayment",
+      },
+      select: {
+        referenceId: true,
+      },
+    });
+    const paidPoIds = new Set(paidEntries.map(e => e.referenceId).filter(Boolean));
+
     return pos.map((po) => {
       const productName =
         po.items.length === 1
@@ -281,6 +292,7 @@ export const getPurchaseOrders = createServerFn({ method: "GET" })
         totalCost: Number(po.totalAmount),
         source: po.notes || "Manual",
         status: po.status,
+        isPaid: paidPoIds.has(po.id),
       };
     });
   });

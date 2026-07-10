@@ -346,9 +346,20 @@ export const payPurchaseOrderServer = createServerFn({ method: "POST" })
       });
 
       if (!po) throw new Error("Purchase Order not found.");
-      if (po.status === "Received") throw new Error("Purchase Order is already settled.");
 
-      // 3. Verify cash balance in General Ledger
+      // 3. Check if already paid by looking for existing payment journal entry
+      const existingPayment = await tx.ledgerEntry.findFirst({
+        where: {
+          referenceType: "PurchaseOrderPayment",
+          referenceId: po.id,
+        },
+      });
+
+      if (existingPayment) {
+        throw new Error("This Purchase Order has already been paid.");
+      }
+
+      // 4. Verify cash balance in General Ledger
       const cashAccount = await tx.ledgerAccount.findUnique({
         where: { code: "1000" },
         include: { entries: true },
@@ -361,25 +372,19 @@ export const payPurchaseOrderServer = createServerFn({ method: "POST" })
       const poAmount = Number(po.totalAmount);
       if (cashBalance < poAmount) {
         throw new Error(
-          `Insufficient cash reserves to settle this invoice. Available: ₹${cashBalance.toLocaleString("en-IN")}, Required: ₹${poAmount.toLocaleString("en-IN")}`
+          `Insufficient cash reserves. Available: ₹${cashBalance.toLocaleString("en-IN")}, Required: ₹${poAmount.toLocaleString("en-IN")}`
         );
       }
 
-      // 4. Update the Purchase Order status to "Received" (Paid/Settled)
-      const updatedPo = await tx.purchaseOrder.update({
-        where: { id: data.poId },
-        data: { status: "Received" },
-      });
-
       // 5. Record Double-Entry Journal Entry
-      // Debit Accounts Payable (Liabilities decrease: -2000)
-      // Credit Cash (Assets decrease: -1000)
+      // Debit Procurement Expense (5400) — cost of goods purchased
+      // Credit Cash (1000) — cash paid out
       await recordDoubleEntry(tx, {
         journalId: `JNL-PAY-PO-${po.id}`,
         referenceType: "PurchaseOrderPayment",
         referenceId: po.id,
-        description: `Paid supplier invoice for PO #${po.poNumber}`,
-        debits: [{ code: "2000", amount: poAmount }],
+        description: `Paid supplier invoice for PO #${po.poNumber} (₹${poAmount.toLocaleString("en-IN")})`,
+        debits: [{ code: "5400", amount: poAmount }],
         credits: [{ code: "1000", amount: poAmount }],
       });
 
@@ -389,15 +394,15 @@ export const payPurchaseOrderServer = createServerFn({ method: "POST" })
           eventType: "PURCHASE_ORDER_PAID",
           entityType: "PurchaseOrder",
           entityId: po.id,
-          title: `PO Settled: #${po.poNumber}`,
-          description: `Disbursed ₹${poAmount.toLocaleString("en-IN")} from cash reserves to pay supplier invoice.`,
+          title: `PO Paid: #${po.poNumber}`,
+          description: `Disbursed ₹${poAmount.toLocaleString("en-IN")} from cash reserves to pay supplier.`,
           metadata: JSON.stringify({ poId: po.id, amount: poAmount }),
         },
       });
 
-      return updatedPo;
+      return po.id;
     });
 
-    return { success: true, poId: result.id };
+    return { success: true, poId: result };
   });
 
