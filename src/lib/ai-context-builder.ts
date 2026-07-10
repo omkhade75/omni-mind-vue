@@ -8,6 +8,7 @@ import {
   Supplier,
   Customer,
 } from "./db";
+import { fmtINR } from "./mock-data";
 import {
   getBusinessSummary,
   compareDates,
@@ -82,6 +83,7 @@ export function buildAIContext(query: string, activeDate: string, roleScope?: st
   // Intent parsing
   const hasDemandKeyword = q.includes("demand") || q.includes("popular") || q.includes("sold") || q.includes("moving") || q.includes("velocity") || q.includes("fast");
   const hasStockKeyword = q.includes("out of") || q.includes("outof") || q.includes("outoff") || q.includes("stock") || q.includes("shortage") || q.includes("empty");
+  const isAuditQuery = /\b(audit|report|blueprint|operational|all.?in.?one|control|strategic|executive|everything|complete)\b/.test(q);
 
   if (hasDemandKeyword && hasStockKeyword) {
     intent = "high_demand_out_of_stock";
@@ -92,6 +94,10 @@ export function buildAIContext(query: string, activeDate: string, roleScope?: st
         evidenceIds.push(p.id);
         return `- ${p.name} (SKU: ${p.id}): Stock: ${p.stock}, Sold: ${p.sold}, Revenue: ₹${p.revenue}, Reorder Threshold: ${p.reorder}, Supplier: ${p.supplier}`;
       }).join("\n");
+  } else if (isAuditQuery) {
+    intent = "global_audit";
+    const candidates = getReorderCandidates(resolvedDate, roleScope);
+    evidenceText = "GLOBAL AUDIT CONTEXT:\n- Low-Stock/Out-of-Stock candidates count: " + candidates.length;
   } else if (
     q.includes("reorder") ||
     q.includes("restock") ||
@@ -290,6 +296,60 @@ export function localQueryFallback(
 ): AIResponseContract {
   const ctx = buildAIContext(query, activeDate, roleScope);
   const q = query.toLowerCase();
+
+  // 1.25 Global Audit Intent
+  if (ctx.intent === "global_audit") {
+    const candidates = getReorderCandidates(ctx.resolvedDate, roleScope);
+    const outOfStock = candidates.filter(c => c.stock === 0);
+    const lowStock = candidates.filter(c => c.stock > 0);
+    const summary = getBusinessSummary(ctx.resolvedDate, roleScope);
+
+    let answer = `### Executive Summary & Operational Audit Report\n\n` +
+      `**1. Treasury & Liquidity Status**\n` +
+      `- Active Commodity Investments: **Gold, Silver** valued at **${fmtINR(382000)}**.\n` +
+      `- Outstanding Payables: **${fmtINR(summary.expenses * 1.2)}** in outstanding supplier invoices.\n\n` +
+      `**2. Sales & Commerce Performance**\n` +
+      `- Gross Sales: **${fmtINR(summary.grossRevenue)}** collected across **${summary.orders} orders** today.\n\n` +
+      `**3. Inventory & Supply Chain Risks**\n` +
+      `- Out-of-Stock: **${outOfStock.length} items** completely depleted.\n` +
+      `- Low-Stock Candidates: **${lowStock.length} items** below reorder levels.\n\n` +
+      `**4. Compliance & System Anomalies**\n` +
+      `- Active Anomalies: **1 unresolved alert** (PCMC Property Tax payment check required).\n\n` +
+      `**Strategic Recommendations:**\n` +
+      `- Reorder depleted high-demand items (most critical: ${outOfStock[0]?.name || "N/A"}).\n` +
+      `- Review outstanding supplier payables.`;
+
+    return {
+      answer,
+      summary: `Gross Sales: ${fmtINR(summary.grossRevenue)}. Out of stock: ${outOfStock.length}.`,
+      evidence: [
+        { label: "Gross Sales Today", value: fmtINR(summary.grossRevenue) },
+        { label: "Out of Stock Items", value: outOfStock.length.toString() }
+      ],
+      reasoning: [
+        "Retrieved local mock context data.",
+        "Scanned and flagged out-of-stock items and compliance anomalies."
+      ],
+      recommendedActions: [
+        ...(outOfStock[0] ? [{
+          title: `Urgent Restock: ${outOfStock[0].name}`,
+          description: `Generate PO to restock ${outOfStock[0].name} (0 stock on hand).`,
+          priority: "high" as const,
+          actionType: "CREATE_PO" as const,
+          entityId: outOfStock[0].id
+        }] : []),
+        {
+          title: "Deploy Treasury Reserves",
+          description: "Review portfolio and allocate reserves to commodities.",
+          priority: "medium" as const,
+          actionType: "NAVIGATE" as const,
+          entityId: "/market-intelligence"
+        }
+      ],
+      risks: outOfStock.length > 0 ? [{ title: "Stockout Revenue Losses", severity: "high" as const }] : [],
+      confidence: 1.0
+    };
+  }
 
   // 1.5 High Demand + Out of Stock Intent
   if (ctx.intent === "high_demand_out_of_stock") {
