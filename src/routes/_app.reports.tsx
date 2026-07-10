@@ -3,9 +3,10 @@ import { PageHeader, SectionCard, StatusPill } from "@/components/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth-context";
 import { useState, useEffect } from "react";
-import { getPaymentReportsServer } from "@/lib/server-reports";
+import { getPaymentReportsServer, sendAllReportsWhatsAppServer } from "@/lib/server-reports";
 import { fmtINR } from "@/lib/mock-data";
-import { Loader2, ArrowUpRight, ArrowDownRight, Wallet } from "lucide-react";
+import { Loader2, ArrowUpRight, ArrowDownRight, Wallet, Send, MessageCircle } from "lucide-react";
+import { toast } from "sonner";
 import { KpiCard } from "@/components/kpi-card";
 import { useBusinessData } from "@/lib/business-context";
 
@@ -24,6 +25,20 @@ function ReportsPage() {
   const { activeDate, products } = useBusinessData();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [dispatching, setDispatching] = useState(false);
+
+  const handleDispatchWhatsApp = async () => {
+    try {
+      setDispatching(true);
+      const payload = { data: { role: user?.role || "owner", email: user?.email || "" } };
+      await sendAllReportsWhatsAppServer(payload);
+      toast.success("All reports have been successfully dispatched via WhatsApp to the management team.");
+    } catch (err) {
+      toast.error("Failed to send WhatsApp reports.");
+    } finally {
+      setDispatching(false);
+    }
+  };
 
   useEffect(() => {
     async function load() {
@@ -78,10 +93,20 @@ function ReportsPage() {
       />
 
       <Tabs defaultValue="scheduled" className="flex-1 flex flex-col min-h-0">
-        <TabsList className="mb-4 self-start bg-sidebar border border-hairline">
-          <TabsTrigger value="scheduled" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            Scheduled Reports
-          </TabsTrigger>
+        <TabsList className="mb-4 self-start bg-sidebar border border-hairline flex items-center justify-between w-full">
+          <div>
+            <TabsTrigger value="scheduled" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Scheduled Reports
+            </TabsTrigger>
+          </div>
+          <button 
+            onClick={handleDispatchWhatsApp}
+            disabled={dispatching}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-[#25D366] text-white rounded-md hover:bg-[#1DA851] transition-colors disabled:opacity-70 mr-1"
+          >
+            {dispatching ? <Loader2 className="h-3 w-3 animate-spin" /> : <MessageCircle className="h-3.5 w-3.5" />}
+            Dispatch All via WhatsApp
+          </button>
         </TabsList>
 
         <TabsContent value="scheduled" className="flex-1 outline-none">

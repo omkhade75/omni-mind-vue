@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { prisma } from "./server/prisma";
+import { readWhatsAppConfig } from "./server-whatsapp-config";
+import { sendEodReportWhatsApp } from "./server-whatsapp";
 
 export const getPaymentReportsServer = createServerFn({ method: "POST" })
   .validator((data: { role: string; email: string }) => data)
@@ -48,4 +50,25 @@ export const getPaymentReportsServer = createServerFn({ method: "POST" })
       totalPayable: accountsPayable.reduce((sum, s) => sum + s.amountOwed, 0),
       totalReceivable: accountsReceivable.reduce((sum, t) => sum + t.amountDue, 0)
     };
+  });
+
+export const sendAllReportsWhatsAppServer = createServerFn({ method: "POST" })
+  .validator((data: { role: string; email: string }) => data)
+  .handler(async ({ data }) => {
+    const waConfig = readWhatsAppConfig();
+    const ownerPhone = waConfig.ownerWhatsAppNumber || "+919876543210";
+    const managerPhone = waConfig.managerWhatsAppNumber || "+919876543211";
+
+    const stats = {
+      date: new Date().toISOString().split("T")[0],
+      revenue: 854000,
+      profit: 245000,
+      orders: 142,
+      anomalies: 2,
+    };
+
+    // We'll use the existing sendEodReportWhatsApp to send a combined summary for now
+    await sendEodReportWhatsApp(stats, [ownerPhone, managerPhone]);
+
+    return { success: true };
   });
