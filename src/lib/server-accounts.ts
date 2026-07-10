@@ -117,7 +117,21 @@ export const getAccountsDataServer = createServerFn({ method: "POST" })
       });
     }
 
+    // 5. Fetch General Cash Ledger Account Balance (Code 1000)
+    await seedLedgerAccounts(prisma);
+    const cashAccount = await prisma.ledgerAccount.findUnique({
+      where: { code: "1000" },
+      include: { entries: true }
+    });
+    let cashBalance = 0;
+    if (cashAccount) {
+      const totalDebits = cashAccount.entries.reduce((sum, e) => sum + Number(e.debitAmount), 0);
+      const totalCredits = cashAccount.entries.reduce((sum, e) => sum + Number(e.creditAmount), 0);
+      cashBalance = totalDebits - totalCredits;
+    }
+
     return {
+      cashBalance,
       receivables: receivables.map(r => ({
         id: r.id,
         transactionNumber: r.transactionNumber,

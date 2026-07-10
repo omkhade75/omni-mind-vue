@@ -34,11 +34,12 @@ function RouteComponent() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<{
+    cashBalance: number;
     receivables: any[];
     payables: any[];
     fds: FixedDepositItem[];
     loans: CorporateLoanItem[];
-  }>({ receivables: [], payables: [], fds: [], loans: [] });
+  }>({ cashBalance: 0, receivables: [], payables: [], fds: [], loans: [] });
 
   // Dialog States
   const [showFDModal, setShowFDModal] = useState(false);
@@ -193,15 +194,21 @@ function RouteComponent() {
       />
 
       {/* KPI Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <KpiCard
-          label="Total Receivables (Pending In)"
-          value={totalReceivables}
+          label="Bank Cash Balance"
+          value={data?.cashBalance || 0}
           format="inr"
-          icon={<ArrowDownRight className="h-5 w-5 text-emerald-500" />}
+          icon={<Wallet className="h-5 w-5 text-emerald-500" />}
         />
         <KpiCard
-          label="Total Payables (Pending Out)"
+          label="Total Receivables"
+          value={totalReceivables}
+          format="inr"
+          icon={<ArrowDownRight className="h-5 w-5 text-zinc-400" />}
+        />
+        <KpiCard
+          label="Total Payables"
           value={totalPayables}
           format="inr"
           icon={<ArrowUpRight className="h-5 w-5 text-rose-500" />}
@@ -213,7 +220,7 @@ function RouteComponent() {
           icon={<Landmark className="h-5 w-5 text-indigo-500" />}
         />
         <KpiCard
-          label="Outstanding Loans Liabilities"
+          label="Outstanding Loans"
           value={totalLoans}
           format="inr"
           icon={<Coins className="h-5 w-5 text-amber-500" />}

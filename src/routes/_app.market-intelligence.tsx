@@ -286,7 +286,9 @@ function MarketIntelligencePage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label>Asset Price</Label>
-                  <Input value={fmtINR(activeAsset.price)} disabled className="bg-zinc-50" />
+                  <div className="h-10 px-3 py-2 rounded-md border border-input bg-zinc-50 text-zinc-900 font-semibold flex items-center dark:bg-zinc-900 dark:text-zinc-100">
+                    {fmtINR(activeAsset.price)}
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Quantity ({activeAsset.unit})</Label>

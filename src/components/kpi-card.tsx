@@ -6,7 +6,7 @@ import { fmtINR, fmtNum } from "@/lib/mock-data";
 interface KpiCardProps {
   label: string;
   value: number;
-  delta: number;
+  delta?: number;
   spark?: { i: number; v: number }[];
   format?: "inr" | "inr-compact" | "num";
   icon?: React.ReactNode;
@@ -22,7 +22,8 @@ export function KpiCard({
   icon,
   onClick,
 }: KpiCardProps) {
-  const positive = delta >= 0;
+  const hasDelta = delta !== undefined;
+  const positive = hasDelta ? delta! >= 0 : true;
   const display =
     format === "inr"
       ? fmtINR(value)
@@ -51,39 +52,45 @@ export function KpiCard({
           </span>
         )}
       </div>
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <span
-          className={cn(
-            "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-medium",
-            positive ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive",
+      {(hasDelta || spark) && (
+        <div className="mt-3 flex items-center justify-between gap-3">
+          {hasDelta && (
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-medium",
+                positive ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive",
+              )}
+            >
+              {positive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+              {Math.abs(delta!).toFixed(1)}%
+            </span>
           )}
-        >
-          {positive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-          {Math.abs(delta).toFixed(1)}%
-        </span>
-        {spark && (
-          <div className="h-8 w-24">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={spark}>
-                <defs>
-                  <linearGradient id={`spark-${label}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.6} />
-                    <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Area
-                  type="monotone"
-                  dataKey="v"
-                  stroke="var(--color-primary)"
-                  strokeWidth={1.5}
-                  fill={`url(#spark-${label})`}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </div>
-      <p className="mt-1.5 text-[10px] text-muted-foreground">vs previous period</p>
+          {spark && (
+            <div className="h-8 w-24">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={spark}>
+                  <defs>
+                    <linearGradient id={`spark-${label}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.6} />
+                      <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <Area
+                    type="monotone"
+                    dataKey="v"
+                    stroke="var(--color-primary)"
+                    strokeWidth={1.5}
+                    fill={`url(#spark-${label})`}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      )}
+      {hasDelta && (
+        <p className="mt-1.5 text-[10px] text-muted-foreground">vs previous period</p>
+      )}
     </button>
   );
 }
