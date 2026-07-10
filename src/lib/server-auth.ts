@@ -157,3 +157,25 @@ export const logoutServer = createServerFn({ method: "POST" })
     await clearSession(sessionConfig);
     return { success: true };
   });
+
+/**
+ * Reads and returns the securely authenticated session user.
+ * Prevents client-side parameter spoofing.
+ */
+export async function getSecureSessionUser(): Promise<AuthUser | null> {
+  try {
+    const session = await useSession<{ userId: string; role: string; email: string; name: string; departmentId: string | null }>(sessionConfig);
+    if (!session.data.userId) {
+      return null;
+    }
+    return {
+      id: session.data.userId,
+      name: session.data.name || "",
+      email: session.data.email || "",
+      role: session.data.role || "",
+      departmentId: session.data.departmentId || null,
+    };
+  } catch {
+    return null;
+  }
+}

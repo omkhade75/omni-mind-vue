@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { prisma } from "./server/prisma";
 import { getDepartmentScope } from "./server-customers";
+import { getSecureSessionUser } from "./server-auth";
 
 export interface ProductListItem {
   id: string;
@@ -81,7 +82,10 @@ export interface Product360Details {
 export const getProductsServer = createServerFn({ method: "POST" })
   .validator((data: { role: string; email: string }) => data)
   .handler(async ({ data }) => {
-    const deptScope = getDepartmentScope(data.role, data.email);
+    const secureUser = await getSecureSessionUser();
+    const role = secureUser?.role || data.role;
+    const email = secureUser?.email || data.email;
+    const deptScope = getDepartmentScope(role, email);
 
     const where: any = {
       status: "Active",
@@ -376,6 +380,8 @@ export const editProductServer = createServerFn({ method: "POST" })
 export const archiveProductServer = createServerFn({ method: "POST" })
   .validator((data: { id: string; role: string; emailUser: string }) => data)
   .handler(async ({ data }) => {
+    const secureUser = await getSecureSessionUser();
+    const role = secureUser?.role || data.role;
     const beforeData = await prisma.product.findUnique({ where: { id: data.id } });
 
     const result = await prisma.$transaction(async (tx) => {
@@ -386,7 +392,7 @@ export const archiveProductServer = createServerFn({ method: "POST" })
 
       await tx.auditLog.create({
         data: {
-          userId: data.role === "manager" ? "rohan-kulkarni" : data.role === "admin" ? "priya-nair" : "aarav-mehra",
+          userId: role === "manager" ? "rohan-kulkarni" : role === "admin" ? "priya-nair" : "aarav-mehra",
           action: "PRODUCT_ARCHIVED",
           entityType: "Product",
           entityId: product.id,

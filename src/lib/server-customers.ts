@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { prisma } from "./server/prisma";
+import { getSecureSessionUser } from "./server-auth";
 
 export interface CustomerListItem {
   id: string;
@@ -92,7 +93,10 @@ export const getCustomersServer = createServerFn({ method: "POST" })
     email: string;
   }) => data)
   .handler(async ({ data }) => {
-    const deptScope = getDepartmentScope(data.role, data.email);
+    const secureUser = await getSecureSessionUser();
+    const role = secureUser?.role || data.role;
+    const email = secureUser?.email || data.email;
+    const deptScope = getDepartmentScope(role, email);
 
     // Build the query conditions
     const where: any = {};
