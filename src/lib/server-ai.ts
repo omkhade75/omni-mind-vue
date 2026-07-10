@@ -1081,6 +1081,77 @@ async function executePrismaFallback(
     };
   }
 
+  // ─── E1. High Demand + Out of Stock Queries ───────────────────────────────
+  const hasDemandWord = /\b(demand|popular|sold|moving|velocity|fast)\b/.test(q);
+  const hasStockWord = /\b(stock|outofstock|outoff|inventory|reorder|shortage)\b/.test(q);
+  if (hasDemandWord && hasStockWord) {
+    const products = await prisma.product.findMany({
+      include: {
+        stockItems: true,
+        transactionItems: {
+          select: {
+            quantity: true,
+            lineTotal: true
+          }
+        }
+      }
+    });
+
+    const mapped = products.map(p => {
+      const stock = p.stockItems.reduce((sum, s) => sum + s.availableQty, 0);
+      const sold = p.transactionItems.reduce((sum, item) => sum + item.quantity, 0);
+      const revenue = p.transactionItems.reduce((sum, item) => sum + Number(item.lineTotal), 0);
+      return {
+        product: p,
+        stock,
+        sold,
+        revenue,
+        isOutOfStock: stock === 0,
+        isLowStock: stock <= p.reorderLevel
+      };
+    }).filter(c => c.isLowStock || c.isOutOfStock);
+
+    // Sort by sold units descending (high demand first)
+    mapped.sort((a, b) => b.sold - a.sold);
+
+    const outOfStock = mapped.filter(c => c.isOutOfStock);
+    const lowStock = mapped.filter(c => !c.isOutOfStock);
+
+    let answer = "";
+    if (outOfStock.length > 0) {
+      answer = `Here are the high-demand products that are completely OUT OF STOCK (sorted by sales velocity):\n\n` +
+        outOfStock.map((c, idx) => `${idx + 1}. **${c.product.name}** (SKU: ${c.product.id}) — **${c.sold} units sold** (Generated ₹${c.revenue} revenue, current stock: 0).`).join("\n") +
+        `\n\nImmediate restocking is recommended to prevent lost revenue.`;
+    } else {
+      answer = `No high-demand products are completely out of stock. However, here are the highest-demand low-stock products:\n\n` +
+        lowStock.slice(0, 5).map((c, idx) => `${idx + 1}. **${c.product.name}** — **${c.sold} units sold** (Current stock: ${c.stock}/${c.product.reorderLevel}).`).join("\n");
+    }
+
+    return {
+      answer,
+      summary: `${outOfStock.length} high-demand products out of stock.`,
+      evidence: mapped.slice(0, 4).map(c => ({
+        label: c.product.name,
+        value: `Stock: ${c.stock} | Sold: ${c.sold} units`,
+        sourceType: "product",
+        sourceId: c.product.id
+      })),
+      reasoning: [
+        "Matched both high-demand and out-of-stock semantic tokens.",
+        "Scanned database products, resolved active stock, and aggregated unit sales from transaction ledger."
+      ],
+      recommendedActions: mapped.slice(0, 2).map(c => ({
+        title: `Restock high-demand: ${c.product.name}`,
+        description: `Generate PO for ${c.product.reorderLevel * 2} units. Product has high sales velocity (${c.sold} sold) but is ${c.stock === 0 ? "out of stock" : "low stock"}.`,
+        priority: "high" as const,
+        actionType: "CREATE_PO" as const,
+        entityId: c.product.id
+      })),
+      risks: outOfStock.map(c => ({ title: `Revenue loss risk on high-demand: ${c.product.name}`, severity: "high" as const })),
+      confidence: 1.0,
+    };
+  }
+
   // ─── E. Inventory / Stock Queries ───────────────────────────────────────
   if (/\b(stock|inventory|reorder|restock|sku|shortage|replenish|out.?of.?stock|low|empty)\b/.test(q)) {
     const products = await prisma.product.findMany({ include: { stockItems: true } });

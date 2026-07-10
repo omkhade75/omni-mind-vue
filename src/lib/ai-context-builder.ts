@@ -80,7 +80,19 @@ export function buildAIContext(query: string, activeDate: string, roleScope?: st
   let evidenceText = "";
 
   // Intent parsing
-  if (
+  const hasDemandKeyword = q.includes("demand") || q.includes("popular") || q.includes("sold") || q.includes("moving") || q.includes("velocity") || q.includes("fast");
+  const hasStockKeyword = q.includes("out of") || q.includes("outof") || q.includes("outoff") || q.includes("stock") || q.includes("shortage") || q.includes("empty");
+
+  if (hasDemandKeyword && hasStockKeyword) {
+    intent = "high_demand_out_of_stock";
+    const candidates = getReorderCandidates(resolvedDate, roleScope);
+    const sortedByDemand = [...candidates].sort((a, b) => b.sold - a.sold);
+    evidenceText = "HIGH DEMAND LOW/OUT-OF-STOCK PRODUCTS:\n" +
+      sortedByDemand.map(p => {
+        evidenceIds.push(p.id);
+        return `- ${p.name} (SKU: ${p.id}): Stock: ${p.stock}, Sold: ${p.sold}, Revenue: ₹${p.revenue}, Reorder Threshold: ${p.reorder}, Supplier: ${p.supplier}`;
+      }).join("\n");
+  } else if (
     q.includes("reorder") ||
     q.includes("restock") ||
     q.includes("stockout") ||
@@ -278,6 +290,53 @@ export function localQueryFallback(
 ): AIResponseContract {
   const ctx = buildAIContext(query, activeDate, roleScope);
   const q = query.toLowerCase();
+
+  // 1.5 High Demand + Out of Stock Intent
+  if (ctx.intent === "high_demand_out_of_stock") {
+    const candidates = getReorderCandidates(ctx.resolvedDate, roleScope);
+    const sorted = [...candidates].sort((a, b) => b.sold - a.sold);
+    const outOfStock = sorted.filter(p => p.stock === 0);
+    const lowStock = sorted.filter(p => p.stock > 0);
+
+    const evidence = sorted.slice(0, 5).map((p) => ({
+      label: p.name,
+      value: `Stock: ${p.stock} | Sold: ${p.sold} units (Rev: ₹${p.revenue})`,
+      sourceType: "product",
+      sourceId: p.id,
+    }));
+
+    const actions = sorted.slice(0, 2).map(p => ({
+      title: `Urgent restock of high-demand: ${p.name}`,
+      description: `Generate PO for ${p.reorder * 2} units. Product has high sales velocity (${p.sold} units sold) but is currently ${p.stock === 0 ? "out of stock" : "low stock"}.`,
+      priority: "high" as const,
+      estimatedImpact: `Protects high demand category sales`,
+      actionType: "CREATE_PO" as const,
+      entityId: p.id,
+    }));
+
+    let answer = "";
+    if (outOfStock.length > 0) {
+      answer = `Here are the high-demand products that are completely OUT OF STOCK (sorted by sales velocity):\n\n` +
+        outOfStock.map((p, idx) => `${idx + 1}. **${p.name}** (SKU: ${p.id}) — **${p.sold} units sold** (Generated ₹${p.revenue} revenue, current stock: 0).`).join("\n") +
+        `\n\nImmediate restocking is critical for these items to avoid continuous lost revenue.`;
+    } else {
+      answer = `There are no completely out-of-stock products. However, the highest-demand low-stock products are:\n\n` +
+        lowStock.slice(0, 5).map((p, idx) => `${idx + 1}. **${p.name}** (SKU: ${p.id}) — **${p.sold} units sold** (Current stock: ${p.stock}/${p.reorder}).`).join("\n");
+    }
+
+    return {
+      answer,
+      summary: `${outOfStock.length} high-demand products are completely out of stock.`,
+      evidence,
+      reasoning: [
+        "Cross-referenced product stock level (0) with historic transaction quantities to evaluate demand.",
+        "Prioritized items based on total units sold to maximize revenue protection."
+      ],
+      recommendedActions: actions,
+      risks: outOfStock.map(p => ({ title: `Lost sales on high-demand ${p.name}`, severity: "high" as const })),
+      confidence: 0.98,
+    };
+  }
 
   // 1. Reorder Intent
   if (ctx.intent === "reorder") {
