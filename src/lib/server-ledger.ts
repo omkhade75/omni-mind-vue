@@ -17,6 +17,7 @@ export const DEFAULT_ACCOUNTS = [
   { code: "5300", name: "Rent & Lease Expense", type: "EXPENSE" },
   { code: "5400", name: "Procurement Expense", type: "EXPENSE" },
   { code: "5500", name: "Investment Losses", type: "EXPENSE" },
+  { code: "5600", name: "Tax & Compliance Expense", type: "EXPENSE" },
 ];
 
 /**
@@ -227,6 +228,65 @@ export const getIncomingPaymentsServer = createServerFn({ method: "GET" })
       description: e.description || "Inflow payment received",
       date: e.createdAt.toISOString(),
       referenceType: e.referenceType,
+      referenceId: e.referenceId,
+    }));
+  });
+
+export const recordTaxPaymentServer = createServerFn({ method: "POST" })
+  .validator(
+    (data: {
+      amount: number;
+      category: "GST" | "Corporate Income Tax" | "Property Tax" | "TDS";
+      description: string;
+      challanNumber: string;
+      role: string;
+      emailUser: string;
+    }) => data
+  )
+  .handler(async ({ data }) => {
+    return prisma.$transaction(async (tx) => {
+      await seedLedgerAccounts(tx);
+
+      const journalId = `JNL-TAX-${Date.now()}`;
+
+      // Debit Tax & Compliance Expense (expense increase)
+      // Credit Cash (asset decrease)
+      await recordDoubleEntry(tx, {
+        journalId,
+        referenceType: "TaxPayment",
+        referenceId: data.challanNumber || journalId,
+        description: `${data.category} payment - Challan #${data.challanNumber}: ${data.description}`,
+        debits: [{ code: "5600", amount: data.amount }],
+        credits: [{ code: "1000", amount: data.amount }],
+      });
+
+      return { success: true };
+    });
+  });
+
+export const getTaxPaymentsServer = createServerFn({ method: "GET" })
+  .handler(async () => {
+    const entries = await prisma.ledgerEntry.findMany({
+      where: {
+        account: {
+          code: "5600",
+        },
+        debitAmount: { gt: 0 } // Debits represent tax expenses incurred/paid
+      },
+      include: {
+        account: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return entries.map(e => ({
+      id: e.id,
+      journalId: e.journalId,
+      amount: Number(e.debitAmount),
+      description: e.description || "Tax payment recorded",
+      date: e.createdAt.toISOString(),
       referenceId: e.referenceId,
     }));
   });
