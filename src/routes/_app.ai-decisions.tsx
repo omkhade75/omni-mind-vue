@@ -397,59 +397,97 @@ function AskOmniMind() {
         {/* Response Blocks */}
         {!loading && answerData && (
           <div className="mt-6 space-y-4">
-
             {/* Executive Summary Strip (Fix 6) */}
             {answerData.executiveSummary && (
-              <div className={cn(
-                "rounded-lg border p-3 text-[11px]",
-                answerData.executiveSummary.urgency === "CRITICAL"
-                  ? "border-red-500/40 bg-red-500/5"
-                  : answerData.executiveSummary.urgency === "HIGH"
-                  ? "border-orange-500/40 bg-orange-500/5"
-                  : "border-primary/30 bg-primary/5",
-              )}>
+              <div
+                className={cn(
+                  "rounded-lg border p-3 text-[11px]",
+                  answerData.executiveSummary.urgency === "CRITICAL"
+                    ? "border-red-500/40 bg-red-500/5"
+                    : answerData.executiveSummary.urgency === "HIGH"
+                      ? "border-orange-500/40 bg-orange-500/5"
+                      : "border-primary/30 bg-primary/5",
+                )}
+              >
                 <div className="flex items-center gap-2 mb-2">
                   <Activity className="h-3.5 w-3.5 text-primary" />
-                  <span className="font-semibold text-foreground text-xs">Executive Intelligence Summary</span>
-                  <span className={cn(
-                    "ml-auto px-2 py-0.5 rounded text-[10px] font-bold",
-                    answerData.executiveSummary.urgency === "CRITICAL" ? "bg-red-500/20 text-red-400" :
-                    answerData.executiveSummary.urgency === "HIGH" ? "bg-orange-500/20 text-orange-400" :
-                    answerData.executiveSummary.urgency === "MEDIUM" ? "bg-yellow-500/20 text-yellow-400" :
-                    "bg-emerald-500/20 text-emerald-400"
-                  )}>{answerData.executiveSummary.urgency}</span>
+                  <span className="font-semibold text-foreground text-xs">
+                    Executive Intelligence Summary
+                  </span>
+                  <span
+                    className={cn(
+                      "ml-auto px-2 py-0.5 rounded text-[10px] font-bold",
+                      answerData.executiveSummary.urgency === "CRITICAL"
+                        ? "bg-red-500/20 text-red-400"
+                        : answerData.executiveSummary.urgency === "HIGH"
+                          ? "bg-orange-500/20 text-orange-400"
+                          : answerData.executiveSummary.urgency === "MEDIUM"
+                            ? "bg-yellow-500/20 text-yellow-400"
+                            : "bg-emerald-500/20 text-emerald-400",
+                    )}
+                  >
+                    {answerData.executiveSummary.urgency}
+                  </span>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 md:grid-cols-4">
                   <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Health Score</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                      Health Score
+                    </p>
                     <p className="font-bold text-sm text-foreground">
                       {answerData.executiveSummary.healthScore}/100
-                      <span className="ml-1 text-[10px] text-muted-foreground font-normal">(Grade {answerData.businessHealthScore?.grade})</span>
+                      <span className="ml-1 text-[10px] text-muted-foreground font-normal">
+                        (Grade {answerData.businessHealthScore?.grade})
+                      </span>
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Top Risk</p>
-                    <p className="font-semibold text-orange-400">{answerData.executiveSummary.topRiskDomain}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                      Top Risk
+                    </p>
+                    <p className="font-semibold text-orange-400">
+                      {answerData.executiveSummary.topRiskDomain}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Financial Impact</p>
-                    <p className="font-semibold text-red-400">{answerData.executiveSummary.financialImpact}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                      Financial Impact
+                    </p>
+                    <p className="font-semibold text-red-400">
+                      {answerData.executiveSummary.financialImpact}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Best ROI</p>
-                    <p className="font-semibold text-emerald-400">{answerData.executiveSummary.bestROI}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                      Best ROI
+                    </p>
+                    <p className="font-semibold text-emerald-400">
+                      {answerData.executiveSummary.bestROI}
+                    </p>
                   </div>
                   <div className="col-span-2">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Immediate Action</p>
-                    <p className="font-semibold text-foreground text-xs">{answerData.executiveSummary.immediateAction}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                      Immediate Action
+                    </p>
+                    <p className="font-semibold text-foreground text-xs">
+                      {answerData.executiveSummary.immediateAction}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Owner</p>
-                    <p className="font-semibold text-foreground">{answerData.executiveSummary.actionOwner}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                      Owner
+                    </p>
+                    <p className="font-semibold text-foreground">
+                      {answerData.executiveSummary.actionOwner}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Deadline</p>
-                    <p className="font-semibold text-foreground">{answerData.executiveSummary.deadline}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                      Deadline
+                    </p>
+                    <p className="font-semibold text-foreground">
+                      {answerData.executiveSummary.deadline}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -461,47 +499,101 @@ function AskOmniMind() {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <BarChart3 className="h-4 w-4 text-primary" />
-                    <span className="text-xs font-semibold text-foreground">Business Health Score</span>
+                    <span className="text-xs font-semibold text-foreground">
+                      Business Health Score
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={cn(
-                      "text-2xl font-bold",
-                      answerData.businessHealthScore.overall >= 80 ? "text-emerald-400" :
-                      answerData.businessHealthScore.overall >= 65 ? "text-yellow-400" :
-                      answerData.businessHealthScore.overall >= 50 ? "text-orange-400" : "text-red-400"
-                    )}>{answerData.businessHealthScore.overall}</span>
+                    <span
+                      className={cn(
+                        "text-2xl font-bold",
+                        answerData.businessHealthScore.overall >= 80
+                          ? "text-emerald-400"
+                          : answerData.businessHealthScore.overall >= 65
+                            ? "text-yellow-400"
+                            : answerData.businessHealthScore.overall >= 50
+                              ? "text-orange-400"
+                              : "text-red-400",
+                      )}
+                    >
+                      {answerData.businessHealthScore.overall}
+                    </span>
                     <span className="text-muted-foreground text-xs">/100</span>
-                    <span className={cn(
-                      "px-2 py-0.5 rounded font-bold text-xs",
-                      answerData.businessHealthScore.grade === "A" ? "bg-emerald-500/20 text-emerald-400" :
-                      answerData.businessHealthScore.grade === "B" ? "bg-blue-500/20 text-blue-400" :
-                      answerData.businessHealthScore.grade === "C" ? "bg-yellow-500/20 text-yellow-400" :
-                      answerData.businessHealthScore.grade === "D" ? "bg-orange-500/20 text-orange-400" :
-                      "bg-red-500/20 text-red-400"
-                    )}>Grade {answerData.businessHealthScore.grade}</span>
+                    <span
+                      className={cn(
+                        "px-2 py-0.5 rounded font-bold text-xs",
+                        answerData.businessHealthScore.grade === "A"
+                          ? "bg-emerald-500/20 text-emerald-400"
+                          : answerData.businessHealthScore.grade === "B"
+                            ? "bg-blue-500/20 text-blue-400"
+                            : answerData.businessHealthScore.grade === "C"
+                              ? "bg-yellow-500/20 text-yellow-400"
+                              : answerData.businessHealthScore.grade === "D"
+                                ? "bg-orange-500/20 text-orange-400"
+                                : "bg-red-500/20 text-red-400",
+                      )}
+                    >
+                      Grade {answerData.businessHealthScore.grade}
+                    </span>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  {([
-                    { label: "Sales Health", value: answerData.businessHealthScore.sales, color: "bg-blue-500" },
-                    { label: "Financial Health", value: answerData.businessHealthScore.financial, color: "bg-violet-500" },
-                    { label: "Inventory Health", value: answerData.businessHealthScore.inventory, color: "bg-amber-500" },
-                    { label: "Operations Health", value: answerData.businessHealthScore.operations, color: "bg-emerald-500" },
-                  ] as const).map(({ label, value, color }) => (
+                  {(
+                    [
+                      {
+                        label: "Sales Health",
+                        value: answerData.businessHealthScore.sales,
+                        color: "bg-blue-500",
+                      },
+                      {
+                        label: "Financial Health",
+                        value: answerData.businessHealthScore.financial,
+                        color: "bg-violet-500",
+                      },
+                      {
+                        label: "Inventory Health",
+                        value: answerData.businessHealthScore.inventory,
+                        color: "bg-amber-500",
+                      },
+                      {
+                        label: "Operations Health",
+                        value: answerData.businessHealthScore.operations,
+                        color: "bg-emerald-500",
+                      },
+                    ] as const
+                  ).map(({ label, value, color }) => (
                     <div key={label} className="flex items-center gap-3">
-                      <span className="text-[11px] text-muted-foreground w-28 shrink-0">{label}</span>
+                      <span className="text-[11px] text-muted-foreground w-28 shrink-0">
+                        {label}
+                      </span>
                       <div className="flex-1 h-1.5 rounded-full bg-surface-2/60 overflow-hidden">
                         <div
                           className={cn("h-full rounded-full transition-all duration-700", color)}
                           style={{ width: `${value}%` }}
                         />
                       </div>
-                      <span className={cn(
-                        "text-[11px] font-semibold w-8 text-right shrink-0",
-                        value >= 80 ? "text-emerald-400" : value >= 60 ? "text-yellow-400" : "text-red-400"
-                      )}>{value}%</span>
-                      {value === Math.min(answerData.businessHealthScore.sales, answerData.businessHealthScore.financial, answerData.businessHealthScore.inventory, answerData.businessHealthScore.operations) && (
-                        <span className="text-[9px] text-orange-400 font-semibold bg-orange-500/10 px-1.5 py-0.5 rounded shrink-0">TOP RISK</span>
+                      <span
+                        className={cn(
+                          "text-[11px] font-semibold w-8 text-right shrink-0",
+                          value >= 80
+                            ? "text-emerald-400"
+                            : value >= 60
+                              ? "text-yellow-400"
+                              : "text-red-400",
+                        )}
+                      >
+                        {value}%
+                      </span>
+                      {value ===
+                        Math.min(
+                          answerData.businessHealthScore!.sales,
+                          answerData.businessHealthScore!.financial,
+                          answerData.businessHealthScore!.inventory,
+                          answerData.businessHealthScore!.operations,
+                        ) && (
+                        <span className="text-[9px] text-orange-400 font-semibold bg-orange-500/10 px-1.5 py-0.5 rounded shrink-0">
+                          TOP RISK
+                        </span>
                       )}
                     </div>
                   ))}
@@ -661,28 +753,46 @@ function AskOmniMind() {
                   {answerData.causalChain.map((step, i) => (
                     <div key={step.step}>
                       <div className="flex items-start gap-2.5">
-                        <div className={cn(
-                          "shrink-0 h-5 w-5 rounded-full flex items-center justify-center text-[9px] font-bold mt-0.5",
-                          step.severity === "critical" ? "bg-red-500/20 text-red-400 ring-1 ring-red-500/40" :
-                          step.severity === "high" ? "bg-orange-500/20 text-orange-400" :
-                          step.severity === "medium" ? "bg-yellow-500/20 text-yellow-400" :
-                          "bg-surface-2 text-muted-foreground"
-                        )}>{step.step}</div>
+                        <div
+                          className={cn(
+                            "shrink-0 h-5 w-5 rounded-full flex items-center justify-center text-[9px] font-bold mt-0.5",
+                            step.severity === "critical"
+                              ? "bg-red-500/20 text-red-400 ring-1 ring-red-500/40"
+                              : step.severity === "high"
+                                ? "bg-orange-500/20 text-orange-400"
+                                : step.severity === "medium"
+                                  ? "bg-yellow-500/20 text-yellow-400"
+                                  : "bg-surface-2 text-muted-foreground",
+                          )}
+                        >
+                          {step.step}
+                        </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{step.domain}</span>
-                            <span className={cn(
-                              "text-[9px] px-1.5 py-0.5 rounded font-semibold",
-                              step.severity === "critical" ? "bg-red-500/15 text-red-400" :
-                              step.severity === "high" ? "bg-orange-500/15 text-orange-400" :
-                              step.severity === "medium" ? "bg-yellow-500/15 text-yellow-400" :
-                              "bg-surface-2 text-muted-foreground"
-                            )}>{step.severity.toUpperCase()}</span>
+                            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                              {step.domain}
+                            </span>
+                            <span
+                              className={cn(
+                                "text-[9px] px-1.5 py-0.5 rounded font-semibold",
+                                step.severity === "critical"
+                                  ? "bg-red-500/15 text-red-400"
+                                  : step.severity === "high"
+                                    ? "bg-orange-500/15 text-orange-400"
+                                    : step.severity === "medium"
+                                      ? "bg-yellow-500/15 text-yellow-400"
+                                      : "bg-surface-2 text-muted-foreground",
+                              )}
+                            >
+                              {step.severity.toUpperCase()}
+                            </span>
                           </div>
                           <p className="text-xs text-foreground font-medium">{step.event}</p>
                           <p className="text-[10px] text-muted-foreground">{step.evidence}</p>
                           {step.financialImpact && (
-                            <span className="text-[10px] font-semibold text-amber-400">{step.financialImpact}</span>
+                            <span className="text-[10px] font-semibold text-amber-400">
+                              {step.financialImpact}
+                            </span>
                           )}
                         </div>
                       </div>
@@ -692,7 +802,9 @@ function AskOmniMind() {
                             <ArrowDown className="h-3 w-3 text-muted-foreground/40" />
                           </div>
                           {step.nextEvent && (
-                            <span className="text-[9px] text-muted-foreground italic">{step.nextEvent}</span>
+                            <span className="text-[9px] text-muted-foreground italic">
+                              {step.nextEvent}
+                            </span>
                           )}
                         </div>
                       )}
@@ -709,12 +821,18 @@ function AskOmniMind() {
                   <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-foreground">
                     <Database className="h-3.5 w-3.5" /> Evidence Coverage
                   </div>
-                  <span className={cn(
-                    "text-[11px] font-bold px-2 py-0.5 rounded",
-                    answerData.evidenceCoverage.overallCoveragePercent >= 80 ? "bg-emerald-500/15 text-emerald-400" :
-                    answerData.evidenceCoverage.overallCoveragePercent >= 60 ? "bg-yellow-500/15 text-yellow-400" :
-                    "bg-orange-500/15 text-orange-400"
-                  )}>{answerData.evidenceCoverage.overallCoveragePercent}% verified</span>
+                  <span
+                    className={cn(
+                      "text-[11px] font-bold px-2 py-0.5 rounded",
+                      answerData.evidenceCoverage.overallCoveragePercent >= 80
+                        ? "bg-emerald-500/15 text-emerald-400"
+                        : answerData.evidenceCoverage.overallCoveragePercent >= 60
+                          ? "bg-yellow-500/15 text-yellow-400"
+                          : "bg-orange-500/15 text-orange-400",
+                    )}
+                  >
+                    {answerData.evidenceCoverage.overallCoveragePercent}% verified
+                  </span>
                 </div>
                 <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
                   {answerData.evidenceCoverage.entries.map((entry) => {
@@ -727,29 +845,47 @@ function AskOmniMind() {
                         key={entry.domain}
                         className={cn(
                           "flex items-center gap-2 px-2 py-1 rounded text-[11px]",
-                          isNA ? "opacity-40" : ""
+                          isNA ? "opacity-40" : "",
                         )}
                       >
-                        {isVerified && <CheckCircle className="h-3 w-3 text-emerald-400 shrink-0" />}
+                        {isVerified && (
+                          <CheckCircle className="h-3 w-3 text-emerald-400 shrink-0" />
+                        )}
                         {isProjected && <Zap className="h-3 w-3 text-amber-400 shrink-0" />}
                         {isUnavailable && <XCircle className="h-3 w-3 text-orange-400 shrink-0" />}
                         {isNA && <MinusCircle className="h-3 w-3 text-muted-foreground shrink-0" />}
-                        <span className={cn(
-                          "font-medium flex-1",
-                          isVerified ? "text-foreground" :
-                          isProjected ? "text-amber-400" :
-                          isUnavailable ? "text-orange-400" :
-                          "text-muted-foreground"
-                        )}>{entry.domain}</span>
-                        <span className={cn(
-                          "text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0",
-                          isVerified ? "bg-emerald-500/10 text-emerald-500" :
-                          isProjected ? "bg-amber-500/10 text-amber-500" :
-                          isUnavailable ? "bg-orange-500/10 text-orange-400" :
-                          "bg-surface-2 text-muted-foreground"
-                        )}>{entry.status.replace("_", " ")}</span>
+                        <span
+                          className={cn(
+                            "font-medium flex-1",
+                            isVerified
+                              ? "text-foreground"
+                              : isProjected
+                                ? "text-amber-400"
+                                : isUnavailable
+                                  ? "text-orange-400"
+                                  : "text-muted-foreground",
+                          )}
+                        >
+                          {entry.domain}
+                        </span>
+                        <span
+                          className={cn(
+                            "text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0",
+                            isVerified
+                              ? "bg-emerald-500/10 text-emerald-500"
+                              : isProjected
+                                ? "bg-amber-500/10 text-amber-500"
+                                : isUnavailable
+                                  ? "bg-orange-500/10 text-orange-400"
+                                  : "bg-surface-2 text-muted-foreground",
+                          )}
+                        >
+                          {entry.status.replace("_", " ")}
+                        </span>
                         {entry.note && (
-                          <span className="text-[9px] text-muted-foreground italic truncate max-w-[100px]">— {entry.note}</span>
+                          <span className="text-[9px] text-muted-foreground italic truncate max-w-[100px]">
+                            — {entry.note}
+                          </span>
                         )}
                       </div>
                     );
@@ -765,24 +901,42 @@ function AskOmniMind() {
                   {/* Fix 2: Unified confidence — single authoritative value */}
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">Confidence</span>
-                    <span className="font-bold text-foreground">{Math.round((answerData.confidence ?? 0.5) * 100)}%</span>
-                    <span className={cn(
-                      "text-[9px] font-semibold px-1.5 py-0.5 rounded",
-                      (answerData.confidence ?? 0) >= 0.75 ? "bg-emerald-500/15 text-emerald-400" :
-                      (answerData.confidence ?? 0) >= 0.55 ? "bg-yellow-500/15 text-yellow-400" :
-                      "bg-orange-500/15 text-orange-400"
-                    )}>{(answerData.confidence ?? 0) >= 0.75 ? "HIGH" : (answerData.confidence ?? 0) >= 0.55 ? "MEDIUM" : "LOW"}</span>
+                    <span className="font-bold text-foreground">
+                      {Math.round((answerData.confidence ?? 0.5) * 100)}%
+                    </span>
+                    <span
+                      className={cn(
+                        "text-[9px] font-semibold px-1.5 py-0.5 rounded",
+                        (answerData.confidence ?? 0) >= 0.75
+                          ? "bg-emerald-500/15 text-emerald-400"
+                          : (answerData.confidence ?? 0) >= 0.55
+                            ? "bg-yellow-500/15 text-yellow-400"
+                            : "bg-orange-500/15 text-orange-400",
+                      )}
+                    >
+                      {(answerData.confidence ?? 0) >= 0.75
+                        ? "HIGH"
+                        : (answerData.confidence ?? 0) >= 0.55
+                          ? "MEDIUM"
+                          : "LOW"}
+                    </span>
                   </div>
                   {/* Fix 3: Human-readable freshness */}
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">Database Status</span>
-                    <span className={cn(
-                      "font-semibold",
-                      answerData.freshnessDetails?.dataAgeSeconds !== undefined && answerData.freshnessDetails.dataAgeSeconds < 3600
-                        ? "text-emerald-400" : "text-yellow-400"
-                    )}>
-                      {answerData.freshnessDetails?.dataAgeSeconds !== undefined && answerData.freshnessDetails.dataAgeSeconds < 3600
-                        ? "● Healthy" : "⚠ Partial"}
+                    <span
+                      className={cn(
+                        "font-semibold",
+                        answerData.freshnessDetails?.dataAgeSeconds !== undefined &&
+                          answerData.freshnessDetails.dataAgeSeconds < 3600
+                          ? "text-emerald-400"
+                          : "text-yellow-400",
+                      )}
+                    >
+                      {answerData.freshnessDetails?.dataAgeSeconds !== undefined &&
+                      answerData.freshnessDetails.dataAgeSeconds < 3600
+                        ? "● Healthy"
+                        : "⚠ Partial"}
                     </span>
                   </div>
                   {answerData.freshnessDetails && (

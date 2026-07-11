@@ -74,11 +74,11 @@ export interface EvidenceCoverage {
 
 // ─── NEW: Business Health Score (Fix 4) ──────────────────────────────────────
 export interface BusinessHealthScore {
-  overall: number;        // 0–100
-  sales: number;          // 0–100
-  financial: number;      // 0–100
-  inventory: number;      // 0–100
-  operations: number;     // 0–100
+  overall: number; // 0–100
+  sales: number; // 0–100
+  financial: number; // 0–100
+  inventory: number; // 0–100
+  operations: number; // 0–100
   grade: "A" | "B" | "C" | "D" | "F";
   topRiskDomain: string;
   financialImpact: string;

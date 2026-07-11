@@ -6,8 +6,16 @@ import { formatDiagnosticResponse } from "./ai-context-builder";
 import { getRevenueMetrics, getInventoryRisk, getExpenseMetrics } from "./server/tools";
 import { logShadowMode, planQueries, verifyServerSideProvenance } from "./ai-planner";
 import type {
-  ToolMetadata, ShadowLog, AIResponseContract, ClaimProvenance,
-  BusinessHealthScore, CausalChainStep, ExecutiveSummary, EvidenceCoverage, EvidenceCoverageEntry, EvidenceStatus,
+  ToolMetadata,
+  ShadowLog,
+  AIResponseContract,
+  ClaimProvenance,
+  BusinessHealthScore,
+  CausalChainStep,
+  ExecutiveSummary,
+  EvidenceCoverage,
+  EvidenceCoverageEntry,
+  EvidenceStatus,
 } from "./tool-types";
 export type { AIResponseContract };
 
@@ -57,7 +65,10 @@ type DataDomain =
 // Each fetcher returns a structured text block describing a data domain.
 // These are completely independent and can be composed in any combination.
 
-async function fetchTransactionContext(resolvedDate: string, deptScope: string | null): Promise<string> {
+async function fetchTransactionContext(
+  resolvedDate: string,
+  deptScope: string | null,
+): Promise<string> {
   const start = new Date(`${resolvedDate}T00:00:00.000Z`);
   const end = new Date(`${resolvedDate}T23:59:59.999Z`);
 
@@ -79,14 +90,17 @@ async function fetchTransactionContext(resolvedDate: string, deptScope: string |
   const trendStart = new Date(start);
   trendStart.setDate(trendStart.getDate() - 7);
   const trendTxns = await prisma.transaction.findMany({
-    where: { transactionDate: { gte: trendStart, lte: end }, ...(deptScope ? { departmentId: deptScope } : {}) },
+    where: {
+      transactionDate: { gte: trendStart, lte: end },
+      ...(deptScope ? { departmentId: deptScope } : {}),
+    },
   });
 
   // Department breakdown
   const depts = await prisma.department.findMany();
   const deptRevs: Record<string, number> = {};
-  txns.forEach(t => {
-    const dName = depts.find(d => d.id === t.departmentId)?.name || "Other";
+  txns.forEach((t) => {
+    const dName = depts.find((d) => d.id === t.departmentId)?.name || "Other";
     deptRevs[dName] = (deptRevs[dName] || 0) + Number(t.totalAmount);
   });
 
@@ -96,19 +110,22 @@ async function fetchTransactionContext(resolvedDate: string, deptScope: string |
 
   // Top products sold today
   const productSales: Record<string, { name: string; qty: number; rev: number }> = {};
-  txns.forEach(t => {
-    t.items.forEach(item => {
+  txns.forEach((t) => {
+    t.items.forEach((item) => {
       const key = item.productId;
-      if (!productSales[key]) productSales[key] = { name: item.product?.name || key, qty: 0, rev: 0 };
+      if (!productSales[key])
+        productSales[key] = { name: item.product?.name || key, qty: 0, rev: 0 };
       productSales[key].qty += item.quantity;
       productSales[key].rev += Number(item.lineTotal);
     });
   });
-  const topProducts = Object.values(productSales).sort((a, b) => b.rev - a.rev).slice(0, 5);
+  const topProducts = Object.values(productSales)
+    .sort((a, b) => b.rev - a.rev)
+    .slice(0, 5);
 
   // 7-day trend
   const dailyRevs: Record<string, number> = {};
-  trendTxns.forEach(t => {
+  trendTxns.forEach((t) => {
     const d = t.transactionDate.toISOString().split("T")[0];
     dailyRevs[d] = (dailyRevs[d] || 0) + Number(t.totalAmount);
   });
@@ -118,19 +135,23 @@ async function fetchTransactionContext(resolvedDate: string, deptScope: string |
   text += `- Total Orders: ${totalOrders}\n`;
   text += `- Average Order Value: ${fmtINR(avgOrderValue)}\n`;
   text += `- Department Revenue Breakdown:\n`;
-  Object.entries(deptRevs).sort(([,a],[,b]) => b - a).forEach(([name, val]) => {
-    text += `  · ${name}: ${fmtINR(val)}\n`;
-  });
+  Object.entries(deptRevs)
+    .sort(([, a], [, b]) => b - a)
+    .forEach(([name, val]) => {
+      text += `  · ${name}: ${fmtINR(val)}\n`;
+    });
   if (topProducts.length > 0) {
     text += `- Top 5 Products Sold Today:\n`;
-    topProducts.forEach(p => {
+    topProducts.forEach((p) => {
       text += `  · ${p.name}: ${p.qty} units (${fmtINR(p.rev)})\n`;
     });
   }
   text += `- 7-Day Revenue Trend:\n`;
-  Object.entries(dailyRevs).sort().forEach(([date, rev]) => {
-    text += `  · ${date}: ${fmtINR(rev)}\n`;
-  });
+  Object.entries(dailyRevs)
+    .sort()
+    .forEach(([date, rev]) => {
+      text += `  · ${date}: ${fmtINR(rev)}\n`;
+    });
 
   return text;
 }
@@ -147,7 +168,7 @@ async function fetchInventoryContext(deptScope: string | null): Promise<string> 
     },
   });
 
-  const lowStock = products.filter(p => {
+  const lowStock = products.filter((p) => {
     const stock = p.stockItems.reduce((sum, s) => sum + s.availableQty, 0);
     return stock <= p.reorderLevel;
   });
@@ -174,7 +195,7 @@ async function fetchInventoryContext(deptScope: string | null): Promise<string> 
 
   if (lowStock.length > 0) {
     text += `- Critical Low-Stock Items:\n`;
-    lowStock.slice(0, 8).forEach(p => {
+    lowStock.slice(0, 8).forEach((p) => {
       const stock = p.stockItems.reduce((sum, s) => sum + s.availableQty, 0);
       text += `  · ${p.name} (SKU: ${p.sku}, ID: ${p.id}): Stock: ${stock}, Reorder: ${p.reorderLevel}, Cost: ₹${p.costPrice}\n`;
     });
@@ -182,7 +203,7 @@ async function fetchInventoryContext(deptScope: string | null): Promise<string> 
 
   if (expiringBatches.length > 0) {
     text += `- Expiry Risk Batches (Warning/Markdown):\n`;
-    expiringBatches.forEach(b => {
+    expiringBatches.forEach((b) => {
       const daysToExpiry = b.expiryDate
         ? Math.round((new Date(b.expiryDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
         : 999;
@@ -202,30 +223,34 @@ async function fetchCustomerContext(deptScope: string | null): Promise<string> {
 
   const totalCustomers = await prisma.customer.count({ where: { status: "Active" } });
 
-  const highChurn = customers.filter(c => c.churnRisk === "High");
-  const vipCustomers = customers.filter(c => c.loyaltyTier === "Platinum" || c.loyaltyTier === "Gold");
+  const highChurn = customers.filter((c) => c.churnRisk === "High");
+  const vipCustomers = customers.filter(
+    (c) => c.loyaltyTier === "Platinum" || c.loyaltyTier === "Gold",
+  );
 
   const segments: Record<string, number> = {};
-  customers.forEach(c => {
+  customers.forEach((c) => {
     const seg = c.customerType || "Unknown";
     segments[seg] = (segments[seg] || 0) + 1;
   });
 
   let text = `CUSTOMERS & CRM (LIVE DB):\n`;
   text += `- Total Active Customers: ${totalCustomers}\n`;
-  text += `- Customer Segments: ${Object.entries(segments).map(([k, v]) => `${k}: ${v}`).join(", ")}\n`;
+  text += `- Customer Segments: ${Object.entries(segments)
+    .map(([k, v]) => `${k}: ${v}`)
+    .join(", ")}\n`;
   text += `- High Churn Risk Customers: ${highChurn.length}\n`;
 
   if (highChurn.length > 0) {
     text += `- Churn-Risk Details:\n`;
-    highChurn.slice(0, 5).forEach(c => {
+    highChurn.slice(0, 5).forEach((c) => {
       text += `  · ${c.firstName} ${c.lastName} (ID: ${c.id}, Phone: ${c.phone}): Tier: ${c.loyaltyTier}, Points: ${c.loyaltyPoints}, Churn Risk: ${c.churnRisk}\n`;
     });
   }
 
   if (vipCustomers.length > 0) {
     text += `- VIP Customers (Gold/Platinum):\n`;
-    vipCustomers.slice(0, 5).forEach(c => {
+    vipCustomers.slice(0, 5).forEach((c) => {
       text += `  · ${c.firstName} ${c.lastName} (ID: ${c.id}): Tier: ${c.loyaltyTier}, Points: ${c.loyaltyPoints}\n`;
     });
   }
@@ -245,7 +270,7 @@ async function fetchSupplierContext(): Promise<string> {
   const unpaidSuppliers: { name: string; amount: number; id: string }[] = [];
 
   for (const s of suppliers) {
-    const pendingPOs = s.purchaseOrders.filter(po => po.status !== "Received");
+    const pendingPOs = s.purchaseOrders.filter((po) => po.status !== "Received");
     const pendingSum = pendingPOs.reduce((sum, po) => sum + Number(po.totalAmount), 0);
     if (pendingSum > 0) {
       totalPending += pendingSum;
@@ -257,15 +282,17 @@ async function fetchSupplierContext(): Promise<string> {
   text += `- Active Suppliers: ${suppliers.length}\n`;
   text += `- Total Pending Payables: ${fmtINR(totalPending)}\n`;
 
-  suppliers.forEach(s => {
+  suppliers.forEach((s) => {
     text += `  · ${s.name} (ID: ${s.id}, Code: ${s.supplierCode}): On-Time: ${s.onTimeDeliveryRate}%, Quality: ${s.qualityScore}%, Lead: ${s.leadTimeDays}d, Risk: ${Number(s.riskScore) >= 70 ? "High" : Number(s.riskScore) >= 40 ? "Medium" : "Low"}\n`;
   });
 
   if (unpaidSuppliers.length > 0) {
     text += `- Suppliers with Pending POs:\n`;
-    unpaidSuppliers.sort((a, b) => b.amount - a.amount).forEach(s => {
-      text += `  · ${s.name} (ID: ${s.id}): ${fmtINR(s.amount)} outstanding\n`;
-    });
+    unpaidSuppliers
+      .sort((a, b) => b.amount - a.amount)
+      .forEach((s) => {
+        text += `  · ${s.name} (ID: ${s.id}): ${fmtINR(s.amount)} outstanding\n`;
+      });
   }
 
   return text;
@@ -289,14 +316,14 @@ async function fetchUtilityContext(resolvedDate: string): Promise<string> {
   let text = `UTILITIES & ENERGY (${resolvedDate}, LIVE DB):\n`;
   if (anomalies.length > 0) {
     text += `- Active Utility Anomalies: ${anomalies.length}\n`;
-    anomalies.forEach(a => {
+    anomalies.forEach((a) => {
       text += `  · ${a.title}: ${a.description} (Detected: ${a.detectedAt.toISOString()})\n`;
     });
   }
   if (readings.length > 0) {
     const totalCost = readings.reduce((sum, r) => sum + Number(r.cost), 0);
     text += `- Today's Utility Readings: ${readings.length} entries, Total Cost: ${fmtINR(totalCost)}\n`;
-    readings.forEach(r => {
+    readings.forEach((r) => {
       text += `  · ${r.meter.zone} (${r.meter.type}): ${r.value} ${r.meter.unit}, Cost: ₹${r.cost}\n`;
     });
   } else {
@@ -320,7 +347,7 @@ async function fetchExpenseContext(resolvedDate: string): Promise<string> {
 
   // Category breakdown
   const categories: Record<string, number> = {};
-  expenses.forEach(e => {
+  expenses.forEach((e) => {
     const catName = e.category?.name || "Uncategorized";
     categories[catName] = (categories[catName] || 0) + Number(e.amount);
   });
@@ -330,9 +357,11 @@ async function fetchExpenseContext(resolvedDate: string): Promise<string> {
   text += `- Expense Count: ${expenses.length}\n`;
   if (Object.keys(categories).length > 0) {
     text += `- By Category:\n`;
-    Object.entries(categories).sort(([, a], [, b]) => b - a).forEach(([cat, val]) => {
-      text += `  · ${cat}: ${fmtINR(val)}\n`;
-    });
+    Object.entries(categories)
+      .sort(([, a], [, b]) => b - a)
+      .forEach(([cat, val]) => {
+        text += `  · ${cat}: ${fmtINR(val)}\n`;
+      });
   }
 
   return text;
@@ -340,19 +369,19 @@ async function fetchExpenseContext(resolvedDate: string): Promise<string> {
 
 async function fetchInvestmentContext(): Promise<string> {
   const investments = await prisma.investment.findMany();
-  const active = investments.filter(i => i.status === "Active");
-  const liquidated = investments.filter(i => i.status === "Liquidated");
+  const active = investments.filter((i) => i.status === "Active");
+  const liquidated = investments.filter((i) => i.status === "Liquidated");
   const activeValue = active.reduce((sum, i) => sum + Number(i.totalCost), 0);
 
   let totalPnl = 0;
-  liquidated.forEach(i => {
+  liquidated.forEach((i) => {
     totalPnl += Number(i.liquidatedAmount) - Number(i.totalCost);
   });
 
   let text = `INVESTMENTS & COMMODITIES (LIVE DB):\n`;
   text += `- Active Investments: ${active.length} (Value: ${fmtINR(activeValue)})\n`;
   text += `- Liquidated Investments: ${liquidated.length} (Total PnL: ${fmtINR(totalPnl)})\n`;
-  active.forEach(i => {
+  active.forEach((i) => {
     text += `  · ${i.assetName} (${i.symbol}): ${i.quantity} units @ ${fmtINR(Number(i.purchasePrice))}, Total: ${fmtINR(Number(i.totalCost))}\n`;
   });
 
@@ -361,9 +390,9 @@ async function fetchInvestmentContext(): Promise<string> {
 
 async function fetchLogisticsContext(): Promise<string> {
   const dispatches = await prisma.deliveryDispatch.findMany();
-  const activeDispatches = dispatches.filter(d => d.status !== "Delivered");
-  const delayed = dispatches.filter(d => d.status === "Delayed");
-  const delivered = dispatches.filter(d => d.status === "Delivered");
+  const activeDispatches = dispatches.filter((d) => d.status !== "Delivered");
+  const delayed = dispatches.filter((d) => d.status === "Delayed");
+  const delivered = dispatches.filter((d) => d.status === "Delivered");
 
   let text = `LOGISTICS & DELIVERY (LIVE DB):\n`;
   text += `- Total Dispatches: ${dispatches.length}\n`;
@@ -371,13 +400,13 @@ async function fetchLogisticsContext(): Promise<string> {
 
   if (delayed.length > 0) {
     text += `- Delayed Shipments:\n`;
-    delayed.forEach(d => {
+    delayed.forEach((d) => {
       text += `  · Order: ${d.orderNumber}, Driver: ${d.driverName}, Reason: ${d.delayReason || "Unknown"}\n`;
     });
   }
   if (activeDispatches.length > 0) {
     text += `- Active Dispatches:\n`;
-    activeDispatches.slice(0, 5).forEach(d => {
+    activeDispatches.slice(0, 5).forEach((d) => {
       text += `  · ${d.orderNumber}: ${d.driverName} → ${d.destination || "Mall"} (Status: ${d.status})\n`;
     });
   }
@@ -393,7 +422,7 @@ async function fetchAnomalyContext(): Promise<string> {
 
   let text = `ACTIVE ANOMALIES (LIVE DB):\n`;
   text += `- Total Active: ${anomalies.length}\n`;
-  anomalies.forEach(a => {
+  anomalies.forEach((a) => {
     text += `  · [${a.severity}] ${a.title}: ${a.description} (Type: ${a.type}, Detected: ${a.detectedAt.toISOString().split("T")[0]})\n`;
   });
 
@@ -408,7 +437,7 @@ async function fetchRecommendationContext(): Promise<string> {
 
   let text = `PENDING AI RECOMMENDATIONS (LIVE DB):\n`;
   text += `- Active Recommendations: ${recs.length}\n`;
-  recs.forEach(r => {
+  recs.forEach((r) => {
     text += `  · [${r.priority.toUpperCase()}] ${r.title}: ${r.summary} (Impact: ${r.expectedImpact})\n`;
   });
 
@@ -423,9 +452,13 @@ async function fetchLedgerContext(): Promise<string> {
 
   let text = `ACCOUNTING LEDGER (LIVE DB):\n`;
   text += `- Chart of Accounts Summary:\n`;
-  accounts.forEach(a => {
-    const debitSum = a.entries.filter(l => Number(l.debitAmount) > 0).reduce((sum, l) => sum + Number(l.debitAmount), 0);
-    const creditSum = a.entries.filter(l => Number(l.creditAmount) > 0).reduce((sum, l) => sum + Number(l.creditAmount), 0);
+  accounts.forEach((a) => {
+    const debitSum = a.entries
+      .filter((l) => Number(l.debitAmount) > 0)
+      .reduce((sum, l) => sum + Number(l.debitAmount), 0);
+    const creditSum = a.entries
+      .filter((l) => Number(l.creditAmount) > 0)
+      .reduce((sum, l) => sum + Number(l.creditAmount), 0);
     const balance = debitSum - creditSum;
     if (debitSum > 0 || creditSum > 0) {
       text += `  · ${a.code} ${a.name} (${a.type}): Debit: ${fmtINR(debitSum)}, Credit: ${fmtINR(creditSum)}, Net: ${fmtINR(balance)}\n`;
@@ -433,10 +466,13 @@ async function fetchLedgerContext(): Promise<string> {
   });
 
   // Show recent journal IDs from entries
-  const recentEntries = accounts.flatMap(a => a.entries).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 5);
+  const recentEntries = accounts
+    .flatMap((a) => a.entries)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, 5);
   if (recentEntries.length > 0) {
     text += `- Recent Ledger Entries:\n`;
-    recentEntries.forEach(e => {
+    recentEntries.forEach((e) => {
       text += `  · Journal ${e.journalId}: ${e.description} (${e.createdAt.toISOString().split("T")[0]})\n`;
     });
   }
@@ -463,13 +499,26 @@ async function fetchTopSellingProductData(): Promise<{
   });
 
   if (items.length === 0) {
-    return { text: "TOP SELLING PRODUCTS: No sales recorded.\n", topProduct: null, isLow: false, totalStock: 0 };
+    return {
+      text: "TOP SELLING PRODUCTS: No sales recorded.\n",
+      topProduct: null,
+      isLow: false,
+      totalStock: 0,
+    };
   }
 
-  const salesMap = new Map<string, { product: any; totalQty: number; totalRev: number; dates: Set<string> }>();
+  const salesMap = new Map<
+    string,
+    { product: any; totalQty: number; totalRev: number; dates: Set<string> }
+  >();
   for (const item of items) {
     if (!item.product) continue;
-    const existing = salesMap.get(item.productId) || { product: item.product, totalQty: 0, totalRev: 0, dates: new Set<string>() };
+    const existing = salesMap.get(item.productId) || {
+      product: item.product,
+      totalQty: 0,
+      totalRev: 0,
+      dates: new Set<string>(),
+    };
     existing.totalQty += item.quantity;
     existing.totalRev += Number(item.lineTotal);
     if (item.transaction?.transactionDate) {
@@ -487,14 +536,20 @@ async function fetchTopSellingProductData(): Promise<{
   });
 
   const top = sorted[0];
-  const totalStock = top.product.stockItems.reduce((sum: number, s: any) => sum + s.availableQty, 0);
+  const totalStock = top.product.stockItems.reduce(
+    (sum: number, s: any) => sum + s.availableQty,
+    0,
+  );
   const isLow = totalStock < top.product.reorderLevel;
 
   return { text, topProduct: top, isLow, totalStock };
 }
 
 // ─── Domain Fetcher Map ───────────────────────────────────────────────────────
-const DOMAIN_FETCHERS: Record<DataDomain, (resolvedDate: string, deptScope: string | null) => Promise<string>> = {
+const DOMAIN_FETCHERS: Record<
+  DataDomain,
+  (resolvedDate: string, deptScope: string | null) => Promise<string>
+> = {
   TRANSACTIONS: (d, s) => fetchTransactionContext(d, s),
   INVENTORY: (_d, s) => fetchInventoryContext(s),
   CUSTOMERS: (_d, s) => fetchCustomerContext(s),
@@ -518,9 +573,17 @@ async function routeQueryToDomains(
   groqKey: string,
 ): Promise<DataDomain[]> {
   const allDomains: DataDomain[] = [
-    "TRANSACTIONS", "INVENTORY", "CUSTOMERS", "SUPPLIERS",
-    "UTILITIES", "EXPENSES", "INVESTMENTS", "LOGISTICS",
-    "ANOMALIES", "RECOMMENDATIONS", "LEDGER",
+    "TRANSACTIONS",
+    "INVENTORY",
+    "CUSTOMERS",
+    "SUPPLIERS",
+    "UTILITIES",
+    "EXPENSES",
+    "INVESTMENTS",
+    "LOGISTICS",
+    "ANOMALIES",
+    "RECOMMENDATIONS",
+    "LEDGER",
   ];
 
   // If we have an AI key, use semantic routing
@@ -566,7 +629,10 @@ User Question: "${query}"`;
           body: JSON.stringify({
             model: "llama-3.3-70b-specdec",
             messages: [
-              { role: "system", content: "You are a data routing assistant. Return only a JSON array of strings." },
+              {
+                role: "system",
+                content: "You are a data routing assistant. Return only a JSON array of strings.",
+              },
               { role: "user", content: routerPrompt },
             ],
             response_format: { type: "json_object" },
@@ -598,9 +664,13 @@ User Question: "${query}"`;
 
       // Parse the response — it might be a raw array or wrapped in { "domains": [...] }
       const parsed = JSON.parse(responseText);
-      const domains: string[] = Array.isArray(parsed) ? parsed : (parsed.domains || parsed.data || []);
+      const domains: string[] = Array.isArray(parsed)
+        ? parsed
+        : parsed.domains || parsed.data || [];
 
-      const validDomains = domains.filter((d): d is DataDomain => allDomains.includes(d as DataDomain));
+      const validDomains = domains.filter((d): d is DataDomain =>
+        allDomains.includes(d as DataDomain),
+      );
 
       if (validDomains.length > 0) {
         return validDomains;
@@ -619,12 +689,20 @@ function keywordRouteFallback(query: string): DataDomain[] {
   const domains: Set<DataDomain> = new Set();
 
   // Transaction / Revenue / Sales keywords
-  if (/\b(revenue|sales|sell|sold|order|transaction|billing|receipt|payment|income|trend|performance|turnover|cash|profit|margin|best.?sell|popular|top.?sell)\b/.test(q)) {
+  if (
+    /\b(revenue|sales|sell|sold|order|transaction|billing|receipt|payment|income|trend|performance|turnover|cash|profit|margin|best.?sell|popular|top.?sell)\b/.test(
+      q,
+    )
+  ) {
     domains.add("TRANSACTIONS");
   }
 
   // Inventory / Stock keywords
-  if (/\b(stock|inventory|reorder|restock|sku|product|item|batch|expir|shelf|warehouse|catalog|shortage|replenish|out.?of.?stock)\b/.test(q)) {
+  if (
+    /\b(stock|inventory|reorder|restock|sku|product|item|batch|expir|shelf|warehouse|catalog|shortage|replenish|out.?of.?stock)\b/.test(
+      q,
+    )
+  ) {
     domains.add("INVENTORY");
   }
 
@@ -634,7 +712,11 @@ function keywordRouteFallback(query: string): DataDomain[] {
   }
 
   // Supplier keywords
-  if (/\b(supplier|vendor|procure|purchase.?order|lead.?time|reliab|quality.?score|payable|owe)\b/.test(q)) {
+  if (
+    /\b(supplier|vendor|procure|purchase.?order|lead.?time|reliab|quality.?score|payable|owe)\b/.test(
+      q,
+    )
+  ) {
     domains.add("SUPPLIERS");
   }
 
@@ -649,7 +731,11 @@ function keywordRouteFallback(query: string): DataDomain[] {
   }
 
   // Investment keywords
-  if (/\b(invest|gold|silver|commodit|portfolio|treasury|holding|market.?intel|asset|mutual)\b/.test(q)) {
+  if (
+    /\b(invest|gold|silver|commodit|portfolio|treasury|holding|market.?intel|asset|mutual)\b/.test(
+      q,
+    )
+  ) {
     domains.add("INVESTMENTS");
   }
 
@@ -669,7 +755,7 @@ function keywordRouteFallback(query: string): DataDomain[] {
   }
 
   // Ledger / Accounting keywords
-  if (/\b(ledger|journal|account|debit|credit|balance.?sheet|p\&l|cogs|double.?entry)\b/.test(q)) {
+  if (/\b(ledger|journal|account|debit|credit|balance.?sheet|p&l|cogs|double.?entry)\b/.test(q)) {
     domains.add("LEDGER");
   }
 
@@ -688,7 +774,9 @@ function keywordRouteFallback(query: string): DataDomain[] {
 // Detects broad executive-level questions that require all 11 domains.
 function isExecutiveQuery(query: string): boolean {
   const q = query.toLowerCase();
-  return /\b(today|overview|status|summary|everything|full|board|ceo|executive|business health|how are we|what should i do|give me a|daily report|eod|end of day|all domain|all department|overall)\b/.test(q);
+  return /\b(today|overview|status|summary|everything|full|board|ceo|executive|business health|how are we|what should i do|give me a|daily report|eod|end of day|all domain|all department|overall)\b/.test(
+    q,
+  );
 }
 
 // ─── Agentic Context Builder (Orchestrator) ───────────────────────────────────
@@ -703,12 +791,24 @@ async function buildAgenticContext(
   email?: string,
   geminiKey?: string,
   groqKey?: string,
-): Promise<{ contextText: string; domains: DataDomain[]; domainResults: Record<DataDomain, { text: string; rowCount: number }> }> {
+): Promise<{
+  contextText: string;
+  domains: DataDomain[];
+  domainResults: Record<DataDomain, { text: string; rowCount: number }>;
+}> {
   const deptScope = getDepartmentScope(role || "owner", email || "");
   const allDomains: DataDomain[] = [
-    "TRANSACTIONS", "INVENTORY", "CUSTOMERS", "SUPPLIERS",
-    "UTILITIES", "EXPENSES", "INVESTMENTS", "LOGISTICS",
-    "ANOMALIES", "RECOMMENDATIONS", "LEDGER",
+    "TRANSACTIONS",
+    "INVENTORY",
+    "CUSTOMERS",
+    "SUPPLIERS",
+    "UTILITIES",
+    "EXPENSES",
+    "INVESTMENTS",
+    "LOGISTICS",
+    "ANOMALIES",
+    "RECOMMENDATIONS",
+    "LEDGER",
   ];
 
   // Fix 1: Force ALL 11 domains for executive queries
@@ -721,9 +821,9 @@ async function buildAgenticContext(
   }
 
   // Step 2: Fetch all selected domains in parallel
-  const fetchPromises = domains.map(domain => {
+  const fetchPromises = domains.map((domain) => {
     const fetcher = DOMAIN_FETCHERS[domain];
-    return fetcher(resolvedDate, deptScope).catch(err => {
+    return fetcher(resolvedDate, deptScope).catch((err) => {
       console.error(`Failed to fetch ${domain}:`, err);
       return `${domain}: Data unavailable.\n`;
     });
@@ -740,12 +840,16 @@ async function buildAgenticContext(
     domainResults[domain] = { text, rowCount };
   });
   // Mark unselected domains as not applicable
-  allDomains.forEach(d => {
+  allDomains.forEach((d) => {
     if (!domainResults[d]) domainResults[d] = { text: "", rowCount: 0 };
   });
 
   const contextText = results.join("\n");
-  return { contextText, domains, domainResults: domainResults as Record<DataDomain, { text: string; rowCount: number }> };
+  return {
+    contextText,
+    domains,
+    domainResults: domainResults as Record<DataDomain, { text: string; rowCount: number }>,
+  };
 }
 
 // ─── Business Health Score (Fix 4) ───────────────────────────────────────────
@@ -793,14 +897,20 @@ function computeBusinessHealthScore(
 
   // Operations Health (0–100)
   let operationsScore = 100;
-  const criticalAlerts = anomalies.filter((a: any) => a.severity === "critical" || a.severity === "Critical").length;
-  const highAlerts = anomalies.filter((a: any) => a.severity === "high" || a.severity === "High").length;
+  const criticalAlerts = anomalies.filter(
+    (a: any) => a.severity === "critical" || a.severity === "Critical",
+  ).length;
+  const highAlerts = anomalies.filter(
+    (a: any) => a.severity === "high" || a.severity === "High",
+  ).length;
   operationsScore -= Math.min(40, criticalAlerts * 20);
   operationsScore -= Math.min(30, highAlerts * 10);
   operationsScore = Math.max(0, Math.min(100, operationsScore));
 
   // Overall weighted
-  const overall = Math.round(salesScore * 0.35 + financialScore * 0.30 + inventoryScore * 0.20 + operationsScore * 0.15);
+  const overall = Math.round(
+    salesScore * 0.35 + financialScore * 0.3 + inventoryScore * 0.2 + operationsScore * 0.15,
+  );
 
   const grade: BusinessHealthScore["grade"] =
     overall >= 90 ? "A" : overall >= 75 ? "B" : overall >= 60 ? "C" : overall >= 45 ? "D" : "F";
@@ -823,17 +933,26 @@ function computeBusinessHealthScore(
 
   // Financial impact estimate
   const atRiskRevenue = outOfStock * 2000 + lowStock * 500; // rough estimate per SKU
-  const financialImpact = atRiskRevenue > 0
-    ? `₹${(atRiskRevenue / 100000).toFixed(1)}L at risk`
-    : expenseRatio > 0.6
-    ? `₹${(totalExpense / 100000).toFixed(1)}L OpEx pressure`
-    : "Within normal range";
+  const financialImpact =
+    atRiskRevenue > 0
+      ? `₹${(atRiskRevenue / 100000).toFixed(1)}L at risk`
+      : expenseRatio > 0.6
+        ? `₹${(totalExpense / 100000).toFixed(1)}L OpEx pressure`
+        : "Within normal range";
 
   return {
-    overall, sales: salesScore, financial: financialScore,
-    inventory: inventoryScore, operations: operationsScore,
-    grade, topRiskDomain, financialImpact, bestROI,
-    immediateAction, actionOwner, actionDeadline,
+    overall,
+    sales: salesScore,
+    financial: financialScore,
+    inventory: inventoryScore,
+    operations: operationsScore,
+    grade,
+    topRiskDomain,
+    financialImpact,
+    bestROI,
+    immediateAction,
+    actionOwner,
+    actionDeadline,
   };
 }
 
@@ -855,7 +974,8 @@ function buildExecutiveCausalChain(
 
   if (outOfStock > 0 || lowStock > 3) {
     chain.push({
-      step: step++, domain: "Suppliers",
+      step: step++,
+      domain: "Suppliers",
       event: "Supplier delivery delays or pending PO approvals",
       evidence: `${lowStock + outOfStock} products below safety stock threshold`,
       financialImpact: "₹0 direct — downstream risk building",
@@ -863,7 +983,8 @@ function buildExecutiveCausalChain(
       nextEvent: "Inventory depletion",
     });
     chain.push({
-      step: step++, domain: "Inventory",
+      step: step++,
+      domain: "Inventory",
       event: `${outOfStock} out-of-stock · ${lowStock} below reorder level`,
       evidence: `outOfStockCount: ${outOfStock}, lowStockCount: ${lowStock} (live DB)`,
       financialImpact: `₹${(atRiskRev / 100000).toFixed(1)}L potential lost sales`,
@@ -871,10 +992,11 @@ function buildExecutiveCausalChain(
       nextEvent: "Stockout at POS",
     });
     chain.push({
-      step: step++, domain: "Sales",
+      step: step++,
+      domain: "Sales",
       event: "Stockout causes checkout conversion failures",
       evidence: `Customer basket drops — products unavailable at POS`,
-      financialImpact: `~${Math.round(atRiskRev / (netSales || 1) * 100)}% of today's revenue at risk`,
+      financialImpact: `~${Math.round((atRiskRev / (netSales || 1)) * 100)}% of today's revenue at risk`,
       severity: "high",
       nextEvent: "Revenue decline",
     });
@@ -883,7 +1005,8 @@ function buildExecutiveCausalChain(
   const DAILY_TARGET = 250000;
   if (netSales < DAILY_TARGET * 0.9) {
     chain.push({
-      step: step++, domain: "Revenue",
+      step: step++,
+      domain: "Revenue",
       event: `Net sales ₹${(netSales / 1000).toFixed(0)}K vs ₹${(DAILY_TARGET / 1000).toFixed(0)}K target`,
       evidence: `netSales: ₹${netSales.toLocaleString()} from live transactions table`,
       financialImpact: `₹${((DAILY_TARGET - netSales) / 100000).toFixed(1)}L shortfall`,
@@ -895,7 +1018,8 @@ function buildExecutiveCausalChain(
   const expenseRatio = netSales > 0 ? totalExpense / netSales : 0;
   if (expenseRatio > 0.4 || totalExpense > 0) {
     chain.push({
-      step: step++, domain: "Cash Flow",
+      step: step++,
+      domain: "Cash Flow",
       event: `OpEx at ${Math.round(expenseRatio * 100)}% of revenue`,
       evidence: `totalExpense: ₹${totalExpense.toLocaleString()} (live expense table)`,
       financialImpact: expenseRatio > 0.6 ? "Margin compression risk" : "Within acceptable range",
@@ -907,7 +1031,8 @@ function buildExecutiveCausalChain(
   const netProfit = netSales - totalExpense;
   if (netProfit < DAILY_TARGET * 0.2) {
     chain.push({
-      step: step++, domain: "Profit",
+      step: step++,
+      domain: "Profit",
       event: `Net margin ₹${(netProfit / 1000).toFixed(0)}K — below 20% of target`,
       evidence: `Revenue ₹${(netSales / 1000).toFixed(0)}K minus Expenses ₹${(totalExpense / 1000).toFixed(0)}K`,
       financialImpact: `₹${Math.abs(netProfit / 100000).toFixed(1)}L ${netProfit < 0 ? "loss" : "below target"}`,
@@ -917,10 +1042,13 @@ function buildExecutiveCausalChain(
   }
 
   if (anomalies.length > 0) {
-    const critAnomaly = anomalies.find((a: any) => a.severity === "critical" || a.severity === "Critical");
+    const critAnomaly = anomalies.find(
+      (a: any) => a.severity === "critical" || a.severity === "Critical",
+    );
     const useAnomaly = critAnomaly || anomalies[0];
     chain.push({
-      step: step++, domain: "Operations",
+      step: step++,
+      domain: "Operations",
       event: `${anomalies.length} active anomaly alerts — ${useAnomaly.title || "see anomalies"}`,
       evidence: `Active anomalies in system (live DB)`,
       financialImpact: critAnomaly ? "Immediate cost impact" : "Monitor — potential escalation",
@@ -931,7 +1059,8 @@ function buildExecutiveCausalChain(
 
   // Final CEO recommendation step always present
   chain.push({
-    step: step, domain: "Executive",
+    step: step,
+    domain: "Executive",
     event: `Business Health Score: ${healthScore.overall}/100 (Grade: ${healthScore.grade}) — CEO Action Required`,
     evidence: `Composite score from Sales(${healthScore.sales}), Financial(${healthScore.financial}), Inventory(${healthScore.inventory}), Operations(${healthScore.operations})`,
     financialImpact: healthScore.financialImpact,
@@ -948,9 +1077,17 @@ function buildEvidenceCoverage(
   isSimulation: boolean,
 ): EvidenceCoverage {
   const allDomains: DataDomain[] = [
-    "TRANSACTIONS", "INVENTORY", "CUSTOMERS", "SUPPLIERS",
-    "UTILITIES", "EXPENSES", "INVESTMENTS", "LOGISTICS",
-    "ANOMALIES", "RECOMMENDATIONS", "LEDGER",
+    "TRANSACTIONS",
+    "INVENTORY",
+    "CUSTOMERS",
+    "SUPPLIERS",
+    "UTILITIES",
+    "EXPENSES",
+    "INVESTMENTS",
+    "LOGISTICS",
+    "ANOMALIES",
+    "RECOMMENDATIONS",
+    "LEDGER",
   ];
 
   const DOMAIN_LABELS: Record<DataDomain, string> = {
@@ -967,7 +1104,7 @@ function buildEvidenceCoverage(
     LEDGER: "Accounting Ledger",
   };
 
-  const entries: EvidenceCoverageEntry[] = allDomains.map(domain => {
+  const entries: EvidenceCoverageEntry[] = allDomains.map((domain) => {
     const result = domainResults[domain];
     let status: EvidenceStatus;
     let note: string | undefined;
@@ -995,17 +1132,16 @@ function buildEvidenceCoverage(
     };
   });
 
-  const relevantEntries = entries.filter(e => e.status !== "NOT_APPLICABLE");
-  const verifiedCount = relevantEntries.filter(e => e.status === "VERIFIED").length;
-  const overallCoveragePercent = relevantEntries.length > 0
-    ? Math.round((verifiedCount / relevantEntries.length) * 100)
-    : 100;
+  const relevantEntries = entries.filter((e) => e.status !== "NOT_APPLICABLE");
+  const verifiedCount = relevantEntries.filter((e) => e.status === "VERIFIED").length;
+  const overallCoveragePercent =
+    relevantEntries.length > 0 ? Math.round((verifiedCount / relevantEntries.length) * 100) : 100;
 
   return { entries, overallCoveragePercent };
 }
 
 function extractUnavailableNote(text: string, domain: DataDomain): string {
-  const lines = text.split("\n").filter(l => l.includes("No "));
+  const lines = text.split("\n").filter((l) => l.includes("No "));
   return lines[0]?.trim().replace(/^-\s*/, "") || `No ${domain.toLowerCase()} data available`;
 }
 
@@ -1068,11 +1204,16 @@ export async function askOmniMindServerImpl(data: {
       expenseRes.data,
       ledgerBalances,
     );
-    const contradictionsFound = discrepancies.filter((d) => d.isContradiction).map((d) => d.metricLabel);
+    const contradictionsFound = discrepancies
+      .filter((d) => d.isContradiction)
+      .map((d) => d.metricLabel);
 
     // 4. What-If Simulation Engine (Elastic Dependency Graph)
     let simulationResults = "";
-    if (data.query.toLowerCase().includes("what if") || data.query.toLowerCase().includes("what happens if")) {
+    if (
+      data.query.toLowerCase().includes("what if") ||
+      data.query.toLowerCase().includes("what happens if")
+    ) {
       const proj = SimulationEngine.simulateScenario(
         data.query,
         Number(revenueRes.data.netSales),
@@ -1090,29 +1231,7 @@ export async function askOmniMindServerImpl(data: {
 `;
     }
 
-    // Fix 1+2: Specialist Agents receive REAL database-grounded context strings
-    const txContext = contextText.includes("TRANSACTIONS") ? contextText.split("INVENTORY")[0] : "";
-    const invContext = contextText.includes("INVENTORY") ? contextText.split("INVENTORY")[1]?.split("CUSTOMERS")[0] || "" : "";
-    const custContext = contextText.includes("CUSTOMERS") ? contextText.split("CUSTOMERS")[1]?.split("SUPPLIERS")[0] || "" : "";
-    const suppContext = contextText.includes("SUPPLIERS") ? contextText.split("SUPPLIERS")[1]?.split("UTILITIES")[0] || "" : "";
-    const utilContext = contextText.includes("UTILITIES") ? contextText.split("UTILITIES")[1]?.split("EXPENSES")[0] || "" : "";
-    const anomContext = contextText.includes("ANOMALIES") ? contextText.split("ANOMALIES")[1]?.split("RECOMMENDATIONS")[0] || "" : "";
-    const ledgerContext = contextText.includes("ACCOUNTING LEDGER") ? contextText.split("ACCOUNTING LEDGER")[1] || "" : "";
-
-    // 5. Specialist Agents Boardroom — all 6 agents wired with live DB evidence
-    const ceo = new CEOAgent().analyze(`${txContext.slice(0, 400)} | Net Sales: ₹${revenueRes.data.netSales?.toLocaleString() || 0}, Transactions: ${revenueRes.data.transactionCount || 0}, AOV: ₹${revenueRes.data.aov?.toLocaleString() || 0}`);
-    const cfo = new CFOAgent().analyze(`Revenue: ₹${revenueRes.data.netSales?.toLocaleString() || 0}, Expenses: ₹${expenseRes.data.totalExpense?.toLocaleString() || 0}, Ledger: ${ledgerContext.slice(0, 200)}, Contradictions: ${contradictionsFound.join(", ") || "None"}`);
-    const coo = new COOAgent().analyze(`Utilities: ${utilContext.slice(0, 200)}, Anomalies: ${anomContext.slice(0, 200)}, Active Alerts: ${activeAlerts?.length || 0}`);
-    const crm = new CRMAgent().analyze(`${custContext.slice(0, 300)}, Churn risk customers flagged in live DB`);
-    const inv = new InventoryAgent().analyze(`${invContext.slice(0, 300)} | Low Stock: ${inventoryRes.data.lowStockCount}, Out-of-Stock: ${inventoryRes.data.outOfStockCount}, Expiring: ${inventoryRes.data.expiringCount}`);
-    const risk = new RiskAgent().analyze(`${suppContext.slice(0, 200)}, Anomalies: ${anomContext.slice(0, 150)}, Contradictions found: [${contradictionsFound.join(", ") || "none"}]`);
-
-    const boardroomSynthesis = DecisionSynthesizer.synthesize([ceo, cfo, coo, crm, inv, risk]);
-
-    // 6. Score Recommendations using MAUT Decision Scorer
-    const scoredRecs = DecisionScorer.scoreAndSort(boardroomSynthesis.allRecommendations);
-
-    // 7. Proactive Autonomous Alerts
+    // 7. Proactive Autonomous Alerts (moved before agents so COO can reference alert count)
     const activeAlerts = AutonomousMonitor.evaluateMetrics(
       revenueRes.data,
       inventoryRes.data,
@@ -1121,6 +1240,52 @@ export async function askOmniMindServerImpl(data: {
       { churnRiskVIPCount: 3 },
       { delayedCount: 1 },
     );
+
+    // Fix 1+2: Specialist Agents receive REAL database-grounded context strings
+    const txContext = contextText.includes("TRANSACTIONS") ? contextText.split("INVENTORY")[0] : "";
+    const invContext = contextText.includes("INVENTORY")
+      ? contextText.split("INVENTORY")[1]?.split("CUSTOMERS")[0] || ""
+      : "";
+    const custContext = contextText.includes("CUSTOMERS")
+      ? contextText.split("CUSTOMERS")[1]?.split("SUPPLIERS")[0] || ""
+      : "";
+    const suppContext = contextText.includes("SUPPLIERS")
+      ? contextText.split("SUPPLIERS")[1]?.split("UTILITIES")[0] || ""
+      : "";
+    const utilContext = contextText.includes("UTILITIES")
+      ? contextText.split("UTILITIES")[1]?.split("EXPENSES")[0] || ""
+      : "";
+    const anomContext = contextText.includes("ANOMALIES")
+      ? contextText.split("ANOMALIES")[1]?.split("RECOMMENDATIONS")[0] || ""
+      : "";
+    const ledgerContext = contextText.includes("ACCOUNTING LEDGER")
+      ? contextText.split("ACCOUNTING LEDGER")[1] || ""
+      : "";
+
+    // 5. Specialist Agents Boardroom — all 6 agents wired with live DB evidence
+    const ceo = new CEOAgent().analyze(
+      `${txContext.slice(0, 400)} | Net Sales: ₹${revenueRes.data.netSales?.toLocaleString() || 0}, Transactions: ${revenueRes.data.transactionCount || 0}, AOV: ₹${revenueRes.data.aov?.toLocaleString() || 0}`,
+    );
+    const cfo = new CFOAgent().analyze(
+      `Revenue: ₹${revenueRes.data.netSales?.toLocaleString() || 0}, Expenses: ₹${expenseRes.data.totalExpense?.toLocaleString() || 0}, Ledger: ${ledgerContext.slice(0, 200)}, Contradictions: ${contradictionsFound.join(", ") || "None"}`,
+    );
+    const coo = new COOAgent().analyze(
+      `Utilities: ${utilContext.slice(0, 200)}, Anomalies: ${anomContext.slice(0, 200)}, Active Alerts: ${activeAlerts.length}`,
+    );
+    const crm = new CRMAgent().analyze(
+      `${custContext.slice(0, 300)}, Churn risk customers flagged in live DB`,
+    );
+    const inv = new InventoryAgent().analyze(
+      `${invContext.slice(0, 300)} | Low Stock: ${inventoryRes.data.lowStockCount}, Out-of-Stock: ${inventoryRes.data.outOfStockCount}, Expiring: ${inventoryRes.data.expiringCount}`,
+    );
+    const risk = new RiskAgent().analyze(
+      `${suppContext.slice(0, 200)}, Anomalies: ${anomContext.slice(0, 150)}, Contradictions found: [${contradictionsFound.join(", ") || "none"}]`,
+    );
+
+    const boardroomSynthesis = DecisionSynthesizer.synthesize([ceo, cfo, coo, crm, inv, risk]);
+
+    // 6. Score Recommendations using MAUT Decision Scorer
+    const scoredRecs = DecisionScorer.scoreAndSort(boardroomSynthesis.allRecommendations);
 
     // 8. Compute Business Health Score (Fix 4)
     const businessHealthScore = computeBusinessHealthScore(
@@ -1381,16 +1546,25 @@ Return a structured JSON output matching the requested schema.`;
       const domainCount = domains.length;
       const verifiedDomainRatio = domainCount > 0 ? Math.min(1, domainCount / 6) : 0.5;
       const hasContradictions = contradictionsFound.length > 0 ? 0.85 : 1.0;
-      const reconcScore = revenueRes.meta.reconciliationStatus === "VERIFIED" ? 1.0 : revenueRes.meta.reconciliationStatus === "MISMATCH" ? 0.7 : 0.85;
+      const reconcScore =
+        revenueRes.meta.reconciliationStatus === "VERIFIED"
+          ? 1.0
+          : revenueRes.meta.reconciliationStatus === "MISMATCH"
+            ? 0.7
+            : 0.85;
       const evidenceDensity = Math.min(1, evidence.length / 8);
       // Weighted composite: data coverage 30%, AI signal 25%, evidence density 20%, reconciliation 15%, contradictions 10%
-      const confidence = Math.max(0, Math.min(1,
-        verifiedDomainRatio * 0.30 +
-        aiConfidenceRaw * 0.25 +
-        evidenceDensity * 0.20 +
-        reconcScore * 0.15 +
-        hasContradictions * 0.10
-      ));
+      const confidence = Math.max(
+        0,
+        Math.min(
+          1,
+          verifiedDomainRatio * 0.3 +
+            aiConfidenceRaw * 0.25 +
+            evidenceDensity * 0.2 +
+            reconcScore * 0.15 +
+            hasContradictions * 0.1,
+        ),
+      );
 
       const result = {
         answer,
@@ -1434,9 +1608,13 @@ Return a structured JSON output matching the requested schema.`;
 
       // Fix 6: Executive summary strip
       const urgency: ExecutiveSummary["urgency"] =
-        businessHealthScore.overall < 50 ? "CRITICAL" :
-        businessHealthScore.overall < 65 ? "HIGH" :
-        businessHealthScore.overall < 80 ? "MEDIUM" : "LOW";
+        businessHealthScore.overall < 50
+          ? "CRITICAL"
+          : businessHealthScore.overall < 65
+            ? "HIGH"
+            : businessHealthScore.overall < 80
+              ? "MEDIUM"
+              : "LOW";
       formatted.executiveSummary = {
         headline: `Business Health: ${businessHealthScore.overall}/100 (Grade ${businessHealthScore.grade}) — ${businessHealthScore.topRiskDomain} is the top risk`,
         healthScore: businessHealthScore.overall,
@@ -1453,7 +1631,8 @@ Return a structured JSON output matching the requested schema.`;
       formatted.evidenceCoverage = buildEvidenceCoverage(
         domainResults,
         domains,
-        formatted.causalChain?.some(c => c.domain === "Logistics") && data.query.toLowerCase().includes("what if"),
+        formatted.causalChain?.some((c) => c.domain === "Logistics") &&
+          data.query.toLowerCase().includes("what if"),
       );
 
       // 3. Self-Evaluation Validation Check
@@ -1539,7 +1718,14 @@ async function executePrismaFallback(
   email?: string,
   preBuiltContext?: string,
 ): Promise<AIResponseContract> {
-  const raw = await executePrismaFallbackRaw(query, intent, resolvedDate, role, email, preBuiltContext);
+  const raw = await executePrismaFallbackRaw(
+    query,
+    intent,
+    resolvedDate,
+    role,
+    email,
+    preBuiltContext,
+  );
   return formatDiagnosticResponse(raw, resolvedDate);
 }
 
@@ -1557,23 +1743,36 @@ async function executePrismaFallbackRaw(
   // ─── A. Investment Queries ──────────────────────────────────────────────
   if (/\b(invest|gold|silver|commodit|holding|portfolio|treasury|market)\b/.test(q)) {
     const investments = await prisma.investment.findMany();
-    const active = investments.filter(i => i.status === "Active");
+    const active = investments.filter((i) => i.status === "Active");
     const activeValue = active.reduce((sum, i) => sum + Number(i.totalCost), 0);
-    const liquidated = investments.filter(i => i.status === "Liquidated");
+    const liquidated = investments.filter((i) => i.status === "Liquidated");
     let totalPnl = 0;
-    liquidated.forEach(i => { totalPnl += Number(i.liquidatedAmount) - Number(i.totalCost); });
+    liquidated.forEach((i) => {
+      totalPnl += Number(i.liquidatedAmount) - Number(i.totalCost);
+    });
 
     return {
       answer: `OmniMind currently holds ${active.length} active investments valued at ${fmtINR(activeValue)} in commodities. Historically, liquidated investments have generated a net return of ${fmtINR(totalPnl)} for the corporate treasury.`,
       summary: `Active investments: ${active.length} (${fmtINR(activeValue)}). Liquidated PnL: ${fmtINR(totalPnl)}.`,
-      evidence: active.slice(0, 3).map(i => ({
+      evidence: active.slice(0, 3).map((i) => ({
         label: `${i.assetName} (${i.symbol})`,
         value: `${i.quantity} units @ ${fmtINR(Number(i.purchasePrice))}`,
         sourceType: "investment",
         sourceId: i.id,
       })),
-      reasoning: ["Retrieved portfolio from Investment ledger records.", "Aggregated active asset values and historical liquidated gains/losses."],
-      recommendedActions: [{ title: "Go to Market Intelligence", description: "Deploy treasury cash or liquidate active commodity positions.", priority: "medium", actionType: "NAVIGATE", entityId: "/market-intelligence" }],
+      reasoning: [
+        "Retrieved portfolio from Investment ledger records.",
+        "Aggregated active asset values and historical liquidated gains/losses.",
+      ],
+      recommendedActions: [
+        {
+          title: "Go to Market Intelligence",
+          description: "Deploy treasury cash or liquidate active commodity positions.",
+          priority: "medium",
+          actionType: "NAVIGATE",
+          entityId: "/market-intelligence",
+        },
+      ],
       risks: [{ title: "Commodity Price Volatility", severity: "medium" }],
       confidence: 1.0,
     };
@@ -1582,17 +1781,31 @@ async function executePrismaFallbackRaw(
   // ─── B. Logistics Queries ───────────────────────────────────────────────
   if (/\b(deliver|dispatch|logistics|transit|driver|vehicle|transport|fleet|ship)\b/.test(q)) {
     const dispatches = await prisma.deliveryDispatch.findMany();
-    const active = dispatches.filter(d => d.status !== "Delivered");
-    const delayed = dispatches.filter(d => d.status === "Delayed");
-    const delivered = dispatches.filter(d => d.status === "Delivered");
+    const active = dispatches.filter((d) => d.status !== "Delivered");
+    const delayed = dispatches.filter((d) => d.status === "Delayed");
+    const delivered = dispatches.filter((d) => d.status === "Delivered");
 
     return {
       answer: `We have ${dispatches.length} total deliveries logged. ${delivered.length} delivered, ${active.length} active, ${delayed.length} delayed.`,
       summary: `${active.length} active dispatches (${delayed.length} delayed).`,
-      evidence: delayed.map(d => ({ label: `Delayed: ${d.orderNumber}`, value: `${d.driverName} - ${d.delayReason || "No details"}`, sourceType: "delivery", sourceId: d.id })),
+      evidence: delayed.map((d) => ({
+        label: `Delayed: ${d.orderNumber}`,
+        value: `${d.driverName} - ${d.delayReason || "No details"}`,
+        sourceType: "delivery",
+        sourceId: d.id,
+      })),
       reasoning: ["Scanned fleet dispatches table for non-Delivered and Delayed rows."],
-      recommendedActions: [{ title: "Check Logistics Fleet Feed", description: "Track driver positions and resolve shipment delays.", priority: "high", actionType: "NAVIGATE", entityId: "/logistics" }],
-      risks: delayed.length > 0 ? [{ title: "SLA breach on delayed shipments", severity: "high" }] : [],
+      recommendedActions: [
+        {
+          title: "Check Logistics Fleet Feed",
+          description: "Track driver positions and resolve shipment delays.",
+          priority: "high",
+          actionType: "NAVIGATE",
+          entityId: "/logistics",
+        },
+      ],
+      risks:
+        delayed.length > 0 ? [{ title: "SLA breach on delayed shipments", severity: "high" }] : [],
       confidence: 1.0,
     };
   }
@@ -1601,7 +1814,15 @@ async function executePrismaFallbackRaw(
   if (/\b(sell|sold|popular|best.?sell|top.?sell|max.?sale)\b/.test(q)) {
     const { topProduct, isLow, totalStock } = await fetchTopSellingProductData();
     if (!topProduct) {
-      return { answer: "No sales recorded in the database yet.", summary: "No sales.", evidence: [], reasoning: ["Queried transaction items: 0 entries."], recommendedActions: [], risks: [], confidence: 0.9 };
+      return {
+        answer: "No sales recorded in the database yet.",
+        summary: "No sales.",
+        evidence: [],
+        reasoning: ["Queried transaction items: 0 entries."],
+        recommendedActions: [],
+        risks: [],
+        confidence: 0.9,
+      };
     }
 
     const top = topProduct;
@@ -1615,15 +1836,29 @@ async function executePrismaFallbackRaw(
         description: `Generate PO for ${top.product.reorderLevel * 2} units.`,
         priority: "high",
         actionType: "CREATE_PO",
-        entityId: JSON.stringify({ productId: top.product.id, productName: top.product.name, supplierId: "SUP-001", supplierName: "Default Supplier", quantity: top.product.reorderLevel * 2, unitCost: Number(top.product.costPrice) }),
+        entityId: JSON.stringify({
+          productId: top.product.id,
+          productName: top.product.name,
+          supplierId: "SUP-001",
+          supplierName: "Default Supplier",
+          quantity: top.product.reorderLevel * 2,
+          unitCost: Number(top.product.costPrice),
+        }),
       });
     }
 
     return {
       answer,
       summary: `Top seller: ${top.product.name} (${top.totalQty} sold). Stock: ${totalStock}.`,
-      evidence: [{ label: "Top Product", value: top.product.name }, { label: "Quantity Sold", value: `${top.totalQty} units` }, { label: "Current Stock", value: `${totalStock} units` }],
-      reasoning: ["Aggregated transaction ledger entries grouped by product ID.", "Checked stock against reorder thresholds."],
+      evidence: [
+        { label: "Top Product", value: top.product.name },
+        { label: "Quantity Sold", value: `${top.totalQty} units` },
+        { label: "Current Stock", value: `${totalStock} units` },
+      ],
+      reasoning: [
+        "Aggregated transaction ledger entries grouped by product ID.",
+        "Checked stock against reorder thresholds.",
+      ],
       recommendedActions,
       risks: isLow ? [{ title: "Stockout & lost revenue risk", severity: "high" }] : [],
       confidence: 1.0,
@@ -1636,22 +1871,46 @@ async function executePrismaFallbackRaw(
     let totalPending = 0;
     const unpaid: { name: string; amount: number; id: string }[] = [];
     for (const s of suppliers) {
-      const pending = s.purchaseOrders.filter(po => po.status !== "Received");
+      const pending = s.purchaseOrders.filter((po) => po.status !== "Received");
       const sum = pending.reduce((acc, po) => acc + Number(po.totalAmount), 0);
-      if (sum > 0) { totalPending += sum; unpaid.push({ name: s.name, amount: sum, id: s.id }); }
+      if (sum > 0) {
+        totalPending += sum;
+        unpaid.push({ name: s.name, amount: sum, id: s.id });
+      }
     }
 
     if (unpaid.length === 0) {
-      return { answer: "No pending payments! All POs are settled.", summary: "Zero payables.", evidence: [], reasoning: ["Queried all supplier POs."], recommendedActions: [], risks: [], confidence: 1.0 };
+      return {
+        answer: "No pending payments! All POs are settled.",
+        summary: "Zero payables.",
+        evidence: [],
+        reasoning: ["Queried all supplier POs."],
+        recommendedActions: [],
+        risks: [],
+        confidence: 1.0,
+      };
     }
     unpaid.sort((a, b) => b.amount - a.amount);
 
     return {
       answer: `${fmtINR(totalPending)} in pending payments across ${unpaid.length} suppliers. Largest: ${unpaid[0].name} (${fmtINR(unpaid[0].amount)}).`,
       summary: `${fmtINR(totalPending)} total pending.`,
-      evidence: unpaid.slice(0, 3).map(s => ({ label: s.name, value: fmtINR(s.amount), sourceType: "supplier", sourceId: s.id })),
+      evidence: unpaid.slice(0, 3).map((s) => ({
+        label: s.name,
+        value: fmtINR(s.amount),
+        sourceType: "supplier",
+        sourceId: s.id,
+      })),
       reasoning: [`Found ${unpaid.length} suppliers with open POs.`],
-      recommendedActions: [{ title: `Review ${unpaid[0].name} POs`, description: "Review open purchase orders.", priority: "high", actionType: "OPEN_SUPPLIER", entityId: unpaid[0].id }],
+      recommendedActions: [
+        {
+          title: `Review ${unpaid[0].name} POs`,
+          description: "Review open purchase orders.",
+          priority: "high",
+          actionType: "OPEN_SUPPLIER",
+          entityId: unpaid[0].id,
+        },
+      ],
       risks: [{ title: "Cash Flow Obligation", severity: "medium" }],
       confidence: 1.0,
     };
@@ -1667,85 +1926,126 @@ async function executePrismaFallbackRaw(
         transactionItems: {
           select: {
             quantity: true,
-            lineTotal: true
-          }
-        }
-      }
+            lineTotal: true,
+          },
+        },
+      },
     });
 
-    const mapped = products.map(p => {
-      const stock = p.stockItems.reduce((sum, s) => sum + s.availableQty, 0);
-      const sold = p.transactionItems.reduce((sum, item) => sum + item.quantity, 0);
-      const revenue = p.transactionItems.reduce((sum, item) => sum + Number(item.lineTotal), 0);
-      return {
-        product: p,
-        stock,
-        sold,
-        revenue,
-        isOutOfStock: stock === 0,
-        isLowStock: stock <= p.reorderLevel
-      };
-    }).filter(c => c.isLowStock || c.isOutOfStock);
+    const mapped = products
+      .map((p) => {
+        const stock = p.stockItems.reduce((sum, s) => sum + s.availableQty, 0);
+        const sold = p.transactionItems.reduce((sum, item) => sum + item.quantity, 0);
+        const revenue = p.transactionItems.reduce((sum, item) => sum + Number(item.lineTotal), 0);
+        return {
+          product: p,
+          stock,
+          sold,
+          revenue,
+          isOutOfStock: stock === 0,
+          isLowStock: stock <= p.reorderLevel,
+        };
+      })
+      .filter((c) => c.isLowStock || c.isOutOfStock);
 
     // Sort by sold units descending (high demand first)
     mapped.sort((a, b) => b.sold - a.sold);
 
-    const outOfStock = mapped.filter(c => c.isOutOfStock);
-    const lowStock = mapped.filter(c => !c.isOutOfStock);
+    const outOfStock = mapped.filter((c) => c.isOutOfStock);
+    const lowStock = mapped.filter((c) => !c.isOutOfStock);
 
     let answer = "";
     if (outOfStock.length > 0) {
-      answer = `Here are the high-demand products that are completely OUT OF STOCK (sorted by sales velocity):\n\n` +
-        outOfStock.map((c, idx) => `${idx + 1}. **${c.product.name}** (SKU: ${c.product.id}) — **${c.sold} units sold** (Generated ₹${c.revenue} revenue, current stock: 0).`).join("\n") +
+      answer =
+        `Here are the high-demand products that are completely OUT OF STOCK (sorted by sales velocity):\n\n` +
+        outOfStock
+          .map(
+            (c, idx) =>
+              `${idx + 1}. **${c.product.name}** (SKU: ${c.product.id}) — **${c.sold} units sold** (Generated ₹${c.revenue} revenue, current stock: 0).`,
+          )
+          .join("\n") +
         `\n\nImmediate restocking is recommended to prevent lost revenue.`;
     } else {
-      answer = `No high-demand products are completely out of stock. However, here are the highest-demand low-stock products:\n\n` +
-        lowStock.slice(0, 5).map((c, idx) => `${idx + 1}. **${c.product.name}** — **${c.sold} units sold** (Current stock: ${c.stock}/${c.product.reorderLevel}).`).join("\n");
+      answer =
+        `No high-demand products are completely out of stock. However, here are the highest-demand low-stock products:\n\n` +
+        lowStock
+          .slice(0, 5)
+          .map(
+            (c, idx) =>
+              `${idx + 1}. **${c.product.name}** — **${c.sold} units sold** (Current stock: ${c.stock}/${c.product.reorderLevel}).`,
+          )
+          .join("\n");
     }
 
     return {
       answer,
       summary: `${outOfStock.length} high-demand products out of stock.`,
-      evidence: mapped.slice(0, 4).map(c => ({
+      evidence: mapped.slice(0, 4).map((c) => ({
         label: c.product.name,
         value: `Stock: ${c.stock} | Sold: ${c.sold} units`,
         sourceType: "product",
-        sourceId: c.product.id
+        sourceId: c.product.id,
       })),
       reasoning: [
         "Matched both high-demand and out-of-stock semantic tokens.",
-        "Scanned database products, resolved active stock, and aggregated unit sales from transaction ledger."
+        "Scanned database products, resolved active stock, and aggregated unit sales from transaction ledger.",
       ],
-      recommendedActions: mapped.slice(0, 2).map(c => ({
+      recommendedActions: mapped.slice(0, 2).map((c) => ({
         title: `Restock high-demand: ${c.product.name}`,
         description: `Generate PO for ${c.product.reorderLevel * 2} units. Product has high sales velocity (${c.sold} sold) but is ${c.stock === 0 ? "out of stock" : "low stock"}.`,
         priority: "high" as const,
         actionType: "CREATE_PO" as const,
-        entityId: c.product.id
+        entityId: c.product.id,
       })),
-      risks: outOfStock.map(c => ({ title: `Revenue loss risk on high-demand: ${c.product.name}`, severity: "high" as const })),
+      risks: outOfStock.map((c) => ({
+        title: `Revenue loss risk on high-demand: ${c.product.name}`,
+        severity: "high" as const,
+      })),
       confidence: 1.0,
     };
   }
 
   // ─── E. Inventory / Stock Queries ───────────────────────────────────────
-  if (/\b(stock|inventory|reorder|restock|sku|shortage|replenish|out.?of.?stock|low|empty)\b/.test(q)) {
+  if (
+    /\b(stock|inventory|reorder|restock|sku|shortage|replenish|out.?of.?stock|low|empty)\b/.test(q)
+  ) {
     const products = await prisma.product.findMany({ include: { stockItems: true } });
-    const lowStock = products.filter(p => {
+    const lowStock = products.filter((p) => {
       const total = p.stockItems.reduce((sum, s) => sum + s.availableQty, 0);
       return total < p.reorderLevel;
     });
 
     if (lowStock.length === 0) {
-      return { answer: "All products are adequately stocked above reorder levels.", summary: "Healthy inventory.", evidence: [], reasoning: ["Checked all products against reorder thresholds."], recommendedActions: [], risks: [], confidence: 0.95 };
+      return {
+        answer: "All products are adequately stocked above reorder levels.",
+        summary: "Healthy inventory.",
+        evidence: [],
+        reasoning: ["Checked all products against reorder thresholds."],
+        recommendedActions: [],
+        risks: [],
+        confidence: 0.95,
+      };
     }
 
     return {
       answer: `${lowStock.length} products below reorder threshold. Most critical: ${lowStock[0].name}.`,
       summary: `${lowStock.length} products need reordering.`,
-      evidence: lowStock.slice(0, 3).map(p => ({ label: p.name, value: `Reorder: ${p.reorderLevel}`, sourceType: "product", sourceId: p.id })),
+      evidence: lowStock.slice(0, 3).map((p) => ({
+        label: p.name,
+        value: `Reorder: ${p.reorderLevel}`,
+        sourceType: "product",
+        sourceId: p.id,
+      })),
       reasoning: ["Compared availableQty vs reorderLevel for all products."],
-      recommendedActions: [{ title: `Create PO for ${lowStock[0].name}`, description: `Replenish ${lowStock[0].name}.`, priority: "high", actionType: "CREATE_PO", entityId: lowStock[0].id }],
+      recommendedActions: [
+        {
+          title: `Create PO for ${lowStock[0].name}`,
+          description: `Replenish ${lowStock[0].name}.`,
+          priority: "high",
+          actionType: "CREATE_PO",
+          entityId: lowStock[0].id,
+        },
+      ],
       risks: [{ title: "Potential Stockout & Lost Sales", severity: "high" }],
       confidence: 0.9,
     };
@@ -1753,18 +2053,43 @@ async function executePrismaFallbackRaw(
 
   // ─── F. Customer / CRM Queries ──────────────────────────────────────────
   if (/\b(customer|loyalty|churn|vip|crm|segment|member)\b/.test(q)) {
-    const highRisk = await prisma.customer.findMany({ where: { churnRisk: "High" }, orderBy: { loyaltyPoints: "desc" }, take: 5 });
+    const highRisk = await prisma.customer.findMany({
+      where: { churnRisk: "High" },
+      orderBy: { loyaltyPoints: "desc" },
+      take: 5,
+    });
 
     if (highRisk.length === 0) {
-      return { answer: "No high-risk churn customers detected.", summary: "Healthy CRM.", evidence: [], reasoning: ["Scanned CRM for churnRisk='High'."], recommendedActions: [], risks: [], confidence: 0.9 };
+      return {
+        answer: "No high-risk churn customers detected.",
+        summary: "Healthy CRM.",
+        evidence: [],
+        reasoning: ["Scanned CRM for churnRisk='High'."],
+        recommendedActions: [],
+        risks: [],
+        confidence: 0.9,
+      };
     }
 
     return {
       answer: `${highRisk.length} high-value customers at churn risk. ${highRisk[0].firstName} ${highRisk[0].lastName} (${highRisk[0].loyaltyPoints} pts) needs attention.`,
       summary: "High-value customers at risk.",
-      evidence: highRisk.map(c => ({ label: `${c.firstName} ${c.lastName}`, value: `${c.loyaltyPoints} pts`, sourceType: "customer", sourceId: c.id })),
+      evidence: highRisk.map((c) => ({
+        label: `${c.firstName} ${c.lastName}`,
+        value: `${c.loyaltyPoints} pts`,
+        sourceType: "customer",
+        sourceId: c.id,
+      })),
       reasoning: ["Identified churnRisk='High' customers.", "Cross-referenced loyalty points."],
-      recommendedActions: [{ title: `Review ${highRisk[0].firstName}'s Profile`, description: "Issue targeted win-back coupon.", priority: "high", actionType: "OPEN_CUSTOMER", entityId: highRisk[0].id }],
+      recommendedActions: [
+        {
+          title: `Review ${highRisk[0].firstName}'s Profile`,
+          description: "Issue targeted win-back coupon.",
+          priority: "high",
+          actionType: "OPEN_CUSTOMER",
+          entityId: highRisk[0].id,
+        },
+      ],
       risks: [{ title: "Loss of High LTV Customers", severity: "high" }],
       confidence: 0.85,
     };
@@ -1772,9 +2097,16 @@ async function executePrismaFallbackRaw(
 
   // ─── G. Utility / Energy Queries ────────────────────────────────────────
   if (/\b(electric|hvac|energy|utility|water|power|meter)\b/.test(q)) {
-    const anomalies = await prisma.anomaly.findMany({ where: { type: "Utility", status: "Active" } });
+    const anomalies = await prisma.anomaly.findMany({
+      where: { type: "Utility", status: "Active" },
+    });
     const readings = await prisma.utilityReading.findMany({
-      where: { readingDate: { gte: new Date(`${resolvedDate}T00:00:00.000Z`), lte: new Date(`${resolvedDate}T23:59:59.999Z`) } },
+      where: {
+        readingDate: {
+          gte: new Date(`${resolvedDate}T00:00:00.000Z`),
+          lte: new Date(`${resolvedDate}T23:59:59.999Z`),
+        },
+      },
       include: { meter: true },
     });
 
@@ -1787,64 +2119,100 @@ async function executePrismaFallbackRaw(
     return {
       answer,
       summary: `${readings.length} readings, ${anomalies.length} anomalies.`,
-      evidence: anomalies.map(a => ({ label: a.title, value: a.description || "Active anomaly" })),
+      evidence: anomalies.map((a) => ({
+        label: a.title,
+        value: a.description || "Active anomaly",
+      })),
       reasoning: ["Queried utility readings and active anomalies from DB."],
-      recommendedActions: anomalies.length > 0 ? [{ title: "Investigate Anomaly", description: anomalies[0].title, priority: "high", actionType: "INVESTIGATE_ANOMALY", entityId: anomalies[0].id }] : [],
+      recommendedActions:
+        anomalies.length > 0
+          ? [
+              {
+                title: "Investigate Anomaly",
+                description: anomalies[0].title,
+                priority: "high",
+                actionType: "INVESTIGATE_ANOMALY",
+                entityId: anomalies[0].id,
+              },
+            ]
+          : [],
       risks: anomalies.length > 0 ? [{ title: "Elevated Utility Costs", severity: "medium" }] : [],
       confidence: 1.0,
     };
   }
 
   // ─── G1. Profit Decline Queries ──────────────────────────────────────────
-  if (/\b(decline|drop|decrease|fall|lower|reduce|why|decline|loss)\b/.test(q) && /\b(profit|margin|earnings|income|revenue)\b/.test(q)) {
+  if (
+    /\b(decline|drop|decrease|fall|lower|reduce|why|decline|loss)\b/.test(q) &&
+    /\b(profit|margin|earnings|income|revenue)\b/.test(q)
+  ) {
     return {
       answer: `Over the last 30 days, net profit declined despite a spike in gross revenue. The AI has diagnosed three primary contributing factors and quantified each using actual central database logs:
 
 1. **HVAC Compressor Malfunction (Zone B)**: Overnight electricity usage spiked by **+163%** between 1 AM and 4 AM. This HVAC zone compressor failure resulted in a cost overhead of **₹1,280 daily** (which equates to **₹38,400 monthly** in direct cash leaks).
 2. **Promotional Margin Compression**: In response to marketing initiatives, average markdown discounts of **15% to 20%** were offered across Beauty and Fashion departments. While this expanded total sales orders by **+15.6%**, the average product unit margins compressed by **5%**.
 3. **Sony India Supplier Delays**: Sony India lead times rose to **7.4 days** (vs 4.6 days industry average). This caused critical out-of-stock events on premium, high-margin electronics, shifting the shopping basket sales distribution toward lower-margin grocery items.`,
-      summary: "Net profit was compressed by HVAC utility spikes, markdown discounts, and electronics stockouts.",
+      summary:
+        "Net profit was compressed by HVAC utility spikes, markdown discounts, and electronics stockouts.",
       evidence: [
-        { label: "HVAC Zone B Overnight Excess Cost", value: "₹1,280/day (₹38.4K/mo)", sourceType: "anomaly", sourceId: "anom-util-hvac-001" },
-        { label: "Markdown Margin Compression", value: "5% drop in unit margin", sourceType: "expense", sourceId: "exp-mktg-promo-001" },
-        { label: "Sony India SLA Lead Time Delay", value: "7.4 days vs 4.6 days standard", sourceType: "supplier", sourceId: "sup-sony" }
+        {
+          label: "HVAC Zone B Overnight Excess Cost",
+          value: "₹1,280/day (₹38.4K/mo)",
+          sourceType: "anomaly",
+          sourceId: "anom-util-hvac-001",
+        },
+        {
+          label: "Markdown Margin Compression",
+          value: "5% drop in unit margin",
+          sourceType: "expense",
+          sourceId: "exp-mktg-promo-001",
+        },
+        {
+          label: "Sony India SLA Lead Time Delay",
+          value: "7.4 days vs 4.6 days standard",
+          sourceType: "supplier",
+          sourceId: "sup-sony",
+        },
       ],
       reasoning: [
         "Analyzed Zone B hourly energy logs to isolate overnight HVAC grid draw spikes.",
         "Correlated 15-20% beauty & fashion discount promotions with average transaction margins.",
-        "Cross-referenced Sony India lead times with electronics category stockout logs."
+        "Cross-referenced Sony India lead times with electronics category stockout logs.",
       ],
       recommendedActions: [
         {
           title: "Dispatch HVAC Crew to Zone B",
-          description: "Inspect compressor valves and overnight cycles to plug the ₹38,400/mo electricity leak.",
+          description:
+            "Inspect compressor valves and overnight cycles to plug the ₹38,400/mo electricity leak.",
           priority: "high" as const,
           estimatedImpact: "₹38,400 monthly savings",
           actionType: "INVESTIGATE_ANOMALY" as const,
-          entityId: "anom-util-hvac-001"
+          entityId: "anom-util-hvac-001",
         },
         {
           title: "Optimize Sony SLA & Stock Backup",
-          description: "Initiate Sony India SLA audit regarding delivery lead times and onboard local backup supplier.",
+          description:
+            "Initiate Sony India SLA audit regarding delivery lead times and onboard local backup supplier.",
           priority: "medium" as const,
           estimatedImpact: "Protects high-margin category stock",
           actionType: "OPEN_SUPPLIER" as const,
-          entityId: "sup-sony"
+          entityId: "sup-sony",
         },
         {
           title: "Promote Cosmetics to Fashion VIPs",
-          description: "Target Fashion shoppers with high-margin Cosmetics offers to buffer markdown margin compression.",
+          description:
+            "Target Fashion shoppers with high-margin Cosmetics offers to buffer markdown margin compression.",
           priority: "medium" as const,
           estimatedImpact: "Buffers AOV by +12%",
           actionType: "NAVIGATE" as const,
-          entityId: "/market-intelligence"
-        }
+          entityId: "/market-intelligence",
+        },
       ],
       risks: [
         { title: "HVAC compressor valve deterioration", severity: "high" as const },
-        { title: "Sony premium product category stockout", severity: "high" as const }
+        { title: "Sony premium product category stockout", severity: "high" as const },
       ],
-      confidence: 0.96
+      confidence: 0.96,
     };
   }
 
@@ -1872,20 +2240,36 @@ Here is the exact financial reconciliation:
 *   *Total Cash Outflows* (POs + Operating + Payables): -₹5,56,560
 *   *Projected Ending Cash Balance*: **₹15,25,440**
 *   *Net Capital Surplus*: **₹9,68,880** above safety reserve margins.`,
-      summary: "Working capital is healthy. approving all recommended POs will leave a surplus of ₹9.68L.",
+      summary:
+        "Working capital is healthy. approving all recommended POs will leave a surplus of ₹9.68L.",
       evidence: [
         { label: "Current Cash Balance", value: "₹12,40,000" },
         { label: "Total Outflow Commitments", value: "₹5,56,560" },
-        { label: "Projected 30d Ending cash", value: "₹15,25,440" }
+        { label: "Projected 30d Ending cash", value: "₹15,25,440" },
       ],
-      reasoning: ["Aggregated active treasury balances.", "Forecasted core utility, staff payroll, and purchase order outflows."],
-      recommendedActions: [{ title: "Approve All Recommended POs", description: "Release payments for draft POs to secure inventory.", priority: "high" as const, estimatedImpact: "Restores high-margin stock buffer", actionType: "NAVIGATE" as const, entityId: "/purchase-orders" }],
+      reasoning: [
+        "Aggregated active treasury balances.",
+        "Forecasted core utility, staff payroll, and purchase order outflows.",
+      ],
+      recommendedActions: [
+        {
+          title: "Approve All Recommended POs",
+          description: "Release payments for draft POs to secure inventory.",
+          priority: "high" as const,
+          estimatedImpact: "Restores high-margin stock buffer",
+          actionType: "NAVIGATE" as const,
+          entityId: "/purchase-orders",
+        },
+      ],
       risks: [],
       confidence: 0.98,
     };
   }
 
-  if (/\b(combine at least|evidence chain|invisible|three different data domains)\b/.test(q) || (q.includes("combine") && q.includes("domains"))) {
+  if (
+    /\b(combine at least|evidence chain|invisible|three different data domains)\b/.test(q) ||
+    (q.includes("combine") && q.includes("domains"))
+  ) {
     return {
       answer: `By cross-referencing **CRM (loyalty churn)**, **Inventory (stock counts)**, and **Supplier performance (SLA lead times)**, the AI has uncovered a hidden margin erosion chain that is invisible on any single dashboard:
 
@@ -1894,16 +2278,44 @@ Here is the exact financial reconciliation:
 2. **Product Stockouts**: This delay resulted in a complete shelf stockout of the premium, high-margin Sony headphones on the Electronics floor.
 3. **High-Value Loyalty Churn**: High-spending VIP loyalty customers (e.g. Meera Rane, total spend: ₹3,84,200) visited the mall specifically to purchase high-value audio electronics but faced empty shelves.
 4. **Economic Impact**: CRM logs show these customers' churn scores rose from **12% to 44%** due to service frustration. If these high-value VIP segments churn, it represents a long-term **LTV revenue risk of ₹1.5L** that is not flagged on standard sales or inventory dashboards alone.`,
-      summary: "Sony supplier delays are causing premium stockouts, leading to a spike in VIP customer churn risks.",
+      summary:
+        "Sony supplier delays are causing premium stockouts, leading to a spike in VIP customer churn risks.",
       evidence: [
-        { label: "Sony Lead Time Delay", value: "7.4 days vs 4.6 days standard", sourceType: "supplier", sourceId: "sup-sony" },
-        { label: "VIP Churn Risk Spike", value: "12% to 44% risk", sourceType: "customer", sourceId: "cust-vip-001" },
-        { label: "LTV Revenue at Risk", value: "₹1,50,000", sourceType: "customer" }
+        {
+          label: "Sony Lead Time Delay",
+          value: "7.4 days vs 4.6 days standard",
+          sourceType: "supplier",
+          sourceId: "sup-sony",
+        },
+        {
+          label: "VIP Churn Risk Spike",
+          value: "12% to 44% risk",
+          sourceType: "customer",
+          sourceId: "cust-vip-001",
+        },
+        { label: "LTV Revenue at Risk", value: "₹1,50,000", sourceType: "customer" },
       ],
-      reasoning: ["Correlated supplier SLA delays with product shelf depletion levels.", "Mapped stockouts directly to VIP loyalty churn risk scores."],
+      reasoning: [
+        "Correlated supplier SLA delays with product shelf depletion levels.",
+        "Mapped stockouts directly to VIP loyalty churn risk scores.",
+      ],
       recommendedActions: [
-        { title: "Review Sony SLA & Backup Supplier", description: "Establish regional backup distributor for audio SKUs.", priority: "high" as const, estimatedImpact: "Restores shelf availability", actionType: "OPEN_SUPPLIER" as const, entityId: "sup-sony" },
-        { title: "Trigger VIP Loyalty Win-back", description: "Issue targeted ₹2,000 discount coupons to affected VIPs.", priority: "medium" as const, estimatedImpact: "Prevents customer churn", actionType: "OPEN_CUSTOMER" as const, entityId: "cust-vip-001" }
+        {
+          title: "Review Sony SLA & Backup Supplier",
+          description: "Establish regional backup distributor for audio SKUs.",
+          priority: "high" as const,
+          estimatedImpact: "Restores shelf availability",
+          actionType: "OPEN_SUPPLIER" as const,
+          entityId: "sup-sony",
+        },
+        {
+          title: "Trigger VIP Loyalty Win-back",
+          description: "Issue targeted ₹2,000 discount coupons to affected VIPs.",
+          priority: "medium" as const,
+          estimatedImpact: "Prevents customer churn",
+          actionType: "OPEN_CUSTOMER" as const,
+          entityId: "cust-vip-001",
+        },
       ],
       risks: [{ title: "Loss of premium customer accounts", severity: "high" as const }],
       confidence: 0.95,
@@ -1932,19 +2344,45 @@ Here is the exact financial reconciliation:
    - *Margin Contribution*: **18%**
    - *Retargeting Cost*: **₹500**
    - *Economic Value*: **Medium-High**.`,
-      summary: "Meera Rane is our highest-priority churn-risk customer, representing ₹3.8L in historical sales.",
+      summary:
+        "Meera Rane is our highest-priority churn-risk customer, representing ₹3.8L in historical sales.",
       evidence: [
-        { label: "Meera Rane Spend", value: "₹3,84,200", sourceType: "customer", sourceId: "cust-vip-001" },
-        { label: "Meera Rane Churn Risk", value: "44%", sourceType: "customer", sourceId: "cust-vip-001" }
+        {
+          label: "Meera Rane Spend",
+          value: "₹3,84,200",
+          sourceType: "customer",
+          sourceId: "cust-vip-001",
+        },
+        {
+          label: "Meera Rane Churn Risk",
+          value: "44%",
+          sourceType: "customer",
+          sourceId: "cust-vip-001",
+        },
       ],
-      reasoning: ["Scanned CRM loyalty records for VIP segment tags.", "Weighted spend velocity and margin coefficients to determine economic retention value."],
-      recommendedActions: [{ title: "Initiate Win-back Campaign", description: "Dispatch premium coupon voucher to Meera Rane.", priority: "high" as const, estimatedImpact: "Secures ₹3.8L account LTV", actionType: "OPEN_CUSTOMER" as const, entityId: "cust-vip-001" }],
+      reasoning: [
+        "Scanned CRM loyalty records for VIP segment tags.",
+        "Weighted spend velocity and margin coefficients to determine economic retention value.",
+      ],
+      recommendedActions: [
+        {
+          title: "Initiate Win-back Campaign",
+          description: "Dispatch premium coupon voucher to Meera Rane.",
+          priority: "high" as const,
+          estimatedImpact: "Secures ₹3.8L account LTV",
+          actionType: "OPEN_CUSTOMER" as const,
+          entityId: "cust-vip-001",
+        },
+      ],
       risks: [{ title: "VIP customer accounts attrition", severity: "high" as const }],
       confidence: 0.94,
     };
   }
 
-  if (/\b(hidden business risk|supplier currently creates)\b/.test(q) || (q.includes("supplier") && q.includes("hidden"))) {
+  if (
+    /\b(hidden business risk|supplier currently creates)\b/.test(q) ||
+    (q.includes("supplier") && q.includes("hidden"))
+  ) {
     return {
       answer: `The supplier creating the **highest hidden business risk** is **Sony India (ID: sup-sony)**.
 
@@ -1953,13 +2391,36 @@ Here is the exact financial reconciliation:
 2. **SKU Impact**: Direct importer of premium headphones and audio systems on the Electronics floor.
 3. **Stockout Exposure**: Sony stockout has led to 0 inventory on the shelves, shifting shoppers to lower-margin grocery goods.
 4. **Estimated Financial Impact**: Causes a projected **₹18,500 weekly loss** in high-margin sales and contributes to a **+32% churn risk spike** among VIP electronics consumers.`,
-      summary: "Sony India represents our highest operational supplier risk due to delivery lead time delays.",
+      summary:
+        "Sony India represents our highest operational supplier risk due to delivery lead time delays.",
       evidence: [
-        { label: "Sony SLA Compliance", value: "76% on-time", sourceType: "supplier", sourceId: "sup-sony" },
-        { label: "Sony Lead Time Delay", value: "7.4 days vs 4.6 days standard", sourceType: "supplier", sourceId: "sup-sony" }
+        {
+          label: "Sony SLA Compliance",
+          value: "76% on-time",
+          sourceType: "supplier",
+          sourceId: "sup-sony",
+        },
+        {
+          label: "Sony Lead Time Delay",
+          value: "7.4 days vs 4.6 days standard",
+          sourceType: "supplier",
+          sourceId: "sup-sony",
+        },
       ],
-      reasoning: ["Evaluated supplier shipping databases.", "Correlated shipping lead times with out-of-stock events and category margins."],
-      recommendedActions: [{ title: "Audit Sony SLA Contract", description: "Open supplier details to review lead times and contact info.", priority: "high" as const, estimatedImpact: "Reduces shipping bottlenecks", actionType: "OPEN_SUPPLIER" as const, entityId: "sup-sony" }],
+      reasoning: [
+        "Evaluated supplier shipping databases.",
+        "Correlated shipping lead times with out-of-stock events and category margins.",
+      ],
+      recommendedActions: [
+        {
+          title: "Audit Sony SLA Contract",
+          description: "Open supplier details to review lead times and contact info.",
+          priority: "high" as const,
+          estimatedImpact: "Reduces shipping bottlenecks",
+          actionType: "OPEN_SUPPLIER" as const,
+          entityId: "sup-sony",
+        },
+      ],
       risks: [{ title: "Premium category supply chain bottleneck", severity: "medium" as const }],
       confidence: 0.92,
     };
@@ -1984,17 +2445,42 @@ Here is the exact financial reconciliation:
    - *Time-to-Depletion*: **0 days** (Ongoing stockout).`,
       summary: "Under a +20% demand surge, Amul Milk will run out of stock in 2.5 days.",
       evidence: [
-        { label: "Amul Milk Stock", value: "128 units", sourceType: "product", sourceId: "SKU-10021" },
-        { label: "Amul Milk Daily Velocity", value: "42 units/day", sourceType: "product", sourceId: "SKU-10021" }
+        {
+          label: "Amul Milk Stock",
+          value: "128 units",
+          sourceType: "product",
+          sourceId: "SKU-10021",
+        },
+        {
+          label: "Amul Milk Daily Velocity",
+          value: "42 units/day",
+          sourceType: "product",
+          sourceId: "SKU-10021",
+        },
       ],
-      reasoning: ["Applied a 1.2x multiplier to historical transaction velocities.", "Projected inventory depletion curves for low-stock SKUs."],
-      recommendedActions: [{ title: "Place Urgent Amul PO", description: "Generate PO for 240 units to secure dairy shelf stock.", priority: "high" as const, estimatedImpact: "Protects grocery revenue", actionType: "CREATE_PO" as const, entityId: "rec-dairy-reorder-001" }],
+      reasoning: [
+        "Applied a 1.2x multiplier to historical transaction velocities.",
+        "Projected inventory depletion curves for low-stock SKUs.",
+      ],
+      recommendedActions: [
+        {
+          title: "Place Urgent Amul PO",
+          description: "Generate PO for 240 units to secure dairy shelf stock.",
+          priority: "high" as const,
+          estimatedImpact: "Protects grocery revenue",
+          actionType: "CREATE_PO" as const,
+          entityId: "rec-dairy-reorder-001",
+        },
+      ],
       risks: [{ title: "Dairy shelf stockout in 2.5 days", severity: "high" as const }],
       confidence: 0.95,
     };
   }
 
-  if (/\b(misleading|profitability or operational health is deteriorating)\b/.test(q) || (q.includes("misleading") && q.includes("revenue"))) {
+  if (
+    /\b(misleading|profitability or operational health is deteriorating)\b/.test(q) ||
+    (q.includes("misleading") && q.includes("revenue"))
+  ) {
     return {
       answer: `High gross revenue is often misleading if underlying profitability or operational health is deteriorating. 
 
@@ -2012,13 +2498,26 @@ Here is the exact financial reconciliation:
 1. **Category Markdown discounts (15-20%)**: Compressed overall margins by **5%**.
 2. **Utility Anomaly (HVAC Zone B)**: Wasted **₹38,400/month** in direct operating expense leaks.
 3. **High-Cost COGS Mix**: Squeezed Electronics segment returns down to 8.5%.`,
-      summary: "Electronics leads in revenue but Beauty is 4x more profitable due to higher margins and zero leaks.",
+      summary:
+        "Electronics leads in revenue but Beauty is 4x more profitable due to higher margins and zero leaks.",
       evidence: [
         { label: "Electronics Revenue", value: "₹3,40,000", sourceType: "analytics" },
-        { label: "Beauty Margin", value: "42% net margin", sourceType: "analytics" }
+        { label: "Beauty Margin", value: "42% net margin", sourceType: "analytics" },
       ],
-      reasoning: ["Compared total segment gross sales with corresponding COGS and operating allocations.", "Analyzed markdown metrics for core anchor brands."],
-      recommendedActions: [{ title: "Shift Budget to Beauty", description: "Onboard new beauty lines and expand beauty shelf spaces.", priority: "medium" as const, estimatedImpact: "Improves overall net margins", actionType: "NAVIGATE" as const, entityId: "/analytics" }],
+      reasoning: [
+        "Compared total segment gross sales with corresponding COGS and operating allocations.",
+        "Analyzed markdown metrics for core anchor brands.",
+      ],
+      recommendedActions: [
+        {
+          title: "Shift Budget to Beauty",
+          description: "Onboard new beauty lines and expand beauty shelf spaces.",
+          priority: "medium" as const,
+          estimatedImpact: "Improves overall net margins",
+          actionType: "NAVIGATE" as const,
+          entityId: "/analytics",
+        },
+      ],
       risks: [{ title: "Over-allocation in low-margin electronics", severity: "medium" as const }],
       confidence: 0.94,
     };
@@ -2038,13 +2537,36 @@ Here is the exact financial reconciliation:
 8. **Revenue at Risk**: **₹16,300** if stock runs empty before replenishment.
 
 **AI Recommendation**: **Yes, place the reorder for 240 units immediately**. Since lead time (2.1 days) is very close to depletion (3.0 days), delaying the order by even 24 hours creates a high probability of a dairy shelf stockout.`,
-      summary: "Immediate reorder of 240 units of Amul Milk is highly recommended. Stockout predicted in 3 days.",
+      summary:
+        "Immediate reorder of 240 units of Amul Milk is highly recommended. Stockout predicted in 3 days.",
       evidence: [
-        { label: "Amul Milk Stock Count", value: "128 units", sourceType: "product", sourceId: "SKU-10021" },
-        { label: "Amul Milk Lead Time", value: "2.1 days", sourceType: "product", sourceId: "SKU-10021" }
+        {
+          label: "Amul Milk Stock Count",
+          value: "128 units",
+          sourceType: "product",
+          sourceId: "SKU-10021",
+        },
+        {
+          label: "Amul Milk Lead Time",
+          value: "2.1 days",
+          sourceType: "product",
+          sourceId: "SKU-10021",
+        },
       ],
-      reasoning: ["Evaluated stock-on-hand against daily transaction volumes.", "Modeled lead time delivery latency to determine ordering thresholds."],
-      recommendedActions: [{ title: "Place Amul Milk PO (240 units)", description: "Generate PO for ₹10,560 from Amul Foods.", priority: "high" as const, estimatedImpact: "Protects ₹16.3K revenue", actionType: "CREATE_PO" as const, entityId: "rec-dairy-reorder-001" }],
+      reasoning: [
+        "Evaluated stock-on-hand against daily transaction volumes.",
+        "Modeled lead time delivery latency to determine ordering thresholds.",
+      ],
+      recommendedActions: [
+        {
+          title: "Place Amul Milk PO (240 units)",
+          description: "Generate PO for ₹10,560 from Amul Foods.",
+          priority: "high" as const,
+          estimatedImpact: "Protects ₹16.3K revenue",
+          actionType: "CREATE_PO" as const,
+          entityId: "rec-dairy-reorder-001",
+        },
+      ],
       risks: [{ title: "Dairy shelf depletion in 3 days", severity: "high" as const }],
       confidence: 0.98,
     };
@@ -2059,12 +2581,16 @@ Here is the exact financial reconciliation:
 2. **Operating Expenses**: Ledger expenses match accounting line items (₹2,40,000 for payroll and ₹96,000 utility base).
 3. **Account Balances**: Treasury cash balance of **₹12,40,000** completely aligns with double-entry ledger entries.
 4. **Inconsistency Check**: **No mismatches or unreconciled balances detected**. The data pipeline is in a fully synchronized state.`,
-      summary: "All Command Center KPIs, transaction records, and account balances are fully reconciled.",
+      summary:
+        "All Command Center KPIs, transaction records, and account balances are fully reconciled.",
       evidence: [
         { label: "Gross Sales Mismatch Check", value: "0.00% difference", sourceType: "ledger" },
-        { label: "Cash Balance Mismatch Check", value: "0.00% difference", sourceType: "account" }
+        { label: "Cash Balance Mismatch Check", value: "0.00% difference", sourceType: "account" },
       ],
-      reasoning: ["Compared total sum of Transaction line totals with reported Gross Revenue.", "Verified double-entry cash accounts match reported treasury bank balances."],
+      reasoning: [
+        "Compared total sum of Transaction line totals with reported Gross Revenue.",
+        "Verified double-entry cash accounts match reported treasury bank balances.",
+      ],
       recommendedActions: [],
       risks: [],
       confidence: 0.99,
@@ -2082,11 +2608,33 @@ Here is the exact financial reconciliation:
 *   **AI Recommended Intervention**: Dispatch HVAC maintenance crew to inspect compressor valves.`,
       summary: "HVAC Zone B compressor valve failed on May 2, causing a ₹1,280/day cash leak.",
       evidence: [
-        { label: "Anomaly Overnight Spike", value: "+163% usage", sourceType: "anomaly", sourceId: "anom-util-hvac-001" },
-        { label: "Accruing Daily Leak", value: "₹1,280/day", sourceType: "anomaly", sourceId: "anom-util-hvac-001" }
+        {
+          label: "Anomaly Overnight Spike",
+          value: "+163% usage",
+          sourceType: "anomaly",
+          sourceId: "anom-util-hvac-001",
+        },
+        {
+          label: "Accruing Daily Leak",
+          value: "₹1,280/day",
+          sourceType: "anomaly",
+          sourceId: "anom-util-hvac-001",
+        },
       ],
-      reasoning: ["Extracted historical utility reading sensor timestamps.", "Isolated start of deviation from baseline energy profiles."],
-      recommendedActions: [{ title: "Dispatch HVAC Crew", description: "Investigate Zone B compressor valves immediately.", priority: "high" as const, estimatedImpact: "Halts ₹38.4K monthly leak", actionType: "INVESTIGATE_ANOMALY" as const, entityId: "anom-util-hvac-001" }],
+      reasoning: [
+        "Extracted historical utility reading sensor timestamps.",
+        "Isolated start of deviation from baseline energy profiles.",
+      ],
+      recommendedActions: [
+        {
+          title: "Dispatch HVAC Crew",
+          description: "Investigate Zone B compressor valves immediately.",
+          priority: "high" as const,
+          estimatedImpact: "Halts ₹38.4K monthly leak",
+          actionType: "INVESTIGATE_ANOMALY" as const,
+          entityId: "anom-util-hvac-001",
+        },
+      ],
       risks: [{ title: "Accumulating utility costs", severity: "high" as const }],
       confidence: 0.97,
     };
@@ -2110,15 +2658,32 @@ Here is the exact financial reconciliation:
     *   *ROI*: **1250%** (Highest long-term return).
 
 **The Decision**: **Implement Candidate A immediately, followed by Candidate B**. Securing utility waste is a guaranteed cost-saving action, while Amul Milk purchase prevents immediate empty shelves.`,
-      summary: "Implementing HVAC Zone B compressor maintenance is the highest-priority guaranteed cost-saving action today.",
+      summary:
+        "Implementing HVAC Zone B compressor maintenance is the highest-priority guaranteed cost-saving action today.",
       evidence: [
         { label: "HVAC labor cost", value: "₹5,000", sourceType: "expense" },
-        { label: "Amul Milk PO cost", value: "₹10,560", sourceType: "expense" }
+        { label: "Amul Milk PO cost", value: "₹10,560", sourceType: "expense" },
       ],
-      reasoning: ["Compared immediate capital deployment costs with projected 7-day revenue/savings outcomes."],
+      reasoning: [
+        "Compared immediate capital deployment costs with projected 7-day revenue/savings outcomes.",
+      ],
       recommendedActions: [
-        { title: "Dispatch HVAC Crew to Zone B", description: "Inspect compressor valves to plug the energy leak.", priority: "high" as const, estimatedImpact: "Saves ₹38.4K/month", actionType: "INVESTIGATE_ANOMALY" as const, entityId: "anom-util-hvac-001" },
-        { title: "Create Amul PO", description: "Order 240 units from Amul Foods.", priority: "high" as const, estimatedImpact: "Protects ₹16.3K revenue", actionType: "CREATE_PO" as const, entityId: "rec-dairy-reorder-001" }
+        {
+          title: "Dispatch HVAC Crew to Zone B",
+          description: "Inspect compressor valves to plug the energy leak.",
+          priority: "high" as const,
+          estimatedImpact: "Saves ₹38.4K/month",
+          actionType: "INVESTIGATE_ANOMALY" as const,
+          entityId: "anom-util-hvac-001",
+        },
+        {
+          title: "Create Amul PO",
+          description: "Order 240 units from Amul Foods.",
+          priority: "high" as const,
+          estimatedImpact: "Protects ₹16.3K revenue",
+          actionType: "CREATE_PO" as const,
+          entityId: "rec-dairy-reorder-001",
+        },
       ],
       risks: [],
       confidence: 0.96,
@@ -2133,12 +2698,26 @@ Here is the exact financial reconciliation:
 *   **The Strongest Counter-Argument**: If the overnight energy draw spike was not caused by a mechanical valve failure, but instead by tenant stores (e.g. fashion anchor tenant) running overnight inventory audits or restocking events with lights and auxiliary HVAC active, then sending a maintenance crew is an unnecessary ₹5,000 labor expense.
 *   **Evidence that would make it wrong**: Tenant operational logs showing overnight shift work scheduled in Zone B on May 2-5.
 *   **Additional Data needed**: Zone B tenant occupancy and access card logs for the overnight periods.`,
-      summary: "Challenging HVAC Zone B: Overnight energy spikes might be tenant shift work, not mechanical failures.",
+      summary:
+        "Challenging HVAC Zone B: Overnight energy spikes might be tenant shift work, not mechanical failures.",
       evidence: [
-        { label: "HVAC Zone B draw", value: "+163% overnight", sourceType: "anomaly", sourceId: "anom-util-hvac-001" }
+        {
+          label: "HVAC Zone B draw",
+          value: "+163% overnight",
+          sourceType: "anomaly",
+          sourceId: "anom-util-hvac-001",
+        },
       ],
       reasoning: ["Audited alternative occupancy hypotheses for HVAC spikes."],
-      recommendedActions: [{ title: "Verify Tenant Logs", description: "Check tenant building logs before sending HVAC crew.", priority: "low" as const, actionType: "NAVIGATE" as const, entityId: "/utilities" }],
+      recommendedActions: [
+        {
+          title: "Verify Tenant Logs",
+          description: "Check tenant building logs before sending HVAC crew.",
+          priority: "low" as const,
+          actionType: "NAVIGATE" as const,
+          entityId: "/utilities",
+        },
+      ],
       risks: [],
       confidence: 0.95,
     };
@@ -2148,14 +2727,16 @@ Here is the exact financial reconciliation:
   const start = new Date(`${resolvedDate}T00:00:00.000Z`);
   const end = new Date(`${resolvedDate}T23:59:59.999Z`);
 
-  const txns = await prisma.transaction.findMany({ where: { transactionDate: { gte: start, lte: end } } });
+  const txns = await prisma.transaction.findMany({
+    where: { transactionDate: { gte: start, lte: end } },
+  });
   const exps = await prisma.expense.findMany({ where: { date: { gte: start, lte: end } } });
   const recs = await prisma.recommendation.findMany({ where: { status: "New" } });
   const anomalies = await prisma.anomaly.findMany({ where: { status: "Active" } });
 
   const grossRevenue = txns.reduce((sum, t) => sum + Number(t.totalAmount), 0);
   const totalExpenses = exps.reduce((sum, e) => sum + Number(e.amount), 0);
-  const netProfit = (grossRevenue * 0.40) - totalExpenses;
+  const netProfit = grossRevenue * 0.4 - totalExpenses;
 
   return {
     answer: `GrandSquare Mall on ${resolvedDate}: Revenue ${fmtINR(grossRevenue)}, Profit ${fmtINR(netProfit)}, ${txns.length} orders. ${anomalies.length} anomalies, ${recs.length} pending AI recommendations.`,
@@ -2166,15 +2747,21 @@ Here is the exact financial reconciliation:
       { label: "Orders", value: txns.length.toString() },
       { label: "Active Anomalies", value: anomalies.length.toString() },
     ],
-    reasoning: ["Calculated from live PostgreSQL transaction and expense tables.", "Fetched anomaly and recommendation counts."],
-    recommendedActions: recs.slice(0, 2).map(r => ({
+    reasoning: [
+      "Calculated from live PostgreSQL transaction and expense tables.",
+      "Fetched anomaly and recommendation counts.",
+    ],
+    recommendedActions: recs.slice(0, 2).map((r) => ({
       title: r.title,
       description: r.summary,
       priority: r.priority as "high" | "medium" | "low",
       actionType: "NAVIGATE" as const,
       entityId: "/ai-decisions",
     })),
-    risks: anomalies.length > 0 ? [{ title: `${anomalies.length} active anomalies`, severity: "medium" as const }] : [],
+    risks:
+      anomalies.length > 0
+        ? [{ title: `${anomalies.length} active anomalies`, severity: "medium" as const }]
+        : [],
     confidence: 1.0,
   };
 }
