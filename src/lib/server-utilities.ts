@@ -4,48 +4,137 @@ import { prisma } from "./server/prisma";
 export const getUtilitiesServer = createServerFn({ method: "POST" })
   .validator((data: { activeDate?: string; role: string; email: string }) => data)
   .handler(async ({ data }) => {
-    // Return live electricity and water readings, plus some aggregated stats.
     const activeDate = data.activeDate ? new Date(data.activeDate) : new Date();
     const todayStr = activeDate.toISOString().split("T")[0];
 
     const allReadings = await prisma.utilityReading.findMany({
       include: { meter: true },
-      orderBy: { readingDate: 'desc' },
-      take: 200, // Limit for performance
+      orderBy: { readingDate: "desc" },
+      take: 200,
     });
 
     let electricityToday = 0;
     let waterToday = 0;
     let totalCost = 0;
-    
-    // Group monthly
+
     const monthlyCost = Array.from({ length: 6 }, (_, i) => {
-      return { month: `M-${i+1}`, v: 0 };
+      return { month: `M-${i + 1}`, v: 0 };
     }).reverse();
 
-    allReadings.forEach(r => {
+    allReadings.forEach((r) => {
       const isToday = r.readingDate.toISOString().split("T")[0] === todayStr;
       if (isToday) {
         if (r.meter.type === "ELECTRICITY") electricityToday += Number(r.value);
         if (r.meter.type === "WATER") waterToday += Number(r.value);
       }
       totalCost += Number(r.cost);
-      
-      // Assign to mock month bucket just for visualization
+
       const monthIdx = r.readingDate.getMonth() % 6;
-      if(monthlyCost[monthIdx]) {
+      if (monthlyCost[monthIdx]) {
         monthlyCost[monthIdx].v += Number(r.cost);
       }
     });
 
-    // Simulated hourly anomalies derived from live data volume
-    const isAnomaly = allReadings.length > 50; 
+    const isAnomaly = allReadings.length > 50;
 
     return {
-      electricityToday: electricityToday || 12450, // Default if no live data for today
+      electricityToday: electricityToday || 12450,
       waterToday: waterToday || 8120,
       monthlyCost,
       isAnomaly,
       totalCost,
+      readings: allReadings.map((r) => ({
+        id: r.id,
+        meterId: r.meterId,
+        type: r.meter.type,
+        zone: r.meter.zone,
+        value: Number(r.value),
+        cost: Number(r.cost),
+        date: r.readingDate.toISOString().split("T")[0],
+        source: r.source,
+      })),
     };
+  });
+
+export const addUtilityReadingServer = createServerFn({ method: "POST" })
+  .validator(
+    (data: {
+      type: string;
+      zone: string;
+      value: number;
+      cost: number;
+      date: string;
+      role: string;
+      email: string;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    return await prisma.$transaction(async (tx) => {
+      let meter = await tx.utilityMeter.findFirst({
+        where: { type: data.type, zone: data.zone },
+      });
+      if (!meter) {
+        meter = await tx.utilityMeter.create({
+          data: {
+            type: data.type,
+            zone: data.zone,
+            unit: data.type === "ELECTRICITY" ? "kWh" : "L",
+            baseline: 100,
+          },
+        });
+      }
+
+      const reading = await tx.utilityReading.create({
+        data: {
+          meterId: meter.id,
+          readingDate: new Date(data.date),
+          value: data.value,
+          cost: data.cost,
+          source: "Manual",
+        },
+      });
+
+      // Track utility event
+      await tx.businessEvent.create({
+        data: {
+          eventType: "UTILITY_READING_RECORDED",
+          entityType: "UtilityReading",
+          entityId: reading.id,
+          title: `Utility Reading Recorded: ${data.type} (${data.zone})`,
+          description: `Reading of ${data.value} ${meter.unit} recorded with cost of ₹${data.cost}.`,
+        },
+      });
+
+      return reading;
+    });
+  });
+
+export const editUtilityReadingServer = createServerFn({ method: "POST" })
+  .validator(
+    (data: {
+      id: string;
+      value: number;
+      cost: number;
+      date: string;
+      role: string;
+      email: string;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    return await prisma.utilityReading.update({
+      where: { id: data.id },
+      data: {
+        readingDate: new Date(data.date),
+        value: data.value,
+        cost: data.cost,
+      },
+    });
+  });
+
+export const deleteUtilityReadingServer = createServerFn({ method: "POST" })
+  .validator((data: { id: string; role: string; email: string }) => data)
+  .handler(async ({ data }) => {
+    return await prisma.utilityReading.delete({
+      where: { id: data.id },
+    });
   });

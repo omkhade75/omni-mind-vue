@@ -4,12 +4,33 @@ import { KpiCard } from "@/components/kpi-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/lib/auth-context";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { getLogisticsDispatchesServer, createLogisticsDispatchServer, updateLogisticsStatusServer, type DeliveryItem } from "@/lib/server-logistics";
-import { Loader2, Truck, Navigation, CheckCircle, AlertTriangle, Clock, MapPin, ShieldAlert, Plus } from "lucide-react";
+import {
+  getLogisticsDispatchesServer,
+  createLogisticsDispatchServer,
+  updateLogisticsStatusServer,
+  type DeliveryItem,
+} from "@/lib/server-logistics";
+import {
+  Loader2,
+  Truck,
+  Navigation,
+  CheckCircle,
+  AlertTriangle,
+  Clock,
+  MapPin,
+  ShieldAlert,
+  Plus,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_app/logistics")({
   head: () => ({
@@ -23,7 +44,7 @@ export const Route = createFileRoute("/_app/logistics")({
 
 function LogisticsPage() {
   const { user } = useAuth();
-  
+
   // Data states
   const [dispatches, setDispatches] = useState<DeliveryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,7 +97,7 @@ function LogisticsPage() {
           driverName,
           vehicleNumber,
           itemsCount: Number(itemsCount) || 1,
-        }
+        },
       });
 
       toast.success("Delivery Dispatched!", {
@@ -104,7 +125,7 @@ function LogisticsPage() {
           dispatchId: id,
           status: newStatus,
           delayReason: newStatus === "Delayed" ? delayReason : null,
-        }
+        },
       });
 
       toast.success("Delivery Status Updated");
@@ -120,7 +141,10 @@ function LogisticsPage() {
   };
 
   const totalCount = dispatches.length;
-  const inTransitCount = dispatches.filter((d) => d.status === "In Transit" || d.status === "Dispatched" || d.status === "Out for Delivery").length;
+  const inTransitCount = dispatches.filter(
+    (d) =>
+      d.status === "In Transit" || d.status === "Dispatched" || d.status === "Out for Delivery",
+  ).length;
   const deliveredCount = dispatches.filter((d) => d.status === "Delivered").length;
   const delayedCount = dispatches.filter((d) => d.status === "Delayed").length;
 
@@ -173,7 +197,8 @@ function LogisticsPage() {
           <SectionCard title="Active Logistics Fleet Feed">
             {dispatches.length === 0 ? (
               <div className="text-center py-12 text-zinc-500">
-                No active delivery dispatches found. Use the scheduler on the right to dispatch items.
+                No active delivery dispatches found. Use the scheduler on the right to dispatch
+                items.
               </div>
             ) : (
               <div className="space-y-4">
@@ -186,19 +211,22 @@ function LogisticsPage() {
                         d.status === "Delayed"
                           ? "border-rose-200 bg-rose-50/10 shadow-rose-50/10"
                           : d.status === "Delivered"
-                          ? "border-emerald-100 bg-emerald-50/10"
-                          : "border-border/60 bg-card"
+                            ? "border-emerald-100 bg-emerald-50/10"
+                            : "border-border/60 bg-card"
                       }`}
                     >
                       <div className="flex items-start justify-between">
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-zinc-900">{d.orderNumber}</span>
-                            <span className="text-xs text-muted-foreground">• {d.customerName}</span>
+                            <span className="text-xs text-muted-foreground">
+                              • {d.customerName}
+                            </span>
                           </div>
                           <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                             <MapPin className="h-3 w-3 text-indigo-500" />
-                            Destination: <span className="text-zinc-800 font-medium">{d.destination}</span>
+                            Destination:{" "}
+                            <span className="text-zinc-800 font-medium">{d.destination}</span>
                           </p>
                         </div>
                         <div>
@@ -207,10 +235,10 @@ function LogisticsPage() {
                               d.status === "Delivered"
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-100"
                                 : d.status === "Delayed"
-                                ? "bg-rose-50 text-rose-700 border-rose-100 animate-pulse"
-                                : d.status === "Out for Delivery"
-                                ? "bg-blue-50 text-blue-700 border-blue-100"
-                                : "bg-zinc-100 text-zinc-700 border-zinc-200"
+                                  ? "bg-rose-50 text-rose-700 border-rose-100 animate-pulse"
+                                  : d.status === "Out for Delivery"
+                                    ? "bg-blue-50 text-blue-700 border-blue-100"
+                                    : "bg-zinc-100 text-zinc-700 border-zinc-200"
                             }`}
                           >
                             {d.status}
@@ -221,16 +249,22 @@ function LogisticsPage() {
                       {/* Driver & vehicle */}
                       <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t text-xs text-zinc-600">
                         <div>
-                          <span>Driver:</span> <strong className="text-zinc-800">{d.driverName}</strong>
+                          <span>Driver:</span>{" "}
+                          <strong className="text-zinc-800">{d.driverName}</strong>
                         </div>
                         <div>
-                          <span>Vehicle ID:</span> <strong className="text-zinc-800 font-mono">{d.vehicleNumber}</strong>
+                          <span>Vehicle ID:</span>{" "}
+                          <strong className="text-zinc-800 font-mono">{d.vehicleNumber}</strong>
                         </div>
                         <div>
-                          <span>Items Count:</span> <strong className="text-zinc-800">{d.itemsCount} parcels</strong>
+                          <span>Items Count:</span>{" "}
+                          <strong className="text-zinc-800">{d.itemsCount} parcels</strong>
                         </div>
                         <div>
-                          <span>Dispatched:</span> <strong className="text-zinc-800">{new Date(d.dispatchedAt).toLocaleTimeString()}</strong>
+                          <span>Dispatched:</span>{" "}
+                          <strong className="text-zinc-800">
+                            {new Date(d.dispatchedAt).toLocaleTimeString()}
+                          </strong>
                         </div>
                       </div>
 
@@ -239,7 +273,8 @@ function LogisticsPage() {
                         <div className="mt-3 p-2.5 bg-rose-50 border border-rose-100 rounded-lg text-xs text-rose-800 flex items-start gap-1.5 animate-in slide-in-from-top-1">
                           <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
                           <div>
-                            <span className="font-bold">Logistics Delay Risk Detected:</span> {d.delayReason}
+                            <span className="font-bold">Logistics Delay Risk Detected:</span>{" "}
+                            {d.delayReason}
                           </div>
                         </div>
                       )}
@@ -257,7 +292,9 @@ function LogisticsPage() {
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="In Transit">In Transit</SelectItem>
-                                    <SelectItem value="Out for Delivery">Out for Delivery</SelectItem>
+                                    <SelectItem value="Out for Delivery">
+                                      Out for Delivery
+                                    </SelectItem>
                                     <SelectItem value="Delayed">Delayed</SelectItem>
                                     <SelectItem value="Delivered">Delivered</SelectItem>
                                   </SelectContent>
@@ -290,7 +327,11 @@ function LogisticsPage() {
                                 onClick={() => handleUpdateStatus(d.id)}
                                 disabled={updatingId === d.id}
                               >
-                                {updatingId === d.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save Status"}
+                                {updatingId === d.id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  "Save Status"
+                                )}
                               </Button>
                             </div>
                           </div>
@@ -351,10 +392,19 @@ function LogisticsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label>Assigned Driver</Label>
-                  <Select value={driverName} onValueChange={(val) => {
-                    setDriverName(val);
-                    setVehicleNumber(val === "Vijay Yadav" ? "MH-12-PQ-8841" : val === "Sanjay Mane" ? "MH-12-RS-9921" : "MH-12-XY-4040");
-                  }}>
+                  <Select
+                    value={driverName}
+                    onValueChange={(val) => {
+                      setDriverName(val);
+                      setVehicleNumber(
+                        val === "Vijay Yadav"
+                          ? "MH-12-PQ-8841"
+                          : val === "Sanjay Mane"
+                            ? "MH-12-RS-9921"
+                            : "MH-12-XY-4040",
+                      );
+                    }}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>

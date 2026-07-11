@@ -16,7 +16,17 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { AlertTriangle, Package, TrendingDown, ArrowLeftRight, History, Plus, Minus, Settings, Loader2 } from "lucide-react";
+import {
+  AlertTriangle,
+  Package,
+  TrendingDown,
+  ArrowLeftRight,
+  History,
+  Plus,
+  Minus,
+  Settings,
+  Loader2,
+} from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,18 +46,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   getInventoryStockServer,
   mutateInventoryServer,
   getInventoryMovementsServer,
   type StockListItem,
-  type MovementHistoryItem
+  type MovementHistoryItem,
 } from "@/lib/server-inventory";
 import { getProductsServer, type ProductListItem } from "@/lib/server-products";
 import { toast } from "sonner";
@@ -87,7 +92,9 @@ function Inventory() {
   const [formTargetLocationId, setFormTargetLocationId] = useState("loc-retail");
   const [formQty, setFormQty] = useState("");
   const [formReason, setFormReason] = useState("");
-  const [formMovementSubtype, setFormMovementSubtype] = useState<"PURCHASE_RECEIPT" | "RETURN" | "DAMAGE" | "EXPIRED" | "ADJUSTMENT_IN" | "ADJUSTMENT_OUT">("PURCHASE_RECEIPT");
+  const [formMovementSubtype, setFormMovementSubtype] = useState<
+    "PURCHASE_RECEIPT" | "RETURN" | "DAMAGE" | "EXPIRED" | "ADJUSTMENT_IN" | "ADJUSTMENT_OUT"
+  >("PURCHASE_RECEIPT");
 
   const loadInventoryData = async () => {
     setLoading(true);
@@ -96,7 +103,7 @@ function Inventory() {
         data: {
           role: user?.role || "owner",
           email: user?.email || "",
-        }
+        },
       };
       const stocks = await getInventoryStockServer(payload);
       const prods = await getProductsServer(payload);
@@ -150,7 +157,7 @@ function Inventory() {
           reason: formReason || undefined,
           role: user?.role || "owner",
           emailUser: user?.email || "",
-        }
+        },
       });
 
       toast.success("Inventory ledger updated successfully.");
@@ -169,7 +176,7 @@ function Inventory() {
     setMutationType(type);
     setFormLocationId(type === "TRANSFER" ? "loc-warehouse" : "loc-warehouse");
     setFormTargetLocationId(type === "TRANSFER" ? "loc-retail" : "loc-retail");
-    
+
     // set default subtypes
     if (type === "ADD") setFormMovementSubtype("PURCHASE_RECEIPT");
     else if (type === "REMOVE") setFormMovementSubtype("DAMAGE");
@@ -182,7 +189,7 @@ function Inventory() {
   const totalSKUs = stockList.length;
   // Calculate average cost fallback if cost missing
   const totalValue = stockList.reduce((sum, s) => {
-    const prod = productList.find(p => p.id === s.productId);
+    const prod = productList.find((p) => p.id === s.productId);
     const cost = prod ? prod.cost : 100;
     return sum + s.totalQty * cost;
   }, 0);
@@ -192,12 +199,19 @@ function Inventory() {
   const overstockProducts = stockList.filter((s) => s.totalQty > s.reorderLevel * 2.5);
 
   // Group by department
-  const depts = ["Fashion", "Electronics", "Grocery", "Beauty & Cosmetics", "Sports & Outdoors", "Others"];
+  const depts = [
+    "Fashion",
+    "Electronics",
+    "Grocery",
+    "Beauty & Cosmetics",
+    "Sports & Outdoors",
+    "Others",
+  ];
   const deptData = depts.map((d) => {
     const value = stockList
       .filter((s) => s.dept === d)
       .reduce((sum, s) => {
-        const prod = productList.find(p => p.id === s.productId);
+        const prod = productList.find((p) => p.id === s.productId);
         const cost = prod ? prod.cost : 100;
         return sum + s.totalQty * cost;
       }, 0);
@@ -267,7 +281,9 @@ function Inventory() {
 
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="bg-surface border border-hairline w-full justify-start p-1 h-auto mb-4">
-          <TabsTrigger value="overview" className="text-xs py-1.5 px-3">Overview Analytics</TabsTrigger>
+          <TabsTrigger value="overview" className="text-xs py-1.5 px-3">
+            Overview Analytics
+          </TabsTrigger>
           <TabsTrigger value="ledger" className="text-xs py-1.5 px-3 flex items-center gap-1">
             <History className="h-3 w-3" /> Stock Movement Ledger
           </TabsTrigger>
@@ -280,7 +296,12 @@ function Inventory() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={deptData}>
                     <CartesianGrid stroke="var(--color-hairline)" vertical={false} />
-                    <XAxis dataKey="name" tickLine={false} axisLine={false} style={{ fontSize: 10 }} />
+                    <XAxis
+                      dataKey="name"
+                      tickLine={false}
+                      axisLine={false}
+                      style={{ fontSize: 10 }}
+                    />
                     <YAxis
                       tickLine={false}
                       axisLine={false}
@@ -301,8 +322,22 @@ function Inventory() {
                   <PieChart>
                     <Pie
                       data={[
-                        { name: "Fast moving", v: stockList.filter(s => s.stockoutRiskDays && s.stockoutRiskDays < 15).length + 2 },
-                        { name: "Moderate", v: stockList.filter(s => s.stockoutRiskDays && s.stockoutRiskDays >= 15 && s.stockoutRiskDays < 45).length + 4 },
+                        {
+                          name: "Fast moving",
+                          v:
+                            stockList.filter((s) => s.stockoutRiskDays && s.stockoutRiskDays < 15)
+                              .length + 2,
+                        },
+                        {
+                          name: "Moderate",
+                          v:
+                            stockList.filter(
+                              (s) =>
+                                s.stockoutRiskDays &&
+                                s.stockoutRiskDays >= 15 &&
+                                s.stockoutRiskDays < 45,
+                            ).length + 4,
+                        },
                         { name: "Slow", v: overstockProducts.length + 1 },
                         { name: "Dead", v: stockoutProducts.length + 1 },
                       ]}
@@ -327,7 +362,10 @@ function Inventory() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <SectionCard title="AI Stockout Risk" subtitle="Products likely to run out soon based on velocity">
+            <SectionCard
+              title="AI Stockout Risk"
+              subtitle="Products likely to run out soon based on velocity"
+            >
               <div className="flex items-center gap-3 rounded-lg border border-warning/40 bg-warning/10 p-3">
                 <AlertTriangle className="h-8 w-8 text-warning" />
                 <div className="min-w-0">
@@ -350,7 +388,8 @@ function Inventory() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{r.name}</p>
                       <p className="text-[10px] text-muted-foreground">
-                        {r.totalQty} units left · reorder trigger: {r.reorderLevel} · Est: {r.stockoutRiskDays || "N/A"} days out
+                        {r.totalQty} units left · reorder trigger: {r.reorderLevel} · Est:{" "}
+                        {r.stockoutRiskDays || "N/A"} days out
                       </p>
                     </div>
                     <StatusPill tone="warning">low stock</StatusPill>
@@ -375,14 +414,17 @@ function Inventory() {
               </ul>
             </SectionCard>
 
-            <SectionCard title="Overstock & Slow Moving" subtitle="Capital locked in low-velocity SKUs">
+            <SectionCard
+              title="Overstock & Slow Moving"
+              subtitle="Capital locked in low-velocity SKUs"
+            >
               <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/8 p-3">
                 <TrendingDown className="h-8 w-8 text-primary" />
                 <div className="min-w-0">
                   <p className="text-sm font-semibold">
                     {fmtINR(
                       overstockProducts.reduce((sum, s) => {
-                        const prod = productList.find(p => p.id === s.productId);
+                        const prod = productList.find((p) => p.id === s.productId);
                         const cost = prod ? prod.cost : 100;
                         return sum + s.totalQty * cost;
                       }, 0),
@@ -397,7 +439,7 @@ function Inventory() {
               </div>
               <ul className="mt-3 space-y-2 text-xs">
                 {overstockProducts.slice(0, 8).map((o) => {
-                  const prod = productList.find(p => p.id === o.productId);
+                  const prod = productList.find((p) => p.id === o.productId);
                   const cost = prod ? prod.cost : 100;
                   return (
                     <li
@@ -408,10 +450,13 @@ function Inventory() {
                       <div>
                         <p className="font-medium truncate max-w-[200px]">{o.name}</p>
                         <p className="text-[10px] text-muted-foreground">
-                          {o.totalQty} units on hand · Whse: {o.warehouseQty} / Retail: {o.retailQty}
+                          {o.totalQty} units on hand · Whse: {o.warehouseQty} / Retail:{" "}
+                          {o.retailQty}
                         </p>
                       </div>
-                      <span className="font-semibold text-warning">{fmtINR(o.totalQty * cost)}</span>
+                      <span className="font-semibold text-warning">
+                        {fmtINR(o.totalQty * cost)}
+                      </span>
                     </li>
                   );
                 })}
@@ -421,7 +466,10 @@ function Inventory() {
         </TabsContent>
 
         <TabsContent value="ledger">
-          <SectionCard title="Ledger Stock Movement History" subtitle="Full auditable trail of mutations on PostgreSQL">
+          <SectionCard
+            title="Ledger Stock Movement History"
+            subtitle="Full auditable trail of mutations on PostgreSQL"
+          >
             <div className="overflow-x-auto min-h-[300px] relative text-xs">
               {loading ? (
                 <div className="absolute inset-0 flex items-center justify-center bg-sidebar/50">
@@ -454,15 +502,28 @@ function Inventory() {
                         </td>
                         <td className="py-2.5 text-muted-foreground">{m.locationName}</td>
                         <td className="py-2.5">
-                          <StatusPill tone={["SALE", "ADJUSTMENT_OUT", "DAMAGE", "EXPIRED"].includes(m.movementType) ? "danger" : "success"}>
+                          <StatusPill
+                            tone={
+                              ["SALE", "ADJUSTMENT_OUT", "DAMAGE", "EXPIRED"].includes(
+                                m.movementType,
+                              )
+                                ? "danger"
+                                : "success"
+                            }
+                          >
                             {m.movementType}
                           </StatusPill>
                         </td>
                         <td className="py-2.5 text-right font-bold">{m.quantity}</td>
-                        <td className="py-2.5 pl-6 text-muted-foreground italic truncate max-w-[200px]" title={m.reason || ""}>
+                        <td
+                          className="py-2.5 pl-6 text-muted-foreground italic truncate max-w-[200px]"
+                          title={m.reason || ""}
+                        >
                           {m.reason || "N/A"}
                         </td>
-                        <td className="py-2.5 text-muted-foreground">{m.performedBy || "System"}</td>
+                        <td className="py-2.5 text-muted-foreground">
+                          {m.performedBy || "System"}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -632,7 +693,11 @@ function Inventory() {
               <Button type="button" variant="ghost" onClick={() => setDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
+              <Button
+                type="submit"
+                disabled={saving}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+              >
                 {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Process Mutation
               </Button>
             </DialogFooter>

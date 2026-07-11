@@ -51,7 +51,8 @@ export const Route = createFileRoute("/_app/products")({
       { title: "Product Intelligence — OmniMind AI" },
       {
         name: "description",
-        content: "Product 360° intelligence with sales, demand, expiry, and reorder recommendations.",
+        content:
+          "Product 360° intelligence with sales, demand, expiry, and reorder recommendations.",
       },
     ],
   }),
@@ -116,7 +117,7 @@ function Products() {
       try {
         setIsCategorizing(true);
         const res = await autoCategorizeProductServer({
-          data: { name: formName, brand: formBrand || "Generic" }
+          data: { name: formName, brand: formBrand || "Generic" },
         });
         if (res) {
           setAutoCategoryResult(res);
@@ -206,7 +207,14 @@ function Products() {
 
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formName || !formSku || !formBarcode || !formSellingPrice || !formCostPrice || !formReorderLevel) {
+    if (
+      !formName ||
+      !formSku ||
+      !formBarcode ||
+      !formSellingPrice ||
+      !formCostPrice ||
+      !formReorderLevel
+    ) {
       toast.error("Please fill in all required fields.");
       return;
     }
@@ -351,7 +359,10 @@ function Products() {
         />
         <MiniKpi
           label="Total Stock Value"
-          value={fmtINR(products.reduce((sum, p) => sum + p.stock * p.cost, 0), { compact: true })}
+          value={fmtINR(
+            products.reduce((sum, p) => sum + p.stock * p.cost, 0),
+            { compact: true },
+          )}
           tone="success"
           icon={<TrendingUp className="h-4 w-4" />}
         />
@@ -363,7 +374,12 @@ function Products() {
         />
         <MiniKpi
           label="Fashion Contribution"
-          value={fmtINR(products.filter(p => p.dept === "Fashion").reduce((sum, p) => sum + p.stock * p.price, 0), { compact: true })}
+          value={fmtINR(
+            products
+              .filter((p) => p.dept === "Fashion")
+              .reduce((sum, p) => sum + p.stock * p.price, 0),
+            { compact: true },
+          )}
           icon={<TrendingUp className="h-4 w-4" />}
         />
       </div>
@@ -445,8 +461,16 @@ function Products() {
                       </td>
                       <td className="py-2.5 text-right text-success">{p.margin}%</td>
                       <td className="py-2.5">
-                        <StatusPill tone={p.stock === 0 ? "danger" : p.stock <= p.reorder ? "warning" : "success"}>
-                          {p.stock === 0 ? "out of stock" : p.stock <= p.reorder ? "low stock" : p.status}
+                        <StatusPill
+                          tone={
+                            p.stock === 0 ? "danger" : p.stock <= p.reorder ? "warning" : "success"
+                          }
+                        >
+                          {p.stock === 0
+                            ? "out of stock"
+                            : p.stock <= p.reorder
+                              ? "low stock"
+                              : p.status}
                         </StatusPill>
                       </td>
                     </tr>
@@ -511,8 +535,11 @@ function Products() {
                   Auto-categorized: {autoCategoryResult.categoryName}
                 </span>
                 <span>
-                  Confidence: <strong className="text-foreground">{(autoCategoryResult.confidence * 100).toFixed(0)}%</strong> · 
-                  Method: <strong className="text-foreground">{autoCategoryResult.method}</strong>
+                  Confidence:{" "}
+                  <strong className="text-foreground">
+                    {(autoCategoryResult.confidence * 100).toFixed(0)}%
+                  </strong>{" "}
+                  · Method: <strong className="text-foreground">{autoCategoryResult.method}</strong>
                 </span>
               </div>
             )}
@@ -715,7 +742,11 @@ function Products() {
               <Button type="button" variant="ghost" onClick={() => setAddOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
+              <Button
+                type="submit"
+                disabled={saving}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+              >
                 {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Save Product
               </Button>
             </DialogFooter>
@@ -832,7 +863,11 @@ function Products() {
               <Button type="button" variant="ghost" onClick={() => setEditOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
+              <Button
+                type="submit"
+                disabled={saving}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+              >
                 {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Save Changes
               </Button>
             </DialogFooter>
@@ -954,11 +989,19 @@ function Product360View({
           </div>
           <p className="mt-1 text-foreground/90 leading-relaxed">
             {p.stock === 0 ? (
-              <span className="text-destructive font-semibold">SKU is currently out of stock. Customers cannot checkout this product.</span>
+              <span className="text-destructive font-semibold">
+                SKU is currently out of stock. Customers cannot checkout this product.
+              </span>
             ) : p.stock <= p.reorder ? (
-              <span className="text-warning font-semibold">Current stock is below reorder threshold. Projected stockout in {daysLeft} days. We recommend ordering immediately.</span>
+              <span className="text-warning font-semibold">
+                Current stock is below reorder threshold. Projected stockout in {daysLeft} days. We
+                recommend ordering immediately.
+              </span>
             ) : (
-              <span>Inventory is within safe levels. Estimated buffer: {daysLeft} days of sales operations.</span>
+              <span>
+                Inventory is within safe levels. Estimated buffer: {daysLeft} days of sales
+                operations.
+              </span>
             )}
           </p>
         </div>

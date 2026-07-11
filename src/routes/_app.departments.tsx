@@ -54,7 +54,7 @@ function Departments() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {departmentsData.map((d, i) => {
           const sharePercent = ((d.value / totalDeptRevenue) * 100).toFixed(1);
-          
+
           return (
             <div key={d.name} className="card-elevated p-4">
               <div className="flex items-start justify-between">
@@ -90,7 +90,9 @@ function Departments() {
                 </div>
                 <div className="mt-1 flex items-center justify-between text-[10px] text-muted-foreground">
                   <p>Share of total revenue</p>
-                  <p className="font-semibold text-foreground">{d.value > 0 ? sharePercent : "0.0"}%</p>
+                  <p className="font-semibold text-foreground">
+                    {d.value > 0 ? sharePercent : "0.0"}%
+                  </p>
                 </div>
               </div>
             </div>

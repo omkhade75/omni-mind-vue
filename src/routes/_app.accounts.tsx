@@ -4,12 +4,37 @@ import { KpiCard } from "@/components/kpi-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/lib/auth-context";
 import { useState, useEffect } from "react";
-import { getAccountsDataServer, createFixedDepositServer, createCorporateLoanServer, repayLoanServer, payPurchaseOrderServer, type FixedDepositItem, type CorporateLoanItem } from "@/lib/server-accounts";
+import {
+  getAccountsDataServer,
+  createFixedDepositServer,
+  createCorporateLoanServer,
+  repayLoanServer,
+  payPurchaseOrderServer,
+  type FixedDepositItem,
+  type CorporateLoanItem,
+} from "@/lib/server-accounts";
 import { toast } from "sonner";
-import { Loader2, ArrowUpRight, ArrowDownRight, Wallet, Receipt, CreditCard, Landmark, Coins, Plus, CheckCircle } from "lucide-react";
+import {
+  Loader2,
+  ArrowUpRight,
+  ArrowDownRight,
+  Wallet,
+  Receipt,
+  CreditCard,
+  Landmark,
+  Coins,
+  Plus,
+  CheckCircle,
+} from "lucide-react";
 import { fmtINR } from "@/lib/mock-data";
 import {
   Dialog,
@@ -24,7 +49,10 @@ export const Route = createFileRoute("/_app/accounts")({
   head: () => ({
     meta: [
       { title: "Accounts, Loans & FDs — OmniMind AI" },
-      { name: "description", content: "Accounts Receivable, Payable, Bank Fixed Deposits, and Loan tracker." },
+      {
+        name: "description",
+        content: "Accounts Receivable, Payable, Bank Fixed Deposits, and Loan tracker.",
+      },
     ],
   }),
   component: RouteComponent,
@@ -72,8 +100,8 @@ function RouteComponent() {
       const result = await getAccountsDataServer({
         data: {
           role: user?.role || "owner",
-          email: user?.email || ""
-        }
+          email: user?.email || "",
+        },
       });
       setData(result as any);
     } catch (e) {
@@ -104,7 +132,7 @@ function RouteComponent() {
           duration: Number(fdDuration),
           role: user?.role || "owner",
           emailUser: user?.email || "",
-        }
+        },
       });
 
       toast.success("Bank Fixed Deposit booked successfully!");
@@ -138,7 +166,7 @@ function RouteComponent() {
           duration: Number(loanDuration),
           role: user?.role || "owner",
           emailUser: user?.email || "",
-        }
+        },
       });
 
       toast.success("Loan disbursed successfully & Cash credited!");
@@ -167,7 +195,7 @@ function RouteComponent() {
           amount: Number(repayAmount),
           role: user?.role || "owner",
           emailUser: user?.email || "",
-        }
+        },
       });
 
       toast.success("Loan repayment logged & Cash debited!");
@@ -203,7 +231,7 @@ function RouteComponent() {
           poId: targetPayPoId,
           role: user?.role || "owner",
           emailUser: user?.email || "",
-        }
+        },
       });
       toast.success("Supplier invoice settled from Cash reserves!");
       setPayPasswordOpen(false);
@@ -223,7 +251,9 @@ function RouteComponent() {
   const totalReceivables = receivables.reduce((sum, r) => sum + (r?.amount || 0), 0);
   const totalPayables = payables.reduce((sum, p) => sum + (p?.amount || 0), 0);
   const totalFDs = fds.reduce((sum, f) => sum + (f?.principal || 0), 0);
-  const totalLoans = loans.filter(l => l?.status === "Active").reduce((sum, l) => sum + (l?.balance || 0), 0);
+  const totalLoans = loans
+    .filter((l) => l?.status === "Active")
+    .reduce((sum, l) => sum + (l?.balance || 0), 0);
 
   if (loading) {
     return (
@@ -276,7 +306,6 @@ function RouteComponent() {
 
       {/* Grid: Columns of Accounts & FDs/Loans */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
         {/* Left Side: Receivables and Payables */}
         <div className="space-y-6">
           <SectionCard title="Accounts Receivable (Money to Come)">
@@ -298,9 +327,13 @@ function RouteComponent() {
                   <tbody className="divide-y divide-zinc-100">
                     {receivables.map((r) => (
                       <tr key={r.id} className="hover:bg-zinc-50/50">
-                        <td className="px-4 py-3 font-semibold text-zinc-900">{r.transactionNumber}</td>
+                        <td className="px-4 py-3 font-semibold text-zinc-900">
+                          {r.transactionNumber}
+                        </td>
                         <td className="px-4 py-3 text-zinc-600">{r.customerName}</td>
-                        <td className="px-4 py-3 text-right font-semibold text-zinc-900">{fmtINR(r.amount)}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-zinc-900">
+                          {fmtINR(r.amount)}
+                        </td>
                         <td className="px-4 py-3 text-center">
                           <StatusPill tone={r.status === "Pending" ? "warning" : "danger"}>
                             {r.status}
@@ -336,9 +369,21 @@ function RouteComponent() {
                       <tr key={p.id} className="hover:bg-zinc-50/50">
                         <td className="px-4 py-3 font-semibold text-zinc-900">{p.poNumber}</td>
                         <td className="px-4 py-3 text-zinc-600">{p.supplierName}</td>
-                        <td className="px-4 py-3 text-right font-semibold text-zinc-900">{fmtINR(p.amount)}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-zinc-900">
+                          {fmtINR(p.amount)}
+                        </td>
                         <td className="px-4 py-3 text-center">
-                          <StatusPill tone={p.status === "Pending" || p.status === "Ordered" || p.status === "Draft" ? "warning" : p.status === "Received" ? "success" : "danger"}>
+                          <StatusPill
+                            tone={
+                              p.status === "Pending" ||
+                              p.status === "Ordered" ||
+                              p.status === "Draft"
+                                ? "warning"
+                                : p.status === "Received"
+                                  ? "success"
+                                  : "danger"
+                            }
+                          >
                             {p.status}
                           </StatusPill>
                         </td>
@@ -349,7 +394,11 @@ function RouteComponent() {
                             onClick={() => promptPayPO(p.id)}
                             disabled={payingPOId === p.id}
                           >
-                            {payingPOId === p.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Pay"}
+                            {payingPOId === p.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              "Pay"
+                            )}
                           </Button>
                         </td>
                       </tr>
@@ -366,15 +415,18 @@ function RouteComponent() {
           <SectionCard
             title="Treasury Fixed Deposits (GL Asset 1400)"
             actions={
-              <Button size="sm" variant="outline" className="h-7 text-xs flex items-center gap-1" onClick={() => setShowFDModal(true)}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs flex items-center gap-1"
+                onClick={() => setShowFDModal(true)}
+              >
                 <Plus className="h-3.5 w-3.5" /> Book FD
               </Button>
             }
           >
             {fds.length === 0 ? (
-              <div className="py-8 text-center text-zinc-500">
-                No bank fixed deposits booked.
-              </div>
+              <div className="py-8 text-center text-zinc-500">No bank fixed deposits booked.</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
@@ -391,10 +443,16 @@ function RouteComponent() {
                       <tr key={f.id} className="hover:bg-zinc-50/50">
                         <td className="px-4 py-3">
                           <div className="font-semibold text-zinc-900">{f.bankName}</div>
-                          <div className="text-[10px] text-zinc-500 font-mono">Term: {f.duration} months</div>
+                          <div className="text-[10px] text-zinc-500 font-mono">
+                            Term: {f.duration} months
+                          </div>
                         </td>
-                        <td className="px-4 py-3 text-right font-semibold text-zinc-900">{fmtINR(f.principal)}</td>
-                        <td className="px-4 py-3 text-right font-bold text-emerald-600">+{f.interestRate}%</td>
+                        <td className="px-4 py-3 text-right font-semibold text-zinc-900">
+                          {fmtINR(f.principal)}
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-emerald-600">
+                          +{f.interestRate}%
+                        </td>
                         <td className="px-4 py-3 text-center text-zinc-600 text-xs">
                           {new Date(f.matureDate).toLocaleDateString()}
                         </td>
@@ -409,7 +467,12 @@ function RouteComponent() {
           <SectionCard
             title="Corporate Loans & Credit Lines"
             actions={
-              <Button size="sm" variant="outline" className="h-7 text-xs flex items-center gap-1" onClick={() => setShowLoanModal(true)}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs flex items-center gap-1"
+                onClick={() => setShowLoanModal(true)}
+              >
                 <Plus className="h-3.5 w-3.5" /> Acquire Loan
               </Button>
             }
@@ -434,10 +497,16 @@ function RouteComponent() {
                       <tr key={l.id} className="hover:bg-zinc-50/50">
                         <td className="px-4 py-3">
                           <div className="font-semibold text-zinc-900">{l.bankName}</div>
-                          <div className="text-[10px] text-zinc-500">Rate: {l.interestRate}% • {l.duration}m term</div>
+                          <div className="text-[10px] text-zinc-500">
+                            Rate: {l.interestRate}% • {l.duration}m term
+                          </div>
                         </td>
-                        <td className="px-4 py-3 text-right text-zinc-500">{fmtINR(l.principal)}</td>
-                        <td className="px-4 py-3 text-right font-bold text-rose-600">{fmtINR(l.balance)}</td>
+                        <td className="px-4 py-3 text-right text-zinc-500">
+                          {fmtINR(l.principal)}
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-rose-600">
+                          {fmtINR(l.balance)}
+                        </td>
                         <td className="px-4 py-3 text-center">
                           {l.status === "Active" ? (
                             <Button
@@ -465,7 +534,6 @@ function RouteComponent() {
             )}
           </SectionCard>
         </div>
-
       </div>
 
       {/* --- DIALOG MODALS --- */}
@@ -476,22 +544,41 @@ function RouteComponent() {
           <DialogHeader>
             <DialogTitle>Book Bank Fixed Deposit</DialogTitle>
             <DialogDescription>
-              Allocate treasury cash reserves to high-yielding bank FDs. This will post a General Ledger transfer.
+              Allocate treasury cash reserves to high-yielding bank FDs. This will post a General
+              Ledger transfer.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateFD} className="space-y-4 py-2">
             <div className="space-y-1">
               <Label>Bank / Issuer Institution</Label>
-              <Input value={fdBank} onChange={(e) => setFdBank(e.target.value)} placeholder="e.g. ICICI Bank FD" required />
+              <Input
+                value={fdBank}
+                onChange={(e) => setFdBank(e.target.value)}
+                placeholder="e.g. ICICI Bank FD"
+                required
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Principal (₹)</Label>
-                <Input type="number" value={fdPrincipal} onChange={(e) => setFdPrincipal(e.target.value)} placeholder="e.g. 100000" required />
+                <Input
+                  type="number"
+                  value={fdPrincipal}
+                  onChange={(e) => setFdPrincipal(e.target.value)}
+                  placeholder="e.g. 100000"
+                  required
+                />
               </div>
               <div className="space-y-1">
                 <Label>Interest Rate (p.a. %)</Label>
-                <Input type="number" step="0.01" value={fdRate} onChange={(e) => setFdRate(e.target.value)} placeholder="e.g. 7.2" required />
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={fdRate}
+                  onChange={(e) => setFdRate(e.target.value)}
+                  placeholder="e.g. 7.2"
+                  required
+                />
               </div>
             </div>
             <div className="space-y-1">
@@ -509,10 +596,19 @@ function RouteComponent() {
               </Select>
             </div>
             <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" onClick={() => setShowFDModal(false)} disabled={savingFD}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowFDModal(false)}
+                disabled={savingFD}
+              >
                 Cancel
               </Button>
-              <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold" disabled={savingFD}>
+              <Button
+                type="submit"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold"
+                disabled={savingFD}
+              >
                 {savingFD ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Authorize FD Allocation
               </Button>
@@ -527,22 +623,41 @@ function RouteComponent() {
           <DialogHeader>
             <DialogTitle>Log Corporate Loan / Credit Line</DialogTitle>
             <DialogDescription>
-              Record newly acquired funding or bank credit lines. This will credit Cash assets and debit Liabilities.
+              Record newly acquired funding or bank credit lines. This will credit Cash assets and
+              debit Liabilities.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateLoan} className="space-y-4 py-2">
             <div className="space-y-1">
               <Label>Lending Institution</Label>
-              <Input value={loanBank} onChange={(e) => setLoanBank(e.target.value)} placeholder="e.g. SBI Capital Finance" required />
+              <Input
+                value={loanBank}
+                onChange={(e) => setLoanBank(e.target.value)}
+                placeholder="e.g. SBI Capital Finance"
+                required
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Principal (₹)</Label>
-                <Input type="number" value={loanPrincipal} onChange={(e) => setLoanPrincipal(e.target.value)} placeholder="e.g. 500000" required />
+                <Input
+                  type="number"
+                  value={loanPrincipal}
+                  onChange={(e) => setLoanPrincipal(e.target.value)}
+                  placeholder="e.g. 500000"
+                  required
+                />
               </div>
               <div className="space-y-1">
                 <Label>Interest Rate (p.a. %)</Label>
-                <Input type="number" step="0.01" value={loanRate} onChange={(e) => setLoanRate(e.target.value)} placeholder="e.g. 9.5" required />
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={loanRate}
+                  onChange={(e) => setLoanRate(e.target.value)}
+                  placeholder="e.g. 9.5"
+                  required
+                />
               </div>
             </div>
             <div className="space-y-1">
@@ -560,10 +675,19 @@ function RouteComponent() {
               </Select>
             </div>
             <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" onClick={() => setShowLoanModal(false)} disabled={savingLoan}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowLoanModal(false)}
+                disabled={savingLoan}
+              >
                 Cancel
               </Button>
-              <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold" disabled={savingLoan}>
+              <Button
+                type="submit"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold"
+                disabled={savingLoan}
+              >
                 {savingLoan ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Record Disbursement
               </Button>
@@ -578,13 +702,18 @@ function RouteComponent() {
           <DialogHeader>
             <DialogTitle>Settle Loan Installment</DialogTitle>
             <DialogDescription>
-              Record principal repayment towards your loan at <strong>{selectedLoan?.bankName}</strong>. This debits liabilities and credits cash.
+              Record principal repayment towards your loan at{" "}
+              <strong>{selectedLoan?.bankName}</strong>. This debits liabilities and credits cash.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleRepayLoan} className="space-y-4 py-2">
             <div className="space-y-1">
               <Label>Current Outstanding Balance</Label>
-              <Input value={selectedLoan ? fmtINR(selectedLoan.balance) : ""} disabled className="bg-zinc-50" />
+              <Input
+                value={selectedLoan ? fmtINR(selectedLoan.balance) : ""}
+                disabled
+                className="bg-zinc-50"
+              />
             </div>
             <div className="space-y-1">
               <Label>Repayment Amount (₹)</Label>
@@ -599,10 +728,19 @@ function RouteComponent() {
               />
             </div>
             <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" onClick={() => setShowRepayModal(false)} disabled={savingRepay}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowRepayModal(false)}
+                disabled={savingRepay}
+              >
                 Cancel
               </Button>
-              <Button type="submit" className="bg-amber-600 hover:bg-amber-700 text-white font-semibold" disabled={savingRepay}>
+              <Button
+                type="submit"
+                className="bg-amber-600 hover:bg-amber-700 text-white font-semibold"
+                disabled={savingRepay}
+              >
                 {savingRepay ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Authorize Repayment
               </Button>
@@ -631,9 +769,16 @@ function RouteComponent() {
               />
             </div>
             <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" onClick={() => setPayPasswordOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={payingPOId !== null} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
-                {payingPOId !== null && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Authorize Payment
+              <Button type="button" variant="outline" onClick={() => setPayPasswordOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={payingPOId !== null}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+              >
+                {payingPOId !== null && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Authorize
+                Payment
               </Button>
             </DialogFooter>
           </form>

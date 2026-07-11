@@ -1,80 +1,88 @@
 import { createServerFn } from "@tanstack/react-start";
 import { prisma } from "./server/prisma";
 
-export const getSuppliers = createServerFn({ method: "GET" })
-  .handler(async () => {
-    const suppliers = await prisma.supplier.findMany({
-      where: { status: { not: "Archived" } },
-      include: {
-        purchaseOrders: true,
-        supplierProducts: true,
-      },
-      orderBy: { name: "asc" },
-    });
-
-    const products = await prisma.product.findMany({
-      include: { category: true }
-    });
-    
-    const productMap = new Map(products.map(p => [p.id, p]));
-
-    return suppliers.map((s) => {
-      const receivedPOs = s.purchaseOrders.filter((po) => po.status === "Received" || po.status === "Partially_Received");
-      const pendingPOs = s.purchaseOrders.filter(
-        (po) => po.status === "Draft" || po.status === "Ordered" || po.status === "Sent" || po.status === "Approved" || po.status === "Submitted"
-      );
-
-      const spend = receivedPOs.reduce((sum, po) => sum + Number(po.totalAmount), 0);
-      const pending = pendingPOs.reduce((sum, po) => sum + Number(po.totalAmount), 0);
-
-      const onTime = Number(s.onTimeDeliveryRate);
-      const quality = Number(s.qualityScore);
-      const riskScore = Number(s.riskScore);
-      const lead = s.leadTimeDays;
-
-      let risk = "Low";
-      if (riskScore > 60) risk = "High";
-      else if (riskScore > 30) risk = "Medium";
-
-      const score = Math.round(onTime + quality - riskScore / 2);
-
-      const firstProductId = s.supplierProducts[0]?.productId;
-      const associatedProduct = firstProductId ? productMap.get(firstProductId) : null;
-      const category = associatedProduct?.category?.name || "General";
-
-      return {
-        id: s.id,
-        supplierCode: s.supplierCode,
-        name: s.name,
-        category,
-        contact: s.contactPerson,
-        spend,
-        pending,
-        onTime,
-        quality,
-        lead,
-        risk,
-        score: Math.min(100, Math.max(0, score)),
-        email: s.email,
-        phone: s.phone,
-        address: s.address,
-        paymentTerms: s.paymentTerms,
-      };
-    });
+export const getSuppliers = createServerFn({ method: "GET" }).handler(async () => {
+  const suppliers = await prisma.supplier.findMany({
+    where: { status: { not: "Archived" } },
+    include: {
+      purchaseOrders: true,
+      supplierProducts: true,
+    },
+    orderBy: { name: "asc" },
   });
 
+  const products = await prisma.product.findMany({
+    include: { category: true },
+  });
+
+  const productMap = new Map(products.map((p) => [p.id, p]));
+
+  return suppliers.map((s) => {
+    const receivedPOs = s.purchaseOrders.filter(
+      (po) => po.status === "Received" || po.status === "Partially_Received",
+    );
+    const pendingPOs = s.purchaseOrders.filter(
+      (po) =>
+        po.status === "Draft" ||
+        po.status === "Ordered" ||
+        po.status === "Sent" ||
+        po.status === "Approved" ||
+        po.status === "Submitted",
+    );
+
+    const spend = receivedPOs.reduce((sum, po) => sum + Number(po.totalAmount), 0);
+    const pending = pendingPOs.reduce((sum, po) => sum + Number(po.totalAmount), 0);
+
+    const onTime = Number(s.onTimeDeliveryRate);
+    const quality = Number(s.qualityScore);
+    const riskScore = Number(s.riskScore);
+    const lead = s.leadTimeDays;
+
+    let risk = "Low";
+    if (riskScore > 60) risk = "High";
+    else if (riskScore > 30) risk = "Medium";
+
+    const score = Math.round(onTime + quality - riskScore / 2);
+
+    const firstProductId = s.supplierProducts[0]?.productId;
+    const associatedProduct = firstProductId ? productMap.get(firstProductId) : null;
+    const category = associatedProduct?.category?.name || "General";
+
+    return {
+      id: s.id,
+      supplierCode: s.supplierCode,
+      name: s.name,
+      category,
+      contact: s.contactPerson,
+      spend,
+      pending,
+      onTime,
+      quality,
+      lead,
+      risk,
+      score: Math.min(100, Math.max(0, score)),
+      email: s.email,
+      phone: s.phone,
+      address: s.address,
+      paymentTerms: s.paymentTerms,
+    };
+  });
+});
+
 export const addSupplier = createServerFn({ method: "POST" })
-  .validator((data: {
-    name: string;
-    contactPerson: string;
-    email: string;
-    phone: string;
-    address: string;
-    paymentTerms: string;
-    leadTimeDays: number;
-    role: string;
-    emailUser: string;
-  }) => data)
+  .validator(
+    (data: {
+      name: string;
+      contactPerson: string;
+      email: string;
+      phone: string;
+      address: string;
+      paymentTerms: string;
+      leadTimeDays: number;
+      role: string;
+      emailUser: string;
+    }) => data,
+  )
   .handler(async ({ data: payload }) => {
     const role = payload.role.toLowerCase();
     if (role !== "owner" && role !== "admin" && role !== "manager") {
@@ -109,7 +117,7 @@ export const addSupplier = createServerFn({ method: "POST" })
           action: "CREATE_SUPPLIER",
           entityType: "Supplier",
           entityId: supplier.id,
-        }
+        },
       });
     }
 
@@ -129,23 +137,25 @@ export const addSupplier = createServerFn({ method: "POST" })
         qualityScore: Number(supplier.qualityScore),
         riskScore: Number(supplier.riskScore),
         status: supplier.status,
-      }
+      },
     };
   });
 
 export const editSupplierServer = createServerFn({ method: "POST" })
-  .validator((data: {
-    id: string;
-    name: string;
-    contactPerson: string;
-    email: string;
-    phone: string;
-    address: string;
-    paymentTerms: string;
-    leadTimeDays: number;
-    role: string;
-    emailUser: string;
-  }) => data)
+  .validator(
+    (data: {
+      id: string;
+      name: string;
+      contactPerson: string;
+      email: string;
+      phone: string;
+      address: string;
+      paymentTerms: string;
+      leadTimeDays: number;
+      role: string;
+      emailUser: string;
+    }) => data,
+  )
   .handler(async ({ data: payload }) => {
     const role = payload.role.toLowerCase();
     if (role !== "owner" && role !== "admin") {
@@ -173,7 +183,7 @@ export const editSupplierServer = createServerFn({ method: "POST" })
           action: "EDIT_SUPPLIER",
           entityType: "Supplier",
           entityId: supplier.id,
-        }
+        },
       });
     }
 
@@ -193,12 +203,12 @@ export const editSupplierServer = createServerFn({ method: "POST" })
         qualityScore: Number(supplier.qualityScore),
         riskScore: Number(supplier.riskScore),
         status: supplier.status,
-      }
+      },
     };
   });
 
 export const archiveSupplierServer = createServerFn({ method: "POST" })
-  .validator((data: { id: string, role: string, emailUser: string }) => data)
+  .validator((data: { id: string; role: string; emailUser: string }) => data)
   .handler(async ({ data: payload }) => {
     const role = payload.role.toLowerCase();
     if (role !== "owner" && role !== "admin") {
@@ -218,7 +228,7 @@ export const archiveSupplierServer = createServerFn({ method: "POST" })
           action: "ARCHIVE_SUPPLIER",
           entityType: "Supplier",
           entityId: supplier.id,
-        }
+        },
       });
     }
 
@@ -238,79 +248,80 @@ export const archiveSupplierServer = createServerFn({ method: "POST" })
         qualityScore: Number(supplier.qualityScore),
         riskScore: Number(supplier.riskScore),
         status: supplier.status,
-      }
+      },
     };
   });
 
-export const getPurchaseOrders = createServerFn({ method: "GET" })
-  .handler(async () => {
-    const pos = await prisma.purchaseOrder.findMany({
-      include: {
-        supplier: true,
-        items: {
-          include: {
-            product: true,
-          },
+export const getPurchaseOrders = createServerFn({ method: "GET" }).handler(async () => {
+  const pos = await prisma.purchaseOrder.findMany({
+    include: {
+      supplier: true,
+      items: {
+        include: {
+          product: true,
         },
       },
-      orderBy: { orderDate: "desc" },
-    });
+    },
+    orderBy: { orderDate: "desc" },
+  });
 
-    // Check which POs have been paid by querying ledger entries
-    const paidEntries = await prisma.ledgerEntry.findMany({
-      where: {
-        referenceType: "PurchaseOrderPayment",
-      },
-      select: {
-        referenceId: true,
-      },
-    });
-    const paidPoIds = new Set(paidEntries.map(e => e.referenceId).filter(Boolean));
+  // Check which POs have been paid by querying ledger entries
+  const paidEntries = await prisma.ledgerEntry.findMany({
+    where: {
+      referenceType: "PurchaseOrderPayment",
+    },
+    select: {
+      referenceId: true,
+    },
+  });
+  const paidPoIds = new Set(paidEntries.map((e) => e.referenceId).filter(Boolean));
 
-    return pos.map((po) => {
-      const productName =
-        po.items.length === 1
-          ? po.items[0].product.name
-          : po.items.length > 1
+  return pos.map((po) => {
+    const productName =
+      po.items.length === 1
+        ? po.items[0].product.name
+        : po.items.length > 1
           ? `${po.items[0].product.name} +${po.items.length - 1} more`
           : "Unknown Product";
 
-      const productId = po.items.length > 0 ? po.items[0].product.id : "";
-      const quantity = po.items.reduce((sum, item) => sum + item.quantity, 0);
-      const receivedQuantity = po.items.reduce((sum, item) => sum + item.receivedQuantity, 0);
+    const productId = po.items.length > 0 ? po.items[0].product.id : "";
+    const quantity = po.items.reduce((sum, item) => sum + item.quantity, 0);
+    const receivedQuantity = po.items.reduce((sum, item) => sum + item.receivedQuantity, 0);
 
-      return {
-        id: po.poNumber,
-        dbId: po.id,
-        date: po.orderDate.toISOString().split("T")[0],
-        productName,
-        productId,
-        supplierName: po.supplier.name,
-        supplierId: po.supplier.id,
-        quantity,
-        receivedQuantity,
-        totalCost: Number(po.totalAmount),
-        source: po.notes || "Manual",
-        status: po.status,
-        isPaid: paidPoIds.has(po.id),
-      };
-    });
+    return {
+      id: po.poNumber,
+      dbId: po.id,
+      date: po.orderDate.toISOString().split("T")[0],
+      productName,
+      productId,
+      supplierName: po.supplier.name,
+      supplierId: po.supplier.id,
+      quantity,
+      receivedQuantity,
+      totalCost: Number(po.totalAmount),
+      source: po.notes || "Manual",
+      status: po.status,
+      isPaid: paidPoIds.has(po.id),
+    };
   });
+});
 
 export const createPurchaseOrder = createServerFn({ method: "POST" })
-  .validator((data: {
-    supplierId: string;
-    departmentId?: string;
-    expectedDeliveryDate?: string;
-    notes?: string;
-    createdBy: string;
-    status?: string;
-    items: Array<{
-      productId: string;
-      quantity: number;
-      unitCost: number;
-    }>;
-  }) => data)
+  .validator(
+    (data: {
+      supplierId: string;
+      departmentId?: string;
+      expectedDeliveryDate?: string;
+      notes?: string;
+      createdBy: string;
+      status?: string;
+      items: Array<{
+        productId: string;
+        quantity: number;
+        unitCost: number;
+      }>;
+    }) => data,
+  )
   .handler(async ({ data: payload }) => {
     const count = await prisma.purchaseOrder.count();
     const poNumber = `PO-${String(count + 1001).padStart(4, "0")}`;
@@ -329,7 +340,9 @@ export const createPurchaseOrder = createServerFn({ method: "POST" })
         departmentId: payload.departmentId,
         status: payload.status || "Draft",
         orderDate: new Date(),
-        expectedDeliveryDate: payload.expectedDeliveryDate ? new Date(payload.expectedDeliveryDate) : null,
+        expectedDeliveryDate: payload.expectedDeliveryDate
+          ? new Date(payload.expectedDeliveryDate)
+          : null,
         subtotal,
         taxAmount,
         totalAmount,
@@ -341,10 +354,10 @@ export const createPurchaseOrder = createServerFn({ method: "POST" })
             quantity: item.quantity,
             receivedQuantity: 0,
             unitCost: item.unitCost,
-            lineTotal: item.quantity * item.unitCost
-          }))
-        }
-      }
+            lineTotal: item.quantity * item.unitCost,
+          })),
+        },
+      },
     });
 
     const user = await prisma.user.findUnique({ where: { email: payload.createdBy } });
@@ -355,7 +368,7 @@ export const createPurchaseOrder = createServerFn({ method: "POST" })
           action: "CREATE_PO",
           entityType: "PurchaseOrder",
           entityId: po.id,
-        }
+        },
       });
     }
 
@@ -366,12 +379,12 @@ export const createPurchaseOrder = createServerFn({ method: "POST" })
         poNumber: po.poNumber,
         status: po.status,
         totalAmount: Number(po.totalAmount),
-      }
+      },
     };
   });
 
 export const updatePurchaseOrderStatusServer = createServerFn({ method: "POST" })
-  .validator((data: { poId: string, status: string, role: string, emailUser: string }) => data)
+  .validator((data: { poId: string; status: string; role: string; emailUser: string }) => data)
   .handler(async ({ data: payload }) => {
     const po = await prisma.purchaseOrder.update({
       where: { id: payload.poId },
@@ -386,7 +399,7 @@ export const updatePurchaseOrderStatusServer = createServerFn({ method: "POST" }
           action: `UPDATE_PO_STATUS_${payload.status.toUpperCase()}`,
           entityType: "PurchaseOrder",
           entityId: po.id,
-        }
+        },
       });
     }
 
@@ -396,7 +409,7 @@ export const updatePurchaseOrderStatusServer = createServerFn({ method: "POST" }
         id: po.id,
         poNumber: po.poNumber,
         status: po.status,
-      }
+      },
     };
   });
 
@@ -408,9 +421,9 @@ export const getPurchaseOrderDetailsServer = createServerFn({ method: "POST" })
       include: {
         supplier: true,
         items: {
-          include: { product: true }
-        }
-      }
+          include: { product: true },
+        },
+      },
     });
     if (!po) return null;
     return {
@@ -442,7 +455,7 @@ export const getPurchaseOrderDetailsServer = createServerFn({ method: "POST" })
         riskScore: Number(po.supplier.riskScore),
         status: po.supplier.status,
       },
-      items: po.items.map(item => ({
+      items: po.items.map((item) => ({
         id: item.id,
         purchaseOrderId: item.purchaseOrderId,
         productId: item.productId,
@@ -454,32 +467,35 @@ export const getPurchaseOrderDetailsServer = createServerFn({ method: "POST" })
           id: item.product.id,
           name: item.product.name,
           sku: item.product.sku,
-        }
-      }))
+        },
+      })),
     };
   });
 
 export const receivePurchaseOrderGoodsServer = createServerFn({ method: "POST" })
-  .validator((data: { 
-    poId: string; 
-    receivedByEmail: string; 
-    role: string;
-    itemsToReceive: Array<{
-      itemId: string;
-      productId: string;
-      quantity: number;
-    }>
-  }) => data)
+  .validator(
+    (data: {
+      poId: string;
+      receivedByEmail: string;
+      role: string;
+      itemsToReceive: Array<{
+        itemId: string;
+        productId: string;
+        quantity: number;
+      }>;
+    }) => data,
+  )
   .handler(async ({ data: payload }) => {
     return await prisma.$transaction(async (tx) => {
       const po = await tx.purchaseOrder.findUnique({
         where: { id: payload.poId },
-        include: { items: true }
+        include: { items: true },
       });
 
       if (!po) throw new Error("PO not found");
       if (po.status === "Received") throw new Error("PO already fully received");
-      if (po.status === "Draft" || po.status === "Submitted") throw new Error("PO must be Ordered or Partially_Received");
+      if (po.status === "Draft" || po.status === "Submitted")
+        throw new Error("PO must be Ordered or Partially_Received");
 
       const user = await tx.user.findUnique({ where: { email: payload.receivedByEmail } });
       if (!user) throw new Error("User not found");
@@ -492,14 +508,14 @@ export const receivePurchaseOrderGoodsServer = createServerFn({ method: "POST" }
           items: {
             create: payload.itemsToReceive.map((i: any) => ({
               productId: i.productId,
-              quantity: i.quantity
-            }))
-          }
-        }
+              quantity: i.quantity,
+            })),
+          },
+        },
       });
 
       const warehouse = await tx.inventoryLocation.findFirst({
-        where: { type: "WAREHOUSE" }
+        where: { type: "WAREHOUSE" },
       });
       if (!warehouse) throw new Error("Warehouse location not found");
 
@@ -508,7 +524,7 @@ export const receivePurchaseOrderGoodsServer = createServerFn({ method: "POST" }
       for (const itemToReceive of payload.itemsToReceive) {
         if (itemToReceive.quantity <= 0) continue;
 
-        const poItem = po.items.find(i => i.id === itemToReceive.itemId);
+        const poItem = po.items.find((i) => i.id === itemToReceive.itemId);
         if (!poItem) continue;
 
         const newReceivedQty = poItem.receivedQuantity + itemToReceive.quantity;
@@ -519,7 +535,7 @@ export const receivePurchaseOrderGoodsServer = createServerFn({ method: "POST" }
         // Update PO Item
         await tx.purchaseOrderItem.update({
           where: { id: poItem.id },
-          data: { receivedQuantity: newReceivedQty }
+          data: { receivedQuantity: newReceivedQty },
         });
 
         // Add inventory stocks
@@ -527,9 +543,9 @@ export const receivePurchaseOrderGoodsServer = createServerFn({ method: "POST" }
           where: {
             productId_locationId: {
               productId: itemToReceive.productId,
-              locationId: warehouse.id
-            }
-          }
+              locationId: warehouse.id,
+            },
+          },
         });
 
         if (stock) {
@@ -537,8 +553,8 @@ export const receivePurchaseOrderGoodsServer = createServerFn({ method: "POST" }
             where: { id: stock.id },
             data: {
               quantityOnHand: stock.quantityOnHand + itemToReceive.quantity,
-              availableQty: stock.availableQty + itemToReceive.quantity
-            }
+              availableQty: stock.availableQty + itemToReceive.quantity,
+            },
           });
         } else {
           await tx.inventoryStock.create({
@@ -546,8 +562,8 @@ export const receivePurchaseOrderGoodsServer = createServerFn({ method: "POST" }
               productId: itemToReceive.productId,
               locationId: warehouse.id,
               quantityOnHand: itemToReceive.quantity,
-              availableQty: itemToReceive.quantity
-            }
+              availableQty: itemToReceive.quantity,
+            },
           });
         }
 
@@ -560,21 +576,23 @@ export const receivePurchaseOrderGoodsServer = createServerFn({ method: "POST" }
             quantity: itemToReceive.quantity,
             referenceType: "GoodsReceipt",
             referenceId: goodsReceipt.id,
-            performedBy: user.id
-          }
+            performedBy: user.id,
+          },
         });
       }
 
       // Check if ANY item is still not fully received
       // Wait, allFullyReceived was only checking items we just received. We need to check all items.
-      const updatedPoItems = await tx.purchaseOrderItem.findMany({ where: { purchaseOrderId: po.id } });
-      const finalFullyReceived = updatedPoItems.every(i => i.receivedQuantity >= i.quantity);
+      const updatedPoItems = await tx.purchaseOrderItem.findMany({
+        where: { purchaseOrderId: po.id },
+      });
+      const finalFullyReceived = updatedPoItems.every((i) => i.receivedQuantity >= i.quantity);
 
       const newStatus = finalFullyReceived ? "Received" : "Partially_Received";
 
       await tx.purchaseOrder.update({
         where: { id: po.id },
-        data: { status: newStatus }
+        data: { status: newStatus },
       });
 
       await tx.auditLog.create({
@@ -583,7 +601,7 @@ export const receivePurchaseOrderGoodsServer = createServerFn({ method: "POST" }
           action: "RECEIVE_GOODS",
           entityType: "PurchaseOrder",
           entityId: po.id,
-        }
+        },
       });
 
       await tx.businessEvent.create({
@@ -593,8 +611,8 @@ export const receivePurchaseOrderGoodsServer = createServerFn({ method: "POST" }
           entityId: po.id,
           title: `PO ${po.poNumber} ${newStatus}`,
           description: `Received goods for PO ${po.poNumber}`,
-          actorId: user.id
-        }
+          actorId: user.id,
+        },
       });
 
       return { success: true, status: newStatus };

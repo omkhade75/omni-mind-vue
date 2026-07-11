@@ -10,7 +10,13 @@ import { KpiCard } from "@/components/kpi-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -31,7 +37,17 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { Loader2, Plus, Wallet, TrendingUp, DollarSign, Layers, ArrowUpRight, Search, FileText } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Wallet,
+  TrendingUp,
+  DollarSign,
+  Layers,
+  ArrowUpRight,
+  Search,
+  FileText,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_app/income")({
   head: () => ({
@@ -107,7 +123,7 @@ function RouteComponent() {
           description,
           role: user?.role || "owner",
           emailUser: user?.email || "",
-        }
+        },
       });
 
       toast.success("Incoming revenue receipt recorded in General Ledger!");
@@ -131,7 +147,7 @@ function RouteComponent() {
 
   // 1. Sales revenue from transactions
   const thisMonthTxns = transactions.filter(
-    (t) => t.date.split("T")[0].startsWith(activeYearMonth) && t.status === "Completed"
+    (t) => t.date.split("T")[0].startsWith(activeYearMonth) && t.status === "Completed",
   );
 
   let grossSales = 0;
@@ -160,7 +176,7 @@ function RouteComponent() {
 
   // --- Graph 1: Daily Revenue Trend for Active Month ---
   const dailyDataMap: { [key: string]: number } = {};
-  
+
   // Initialize all days of the active month
   const year = parseInt(activeYearMonth.split("-")[0]);
   const month = parseInt(activeYearMonth.split("-")[1]);
@@ -281,13 +297,15 @@ function RouteComponent() {
 
       {/* Charts Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
         {/* Left: Monthly Trend Area Chart */}
         <div className="lg:col-span-2">
           <SectionCard title={`Daily Revenue Trend — ${formattedMonth}`}>
             <div className="h-80 w-full pt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={dailyTrendData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                <AreaChart
+                  data={dailyTrendData}
+                  margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+                >
                   <defs>
                     <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.4} />
@@ -295,13 +313,21 @@ function RouteComponent() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
-                  <XAxis dataKey="date" stroke="#a1a1aa" fontSize={11} tickLine={false} axisLine={false} />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#a1a1aa"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                  />
                   <YAxis
                     stroke="#a1a1aa"
                     fontSize={11}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(val: number) => `₹${val >= 1000 ? (val / 1000).toFixed(0) + "k" : val}`}
+                    tickFormatter={(val: number) =>
+                      `₹${val >= 1000 ? (val / 1000).toFixed(0) + "k" : val}`
+                    }
                   />
                   <Tooltip
                     formatter={(value: any) => [fmtINR(Number(value)), "Inflow"]}
@@ -348,7 +374,10 @@ function RouteComponent() {
             {pieData.map((d, index) => (
               <div key={d.name} className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
-                  <span className="h-3.5 w-3.5 rounded-full" style={{ backgroundColor: COLORS[index] }} />
+                  <span
+                    className="h-3.5 w-3.5 rounded-full"
+                    style={{ backgroundColor: COLORS[index] }}
+                  />
                   <span className="text-zinc-600 font-medium">{d.name}</span>
                 </div>
                 <span className="font-semibold text-zinc-900">
@@ -358,7 +387,6 @@ function RouteComponent() {
             ))}
           </div>
         </SectionCard>
-
       </div>
 
       {/* Ledger of Incoming Payments Log */}
@@ -406,13 +434,17 @@ function RouteComponent() {
                   <tr key={inf.id} className="hover:bg-zinc-50/50">
                     <td className="px-4 py-3">
                       <div className="font-semibold text-zinc-900">{inf.source}</div>
-                      <div className="text-[10px] text-zinc-500 font-mono">ID: {inf.id.toUpperCase().slice(0, 10)}</div>
+                      <div className="text-[10px] text-zinc-500 font-mono">
+                        ID: {inf.id.toUpperCase().slice(0, 10)}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-zinc-600">
                       <span className="font-mono text-xs">{inf.account}</span>
                     </td>
                     <td className="px-4 py-3 text-zinc-600 max-w-xs truncate">{inf.description}</td>
-                    <td className="px-4 py-3 text-right font-bold text-emerald-600">+{fmtINR(inf.amount)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-emerald-600">
+                      +{fmtINR(inf.amount)}
+                    </td>
                     <td className="px-4 py-3 text-center text-zinc-500 text-xs">
                       {new Date(inf.date).toLocaleString("en-IN", {
                         day: "numeric",
@@ -435,7 +467,8 @@ function RouteComponent() {
           <DialogHeader>
             <DialogTitle>Log Incoming Miscellaneous Income</DialogTitle>
             <DialogDescription>
-              Log incoming payments for rent lease collections or ancillary operations. This automatically posts a debit to Cash (1000) and credits the revenue account.
+              Log incoming payments for rent lease collections or ancillary operations. This
+              automatically posts a debit to Cash (1000) and credits the revenue account.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleRecordRevenue} className="space-y-4 py-2">
@@ -472,10 +505,19 @@ function RouteComponent() {
               />
             </div>
             <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" onClick={() => setShowFormModal(false)} disabled={saving}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowFormModal(false)}
+                disabled={saving}
+              >
                 Cancel
               </Button>
-              <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold" disabled={saving}>
+              <Button
+                type="submit"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold"
+                disabled={saving}
+              >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Record Inflow Payment
               </Button>

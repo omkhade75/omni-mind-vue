@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PageHeader, SectionCard } from "@/components/page-header";
+import { PageHeader, SectionCard, StatusPill } from "@/components/page-header";
 import {
   Area,
   AreaChart,
@@ -11,12 +11,31 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Sparkles, Zap, Droplets, AlertTriangle } from "lucide-react";
+import { Sparkles, Zap, Droplets, AlertTriangle, Plus, Trash2 } from "lucide-react";
 import { useBusinessData } from "@/lib/business-context";
 import { useAuth } from "@/lib/auth-context";
 import { fmtNum, fmtINR } from "@/lib/mock-data";
 import { useMemo, useState, useEffect } from "react";
-import { getUtilitiesServer } from "@/lib/server-utilities";
+import { getUtilitiesServer, addUtilityReadingServer, deleteUtilityReadingServer } from "@/lib/server-utilities";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/utilities")({
   head: () => ({
@@ -32,17 +51,28 @@ export const Route = createFileRoute("/_app/utilities")({
 });
 
 function Utilities() {
-  const { activeDate, utilities } = useBusinessData();
+  const { activeDate, utilities, forceRefresh } = useBusinessData();
   const { user } = useAuth();
-  
+
   const [electricityToday, setElectricityToday] = useState(12450);
   const [waterToday, setWaterToday] = useState(8120);
   const [dbAnomaly, setDbAnomaly] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Form states
+  const [type, setType] = useState<"ELECTRICITY" | "WATER">("ELECTRICITY");
+  const [zone, setZone] = useState("Roof Unit B");
+  const [value, setValue] = useState("");
+  const [cost, setCost] = useState("");
+  const [date, setDate] = useState(activeDate);
 
   useEffect(() => {
     async function load() {
       try {
-        const payload = { data: { role: user?.role || "owner", email: user?.email || "", activeDate } };
+        const payload = {
+          data: { role: user?.role || "owner", email: user?.email || "", activeDate },
+        };
         const data = await getUtilitiesServer(payload);
         setElectricityToday(data.electricityToday);
         setWaterToday(data.waterToday);
@@ -52,7 +82,7 @@ function Utilities() {
       }
     }
     load();
-  }, [user, activeDate]);
+  }, [user, activeDate, utilities]);
 
   const isMay5 = activeDate === "2026-05-05" || dbAnomaly;
 
@@ -90,11 +120,63 @@ function Utilities() {
     });
   }, [utilities]);
 
+  const handleAddReading = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!value.trim() || !cost.trim()) {
+      toast.error("Please fill in all details.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await addUtilityReadingServer({
+        data: {
+          type,
+          zone,
+          value: parseFloat(value) || 0,
+          cost: parseFloat(cost) || 0,
+          date,
+          role: user?.role || "owner",
+          email: user?.email || "",
+        },
+      });
+      toast.success("Utility reading recorded in operational database.");
+      setShowAddModal(false);
+      setValue("");
+      setCost("");
+      forceRefresh();
+    } catch (err) {
+      toast.error("Failed to add utility reading.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteReading = async (id: string) => {
+    try {
+      await deleteUtilityReadingServer({
+        data: {
+          id,
+          role: user?.role || "owner",
+          email: user?.email || "",
+        },
+      });
+      toast.success("Utility reading deleted.");
+      forceRefresh();
+    } catch (err) {
+      toast.error("Failed to delete reading.");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Utilities Intelligence"
         subtitle="Electricity and water usage with AI anomaly detection."
+        actions={
+          <Button onClick={() => setShowAddModal(true)} size="sm">
+            <Plus className="mr-1 h-4 w-4" /> Record Reading
+          </Button>
+        }
       />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -230,6 +312,150 @@ function Utilities() {
           </div>
         </SectionCard>
       </div>
+
+      {/* Manual Readings Table */}
+      <SectionCard title="Telemetry Reading Log" subtitle="Manually entered utility meters records">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-hairline text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                <th className="pb-2 font-semibold">Date</th>
+                <th className="pb-2 font-semibold">Meter / Zone</th>
+                <th className="pb-2 font-semibold">Type</th>
+                <th className="pb-2 text-right font-semibold">Reading Value</th>
+                <th className="pb-2 text-right font-semibold">Recorded Cost</th>
+                <th className="pb-2 font-semibold pl-4">Source</th>
+                <th className="pb-2 text-right font-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-hairline">
+              {utilities.map((u) => (
+                <tr key={u.id} className="hover:bg-surface-2 transition-colors">
+                  <td className="py-2">{u.date}</td>
+                  <td className="py-2 font-medium">{u.zone || `Meter ${u.id}`}</td>
+                  <td className="py-2">
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${u.type === "Electricity" ? "bg-amber-500/10 text-amber-500" : "bg-cyan-500/10 text-cyan-500"}`}
+                    >
+                      {u.type}
+                    </span>
+                  </td>
+                  <td className="py-2 text-right font-semibold">
+                    {u.consumption.toLocaleString("en-IN")} {u.type === "Electricity" ? "kWh" : "L"}
+                  </td>
+                  <td className="py-2 text-right font-semibold text-foreground">
+                    {fmtINR(u.cost)}
+                  </td>
+                  <td className="py-2 pl-4 text-muted-foreground">Telemetry</td>
+                  <td className="py-2 text-right">
+                    <button
+                      onClick={() => handleDeleteReading(u.id)}
+                      className="rounded p-1 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                      title="Delete entry"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {utilities.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-6 text-center text-muted-foreground">
+                    No utility readings manually recorded.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </SectionCard>
+
+      {/* Record Reading Modal */}
+      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Record Utility Reading</DialogTitle>
+            <DialogDescription>
+              Record manual meter reading in operational database.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleAddReading} className="space-y-4 text-xs">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="ut-type">Meter Type</Label>
+                <Select value={type} onValueChange={(val: any) => setType(val)}>
+                  <SelectTrigger id="ut-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ELECTRICITY">Electricity (kWh)</SelectItem>
+                    <SelectItem value="WATER">Water (Liters)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="ut-date">Reading Date</Label>
+                <Input
+                  id="ut-date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="ut-zone">Zone / Location</Label>
+              <Input
+                id="ut-zone"
+                value={zone}
+                onChange={(e) => setZone(e.target.value)}
+                placeholder="e.g. HVAC Zone B, South Wing"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="ut-value">Meter Reading Value</Label>
+                <Input
+                  id="ut-value"
+                  type="number"
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  placeholder="e.g. 1200"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="ut-cost">Cost (₹)</Label>
+                <Input
+                  id="ut-cost"
+                  type="number"
+                  value={cost}
+                  onChange={(e) => setCost(e.target.value)}
+                  placeholder="e.g. 11400"
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowAddModal(false)}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? "Recording..." : "Record Reading"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

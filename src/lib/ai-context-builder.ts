@@ -23,38 +23,13 @@ import {
   getRecommendedActions,
   getProductPerformance,
 } from "./analytics-engine";
-
-export interface AIResponseContract {
-  answer: string;
-  summary: string;
-  evidence: Array<{
-    label: string;
-    value: string;
-    sourceType?: string;
-    sourceId?: string;
-  }>;
-  reasoning: string[];
-  recommendedActions: Array<{
-    title: string;
-    description: string;
-    priority: "high" | "medium" | "low";
-    estimatedImpact?: string;
-    actionType:
-      | "CREATE_PO"
-      | "APPLY_MARKDOWN"
-      | "OPEN_PRODUCT"
-      | "OPEN_CUSTOMER"
-      | "OPEN_SUPPLIER"
-      | "INVESTIGATE_ANOMALY"
-      | "NAVIGATE";
-    entityId?: string;
-  }>;
-  risks: Array<{
-    title: string;
-    severity: "high" | "medium" | "low";
-  }>;
-  confidence: number;
-}
+import type {
+  AIResponseContract,
+  ToolMetadata,
+  ToolResult,
+  ConfidenceDetails,
+  ClaimProvenance,
+} from "./tool-types";
 
 export interface AIContext {
   intent: string;
@@ -81,24 +56,45 @@ export function buildAIContext(query: string, activeDate: string, roleScope?: st
   let evidenceText = "";
 
   // Intent parsing
-  const hasDemandKeyword = q.includes("demand") || q.includes("popular") || q.includes("sold") || q.includes("moving") || q.includes("velocity") || q.includes("fast");
-  const hasStockKeyword = q.includes("out of") || q.includes("outof") || q.includes("outoff") || q.includes("stock") || q.includes("shortage") || q.includes("empty");
-  const isAuditQuery = /\b(audit|report|blueprint|operational|all.?in.?one|control|strategic|executive|everything|complete)\b/.test(q);
-  const isProfitDeclineQuery = /\b(decline|drop|decrease|fall|lower|reduce|why|decline|loss)\b/.test(q) && /\b(profit|margin|earnings|income|revenue)\b/.test(q);
+  const hasDemandKeyword =
+    q.includes("demand") ||
+    q.includes("popular") ||
+    q.includes("sold") ||
+    q.includes("moving") ||
+    q.includes("velocity") ||
+    q.includes("fast");
+  const hasStockKeyword =
+    q.includes("out of") ||
+    q.includes("outof") ||
+    q.includes("outoff") ||
+    q.includes("stock") ||
+    q.includes("shortage") ||
+    q.includes("empty");
+  const isAuditQuery =
+    /\b(audit|report|blueprint|operational|all.?in.?one|control|strategic|executive|everything|complete)\b/.test(
+      q,
+    );
+  const isProfitDeclineQuery =
+    /\b(decline|drop|decrease|fall|lower|reduce|why|decline|loss)\b/.test(q) &&
+    /\b(profit|margin|earnings|income|revenue)\b/.test(q);
 
   if (hasDemandKeyword && hasStockKeyword) {
     intent = "high_demand_out_of_stock";
     const candidates = getReorderCandidates(resolvedDate, roleScope);
     const sortedByDemand = [...candidates].sort((a, b) => b.sold - a.sold);
-    evidenceText = "HIGH DEMAND LOW/OUT-OF-STOCK PRODUCTS:\n" +
-      sortedByDemand.map(p => {
-        evidenceIds.push(p.id);
-        return `- ${p.name} (SKU: ${p.id}): Stock: ${p.stock}, Sold: ${p.sold}, Revenue: ₹${p.revenue}, Reorder Threshold: ${p.reorder}, Supplier: ${p.supplier}`;
-      }).join("\n");
+    evidenceText =
+      "HIGH DEMAND LOW/OUT-OF-STOCK PRODUCTS:\n" +
+      sortedByDemand
+        .map((p) => {
+          evidenceIds.push(p.id);
+          return `- ${p.name} (SKU: ${p.id}): Stock: ${p.stock}, Sold: ${p.sold}, Revenue: ₹${p.revenue}, Reorder Threshold: ${p.reorder}, Supplier: ${p.supplier}`;
+        })
+        .join("\n");
   } else if (isAuditQuery) {
     intent = "global_audit";
     const candidates = getReorderCandidates(resolvedDate, roleScope);
-    evidenceText = "GLOBAL AUDIT CONTEXT:\n- Low-Stock/Out-of-Stock candidates count: " + candidates.length;
+    evidenceText =
+      "GLOBAL AUDIT CONTEXT:\n- Low-Stock/Out-of-Stock candidates count: " + candidates.length;
   } else if (isProfitDeclineQuery) {
     intent = "profit_decline";
     evidenceText = `PROFIT DECLINE EVIDENCE DETAILS:
@@ -106,6 +102,14 @@ export function buildAIContext(query: string, activeDate: string, roleScope?: st
 - Factor 1: HVAC Zone B Overnight Grid Draw Spike (+163% energy usage increase between 1 AM and 4 AM), causing ₹1,280 daily excess costs (amounting to ₹38,400 monthly leak).
 - Factor 2: Promotional Campaigns & Category Markdowns (15-20% discounts applied across Beauty & Cosmetics and Fashion segments) which expanded sales order counts by +15.6% but compressed average unit profit margins by 5%.
 - Factor 3: Supplier Delay & Lead Time SLA Breach by Sony India (average lead time is 7.4 days vs 4.6 days industry std; reliability score is 72), leading to premium Electronics stock depletion and shifting transactional shopping basket distributions towards lower-margin Grocery items.`;
+  } else if (
+    q.includes("amul") &&
+    q.includes("milk") &&
+    (q.includes("reorder") || q.includes("now"))
+  ) {
+    intent = "amul_reorder_deep_dive";
+    evidenceText =
+      "AMUL TAAZA MILK REORDER DEEP DIVE: Stock count: 128 units, Daily sales: 42 units, Lead time: 2.1 days, Expiry: May 7 (2 days).";
   } else if (
     q.includes("reorder") ||
     q.includes("restock") ||
@@ -261,37 +265,58 @@ export function buildAIContext(query: string, activeDate: string, roleScope?: st
       shares.map((s) => `- ${s.name}: Revenue: ₹${s.value} (Share: ${s.sharePct}%)`).join("\n");
   } else if (q.includes("liquidity") || q.includes("obligations") || q.includes("cover")) {
     intent = "liquidity_projection";
-    evidenceText = "LIQUIDITY ANALYSIS CONTEXT: Cash balance is ₹12,40,000. Purchase orders cost: ₹40,560. Supplier obligations: ₹1,80,000. 30-day operating expenses: ₹3,36,000.";
-  } else if (q.includes("combine") || q.includes("cross-domain") || q.includes("domains") || q.includes("invisible")) {
+    evidenceText =
+      "LIQUIDITY ANALYSIS CONTEXT: Cash balance is ₹12,40,000. Purchase orders cost: ₹40,560. Supplier obligations: ₹1,80,000. 30-day operating expenses: ₹3,36,000.";
+  } else if (
+    q.includes("combine") ||
+    q.includes("cross-domain") ||
+    q.includes("domains") ||
+    q.includes("invisible")
+  ) {
     intent = "cross_domain_problem";
-    evidenceText = "CROSS-DOMAIN INTEGRATED CONTEXT: CRM customer loyalty, Sony India supplier delays, and premium headphones stockout correlation.";
+    evidenceText =
+      "CROSS-DOMAIN INTEGRATED CONTEXT: CRM customer loyalty, Sony India supplier delays, and premium headphones stockout correlation.";
   } else if (q.includes("churn") && (q.includes("retain") || q.includes("risk"))) {
     intent = "customer_churn_ranking";
-    evidenceText = "CUSTOMER CHURN RISK RANKING CONTEXT: High churn-risk VIP segments and margin contributions.";
-  } else if (q.includes("hidden business risk") || q.includes("creates the highest hidden") || (q.includes("supplier") && q.includes("hidden"))) {
+    evidenceText =
+      "CUSTOMER CHURN RISK RANKING CONTEXT: High churn-risk VIP segments and margin contributions.";
+  } else if (
+    q.includes("hidden business risk") ||
+    q.includes("creates the highest hidden") ||
+    (q.includes("supplier") && q.includes("hidden"))
+  ) {
     intent = "supplier_risk_ranking";
-    evidenceText = "SUPPLIER HIDDEN RISK CONTEXT: Supplier SLA breaches, lead times, and SKU stockout exposures.";
+    evidenceText =
+      "SUPPLIER HIDDEN RISK CONTEXT: Supplier SLA breaches, lead times, and SKU stockout exposures.";
   } else if (q.includes("demand increases by") || q.includes("20%")) {
     intent = "demand_surge_simulation";
-    evidenceText = "DEMAND SURGE SIMULATION CONTEXT: +20% spike modeling across grocery, fashion, and electronics.";
-  } else if (q.includes("misleading") || q.includes("revenue is misleading") || q.includes("revenue increased but profit decreased")) {
+    evidenceText =
+      "DEMAND SURGE SIMULATION CONTEXT: +20% spike modeling across grocery, fashion, and electronics.";
+  } else if (
+    q.includes("misleading") ||
+    q.includes("revenue is misleading") ||
+    q.includes("revenue increased but profit decreased")
+  ) {
     intent = "misleading_revenue";
-    evidenceText = "MISLEADING REVENUE ANALYSIS CONTEXT: Electronics high gross revenue vs low profit margins, Beauty low revenue vs high margins.";
-  } else if (q.includes("amul") && q.includes("milk") && (q.includes("reorder") || q.includes("now"))) {
-    intent = "amul_reorder_deep_dive";
-    evidenceText = "AMUL TAAZA MILK REORDER DEEP DIVE: Stock count: 128 units, Daily sales: 42 units, Lead time: 2.1 days, Expiry: May 7 (2 days).";
+    evidenceText =
+      "MISLEADING REVENUE ANALYSIS CONTEXT: Electronics high gross revenue vs low profit margins, Beauty low revenue vs high margins.";
+  
   } else if (q.includes("inconsistency") || q.includes("reconcile") || q.includes("mismatch")) {
     intent = "kpi_reconciliation";
-    evidenceText = "KPI RECONCILIATION AUDIT: Command Center KPIs, transaction ledger, and accounts mismatch checks.";
+    evidenceText =
+      "KPI RECONCILIATION AUDIT: Command Center KPIs, transaction ledger, and accounts mismatch checks.";
   } else if (q.includes("timeline") || q.includes("chain of events")) {
     intent = "anomaly_timeline";
-    evidenceText = "ANOMALY TIMELINE RECONSTRUCTION: HVAC compressor Zone B anomaly overnight timeline.";
+    evidenceText =
+      "ANOMALY TIMELINE RECONSTRUCTION: HVAC compressor Zone B anomaly overnight timeline.";
   } else if (q.includes("single best action") || q.includes("expected business performance")) {
     intent = "best_action_recommendation";
-    evidenceText = "BEST ACTION RECOMMENDATION ANALYSIS: Evaluating HVAC maintenance, supplier SLA renegotiation, and VIP outreach.";
+    evidenceText =
+      "BEST ACTION RECOMMENDATION ANALYSIS: Evaluating HVAC maintenance, supplier SLA renegotiation, and VIP outreach.";
   } else if (q.includes("challenge") || q.includes("highest-priority recommendation")) {
     intent = "challenge_recommendation";
-    evidenceText = "CHALLENGING RECOMMENDATION CONTEXT: Auditing the HVAC Zone B dispatch decision logic.";
+    evidenceText =
+      "CHALLENGING RECOMMENDATION CONTEXT: Auditing the HVAC Zone B dispatch decision logic.";
   } else {
     // General overview
     intent = "general_summary";
@@ -335,8 +360,35 @@ export function localQueryFallback(
   activeDate: string,
   roleScope?: string,
 ): AIResponseContract {
+  console.warn(
+    "OmniMind Warn: Falling back to local in-memory simulation because server connection was lost or credentials failed. Active Demo mode: true.",
+  );
+
   const raw = executeLocalQueryFallbackRaw(query, activeDate, roleScope);
-  return formatDiagnosticResponse(raw, activeDate);
+
+  // Emulate local tools for browser diagnostic accuracy
+  const t1 = localGetRevenueMetrics({
+    dateRange: { start: activeDate, end: activeDate },
+    roleScope: roleScope || null,
+    activeScenarioDate: activeDate,
+  });
+  const t2 = localGetInventoryRisk({
+    dateRange: { start: activeDate, end: activeDate },
+    roleScope: roleScope || null,
+    activeScenarioDate: activeDate,
+  });
+  const t3 = localGetExpenseMetrics({
+    dateRange: { start: activeDate, end: activeDate },
+    roleScope: roleScope || null,
+    activeScenarioDate: activeDate,
+  });
+
+  const tools = [t1.meta, t2.meta, t3.meta];
+  const response = formatDiagnosticResponse(raw, activeDate, query, tools);
+
+  // Attach notice that this is a local emulation response
+  response.answer = `> [!WARNING]\n> **DEMO MODE NOTICE**: Server connection was unavailable. Operating on simulated local database context.\n\n${response.answer}`;
+  return response;
 }
 
 function executeLocalQueryFallbackRaw(
@@ -350,11 +402,12 @@ function executeLocalQueryFallbackRaw(
   // 1.25 Global Audit Intent
   if (ctx.intent === "global_audit") {
     const candidates = getReorderCandidates(ctx.resolvedDate, roleScope);
-    const outOfStock = candidates.filter(c => c.stock === 0);
-    const lowStock = candidates.filter(c => c.stock > 0);
+    const outOfStock = candidates.filter((c) => c.stock === 0);
+    const lowStock = candidates.filter((c) => c.stock > 0);
     const summary = getBusinessSummary(ctx.resolvedDate, roleScope);
 
-    let answer = `### Executive Summary & Operational Audit Report\n\n` +
+    const answer =
+      `### Executive Summary & Operational Audit Report\n\n` +
       `**1. Treasury & Liquidity Status**\n` +
       `- Active Commodity Investments: **Gold, Silver** valued at **${fmtINR(382000)}**.\n` +
       `- Outstanding Payables: **${fmtINR(summary.expenses * 1.2)}** in outstanding supplier invoices.\n\n` +
@@ -374,30 +427,37 @@ function executeLocalQueryFallbackRaw(
       summary: `Gross Sales: ${fmtINR(summary.grossRevenue)}. Out of stock: ${outOfStock.length}.`,
       evidence: [
         { label: "Gross Sales Today", value: fmtINR(summary.grossRevenue) },
-        { label: "Out of Stock Items", value: outOfStock.length.toString() }
+        { label: "Out of Stock Items", value: outOfStock.length.toString() },
       ],
       reasoning: [
         "Retrieved local mock context data.",
-        "Scanned and flagged out-of-stock items and compliance anomalies."
+        "Scanned and flagged out-of-stock items and compliance anomalies.",
       ],
       recommendedActions: [
-        ...(outOfStock[0] ? [{
-          title: `Urgent Restock: ${outOfStock[0].name}`,
-          description: `Generate PO to restock ${outOfStock[0].name} (0 stock on hand).`,
-          priority: "high" as const,
-          actionType: "CREATE_PO" as const,
-          entityId: outOfStock[0].id
-        }] : []),
+        ...(outOfStock[0]
+          ? [
+              {
+                title: `Urgent Restock: ${outOfStock[0].name}`,
+                description: `Generate PO to restock ${outOfStock[0].name} (0 stock on hand).`,
+                priority: "high" as const,
+                actionType: "CREATE_PO" as const,
+                entityId: outOfStock[0].id,
+              },
+            ]
+          : []),
         {
           title: "Deploy Treasury Reserves",
           description: "Review portfolio and allocate reserves to commodities.",
           priority: "medium" as const,
           actionType: "NAVIGATE" as const,
-          entityId: "/market-intelligence"
-        }
+          entityId: "/market-intelligence",
+        },
       ],
-      risks: outOfStock.length > 0 ? [{ title: "Stockout Revenue Losses", severity: "high" as const }] : [],
-      confidence: 1.0
+      risks:
+        outOfStock.length > 0
+          ? [{ title: "Stockout Revenue Losses", severity: "high" as const }]
+          : [],
+      confidence: 1.0,
     };
   }
 
@@ -405,8 +465,8 @@ function executeLocalQueryFallbackRaw(
   if (ctx.intent === "high_demand_out_of_stock") {
     const candidates = getReorderCandidates(ctx.resolvedDate, roleScope);
     const sorted = [...candidates].sort((a, b) => b.sold - a.sold);
-    const outOfStock = sorted.filter(p => p.stock === 0);
-    const lowStock = sorted.filter(p => p.stock > 0);
+    const outOfStock = sorted.filter((p) => p.stock === 0);
+    const lowStock = sorted.filter((p) => p.stock > 0);
 
     const evidence = sorted.slice(0, 5).map((p) => ({
       label: p.name,
@@ -415,7 +475,7 @@ function executeLocalQueryFallbackRaw(
       sourceId: p.id,
     }));
 
-    const actions = sorted.slice(0, 2).map(p => ({
+    const actions = sorted.slice(0, 2).map((p) => ({
       title: `Urgent restock of high-demand: ${p.name}`,
       description: `Generate PO for ${p.reorder * 2} units. Product has high sales velocity (${p.sold} units sold) but is currently ${p.stock === 0 ? "out of stock" : "low stock"}.`,
       priority: "high" as const,
@@ -426,12 +486,25 @@ function executeLocalQueryFallbackRaw(
 
     let answer = "";
     if (outOfStock.length > 0) {
-      answer = `Here are the high-demand products that are completely OUT OF STOCK (sorted by sales velocity):\n\n` +
-        outOfStock.map((p, idx) => `${idx + 1}. **${p.name}** (SKU: ${p.id}) — **${p.sold} units sold** (Generated ₹${p.revenue} revenue, current stock: 0).`).join("\n") +
+      answer =
+        `Here are the high-demand products that are completely OUT OF STOCK (sorted by sales velocity):\n\n` +
+        outOfStock
+          .map(
+            (p, idx) =>
+              `${idx + 1}. **${p.name}** (SKU: ${p.id}) — **${p.sold} units sold** (Generated ₹${p.revenue} revenue, current stock: 0).`,
+          )
+          .join("\n") +
         `\n\nImmediate restocking is critical for these items to avoid continuous lost revenue.`;
     } else {
-      answer = `There are no completely out-of-stock products. However, the highest-demand low-stock products are:\n\n` +
-        lowStock.slice(0, 5).map((p, idx) => `${idx + 1}. **${p.name}** (SKU: ${p.id}) — **${p.sold} units sold** (Current stock: ${p.stock}/${p.reorder}).`).join("\n");
+      answer =
+        `There are no completely out-of-stock products. However, the highest-demand low-stock products are:\n\n` +
+        lowStock
+          .slice(0, 5)
+          .map(
+            (p, idx) =>
+              `${idx + 1}. **${p.name}** (SKU: ${p.id}) — **${p.sold} units sold** (Current stock: ${p.stock}/${p.reorder}).`,
+          )
+          .join("\n");
     }
 
     return {
@@ -440,10 +513,13 @@ function executeLocalQueryFallbackRaw(
       evidence,
       reasoning: [
         "Cross-referenced product stock level (0) with historic transaction quantities to evaluate demand.",
-        "Prioritized items based on total units sold to maximize revenue protection."
+        "Prioritized items based on total units sold to maximize revenue protection.",
       ],
       recommendedActions: actions,
-      risks: outOfStock.map(p => ({ title: `Lost sales on high-demand ${p.name}`, severity: "high" as const })),
+      risks: outOfStock.map((p) => ({
+        title: `Lost sales on high-demand ${p.name}`,
+        severity: "high" as const,
+      })),
       confidence: 0.98,
     };
   }
@@ -458,48 +534,67 @@ function executeLocalQueryFallbackRaw(
 
     return {
       answer,
-      summary: "Net profit was compressed by HVAC utility spikes, markdown discounts, and electronics stockouts.",
+      summary:
+        "Net profit was compressed by HVAC utility spikes, markdown discounts, and electronics stockouts.",
       evidence: [
-        { label: "HVAC Zone B Overnight Excess Cost", value: "₹1,280/day (₹38.4K/mo)", sourceType: "anomaly", sourceId: "anom-util-hvac-001" },
-        { label: "Markdown Margin Compression", value: "5% drop in unit margin", sourceType: "expense", sourceId: "exp-mktg-promo-001" },
-        { label: "Sony India SLA Lead Time Delay", value: "7.4 days vs 4.6 days standard", sourceType: "supplier", sourceId: "sup-sony" }
+        {
+          label: "HVAC Zone B Overnight Excess Cost",
+          value: "₹1,280/day (₹38.4K/mo)",
+          sourceType: "anomaly",
+          sourceId: "anom-util-hvac-001",
+        },
+        {
+          label: "Markdown Margin Compression",
+          value: "5% drop in unit margin",
+          sourceType: "expense",
+          sourceId: "exp-mktg-promo-001",
+        },
+        {
+          label: "Sony India SLA Lead Time Delay",
+          value: "7.4 days vs 4.6 days standard",
+          sourceType: "supplier",
+          sourceId: "sup-sony",
+        },
       ],
       reasoning: [
         "Analyzed Zone B hourly energy logs to isolate overnight HVAC grid draw spikes.",
         "Correlated 15-20% beauty & fashion discount promotions with average transaction margins.",
-        "Cross-referenced Sony India lead times with electronics category stockout logs."
+        "Cross-referenced Sony India lead times with electronics category stockout logs.",
       ],
       recommendedActions: [
         {
           title: "Dispatch HVAC Crew to Zone B",
-          description: "Inspect compressor valves and overnight cycles to plug the ₹38,400/mo electricity leak.",
+          description:
+            "Inspect compressor valves and overnight cycles to plug the ₹38,400/mo electricity leak.",
           priority: "high" as const,
           estimatedImpact: "₹38,400 monthly savings",
           actionType: "INVESTIGATE_ANOMALY" as const,
-          entityId: "anom-util-hvac-001"
+          entityId: "anom-util-hvac-001",
         },
         {
           title: "Optimize Sony SLA & Stock Backup",
-          description: "Initiate Sony India SLA audit regarding delivery lead times and onboard local backup supplier.",
+          description:
+            "Initiate Sony India SLA audit regarding delivery lead times and onboard local backup supplier.",
           priority: "medium" as const,
           estimatedImpact: "Protects high-margin category stock",
           actionType: "OPEN_SUPPLIER" as const,
-          entityId: "sup-sony"
+          entityId: "sup-sony",
         },
         {
           title: "Promote Cosmetics to Fashion VIPs",
-          description: "Target Fashion shoppers with high-margin Cosmetics offers to buffer markdown margin compression.",
+          description:
+            "Target Fashion shoppers with high-margin Cosmetics offers to buffer markdown margin compression.",
           priority: "medium" as const,
           estimatedImpact: "Buffers AOV by +12%",
           actionType: "NAVIGATE" as const,
-          entityId: "/market-intelligence"
-        }
+          entityId: "/market-intelligence",
+        },
       ],
       risks: [
         { title: "HVAC compressor valve deterioration", severity: "high" as const },
-        { title: "Sony premium product category stockout", severity: "high" as const }
+        { title: "Sony premium product category stockout", severity: "high" as const },
       ],
-      confidence: 0.96
+      confidence: 0.96,
     };
   }
 
@@ -508,7 +603,14 @@ function executeLocalQueryFallbackRaw(
     const candidates = getReorderCandidates(ctx.resolvedDate, roleScope);
     const outOfStock = candidates.filter((p) => p.stock === 0);
     const lowStock = candidates.filter((p) => p.stock > 0);
-    const isOutofStockQuery = q.includes("out of") || q.includes("outof") || q.includes("outoff") || q.includes("empty") || q.includes("shortage") || q.includes("zero") || q.includes("stockout");
+    const isOutofStockQuery =
+      q.includes("out of") ||
+      q.includes("outof") ||
+      q.includes("outoff") ||
+      q.includes("empty") ||
+      q.includes("shortage") ||
+      q.includes("zero") ||
+      q.includes("stockout");
 
     const amul = candidates.find((p) => p.name.includes("Amul"));
     const lakme = candidates.find((p) => p.name.includes("Lakmé"));
@@ -548,7 +650,10 @@ function executeLocalQueryFallbackRaw(
       if (outOfStock.length > 0) {
         answer = `There are currently ${outOfStock.length} completely out-of-stock products: ${outOfStock.map((p) => `${p.name} (${p.id})`).join(", ")}. Immediate restock is recommended.`;
       } else {
-        answer = `There are currently 0 completely out-of-stock products in the system. However, there are ${lowStock.length} low-stock products currently below their reorder levels: ${lowStock.slice(0, 3).map((p) => `${p.name} (${p.stock} units)`).join(", ")}.`;
+        answer = `There are currently 0 completely out-of-stock products in the system. However, there are ${lowStock.length} low-stock products currently below their reorder levels: ${lowStock
+          .slice(0, 3)
+          .map((p) => `${p.name} (${p.stock} units)`)
+          .join(", ")}.`;
       }
     } else {
       answer = `There are currently ${candidates.length} low-stock products requiring attention. The most critical item is ${amul ? "Amul Taaza Milk 1L (128 units on hand, reorder trigger 200)" : "Lakmé Foundation (4 units left)"}.`;
@@ -783,7 +888,10 @@ function executeLocalQueryFallbackRaw(
         answer: `There are currently no critical anomalies or reorder candidates requiring immediate budget allocation.`,
         summary: "Operations are fully funded and stable.",
         evidence: [],
-        reasoning: ["No active utility anomalies detected.", "No stock items below reorder thresholds."],
+        reasoning: [
+          "No active utility anomalies detected.",
+          "No stock items below reorder thresholds.",
+        ],
         recommendedActions: [],
         risks: [],
         confidence: 0.95,
@@ -815,7 +923,8 @@ function executeLocalQueryFallbackRaw(
 
     if (reorders.length === 0 && anomalies.length === 0 && expiry.length === 0) {
       return {
-        answer: "There are currently no active risks, anomalies, or stockouts detected in the system.",
+        answer:
+          "There are currently no active risks, anomalies, or stockouts detected in the system.",
         summary: "Operations are running smoothly.",
         evidence: [],
         reasoning: ["Scanned active anomalies, stock levels, and expiry dates and found 0 risks."],
@@ -838,9 +947,7 @@ function executeLocalQueryFallbackRaw(
         "Expiring batches become complete write-offs if not sold or returned.",
       ],
       recommendedActions: [],
-      risks: [
-        { title: "Margin erosion from inaction", severity: "high" },
-      ],
+      risks: [{ title: "Margin erosion from inaction", severity: "high" }],
       confidence: 0.9,
     };
   }
@@ -900,16 +1007,29 @@ Here is the exact financial reconciliation:
 
     return {
       answer,
-      summary: "Working capital is healthy. approving all recommended POs will leave a surplus of ₹9.68L.",
+      summary:
+        "Working capital is healthy. approving all recommended POs will leave a surplus of ₹9.68L.",
       evidence: [
         { label: "Current Cash Balance", value: "₹12,40,000" },
         { label: "Total Outflow Commitments", value: "₹5,56,560" },
-        { label: "Projected 30d Ending cash", value: "₹15,25,440" }
+        { label: "Projected 30d Ending cash", value: "₹15,25,440" },
       ],
-      reasoning: ["Aggregated active treasury balances.", "Forecasted core utility, staff payroll, and purchase order outflows."],
-      recommendedActions: [{ title: "Approve All Recommended POs", description: "Release payments for draft POs to secure inventory.", priority: "high" as const, estimatedImpact: "Restores high-margin stock buffer", actionType: "NAVIGATE" as const, entityId: "/purchase-orders" }],
+      reasoning: [
+        "Aggregated active treasury balances.",
+        "Forecasted core utility, staff payroll, and purchase order outflows.",
+      ],
+      recommendedActions: [
+        {
+          title: "Approve All Recommended POs",
+          description: "Release payments for draft POs to secure inventory.",
+          priority: "high" as const,
+          estimatedImpact: "Restores high-margin stock buffer",
+          actionType: "NAVIGATE" as const,
+          entityId: "/purchase-orders",
+        },
+      ],
       risks: [],
-      confidence: 0.98
+      confidence: 0.98,
     };
   }
 
@@ -925,19 +1045,47 @@ Here is the exact financial reconciliation:
 
     return {
       answer,
-      summary: "Sony supplier delays are causing premium stockouts, leading to a spike in VIP customer churn risks.",
+      summary:
+        "Sony supplier delays are causing premium stockouts, leading to a spike in VIP customer churn risks.",
       evidence: [
-        { label: "Sony Lead Time Delay", value: "7.4 days vs 4.6 days standard", sourceType: "supplier", sourceId: "sup-sony" },
-        { label: "VIP Churn Risk Spike", value: "12% to 44% risk", sourceType: "customer", sourceId: "cust-vip-001" },
-        { label: "LTV Revenue at Risk", value: "₹1,50,000", sourceType: "customer" }
+        {
+          label: "Sony Lead Time Delay",
+          value: "7.4 days vs 4.6 days standard",
+          sourceType: "supplier",
+          sourceId: "sup-sony",
+        },
+        {
+          label: "VIP Churn Risk Spike",
+          value: "12% to 44% risk",
+          sourceType: "customer",
+          sourceId: "cust-vip-001",
+        },
+        { label: "LTV Revenue at Risk", value: "₹1,50,000", sourceType: "customer" },
       ],
-      reasoning: ["Correlated supplier SLA delays with product shelf depletion levels.", "Mapped stockouts directly to VIP loyalty churn risk scores."],
+      reasoning: [
+        "Correlated supplier SLA delays with product shelf depletion levels.",
+        "Mapped stockouts directly to VIP loyalty churn risk scores.",
+      ],
       recommendedActions: [
-        { title: "Review Sony SLA & Backup Supplier", description: "Establish regional backup distributor for audio SKUs.", priority: "high" as const, estimatedImpact: "Restores shelf availability", actionType: "OPEN_SUPPLIER" as const, entityId: "sup-sony" },
-        { title: "Trigger VIP Loyalty Win-back", description: "Issue targeted ₹2,000 discount coupons to affected VIPs.", priority: "medium" as const, estimatedImpact: "Prevents customer churn", actionType: "OPEN_CUSTOMER" as const, entityId: "cust-vip-001" }
+        {
+          title: "Review Sony SLA & Backup Supplier",
+          description: "Establish regional backup distributor for audio SKUs.",
+          priority: "high" as const,
+          estimatedImpact: "Restores shelf availability",
+          actionType: "OPEN_SUPPLIER" as const,
+          entityId: "sup-sony",
+        },
+        {
+          title: "Trigger VIP Loyalty Win-back",
+          description: "Issue targeted ₹2,000 discount coupons to affected VIPs.",
+          priority: "medium" as const,
+          estimatedImpact: "Prevents customer churn",
+          actionType: "OPEN_CUSTOMER" as const,
+          entityId: "cust-vip-001",
+        },
       ],
       risks: [{ title: "Loss of premium customer accounts", severity: "high" as const }],
-      confidence: 0.95
+      confidence: 0.95,
     };
   }
 
@@ -966,15 +1114,38 @@ Here is the exact financial reconciliation:
 
     return {
       answer,
-      summary: "Meera Rane is our highest-priority churn-risk customer, representing ₹3.8L in historical sales.",
+      summary:
+        "Meera Rane is our highest-priority churn-risk customer, representing ₹3.8L in historical sales.",
       evidence: [
-        { label: "Meera Rane Spend", value: "₹3,84,200", sourceType: "customer", sourceId: "cust-vip-001" },
-        { label: "Meera Rane Churn Risk", value: "44%", sourceType: "customer", sourceId: "cust-vip-001" }
+        {
+          label: "Meera Rane Spend",
+          value: "₹3,84,200",
+          sourceType: "customer",
+          sourceId: "cust-vip-001",
+        },
+        {
+          label: "Meera Rane Churn Risk",
+          value: "44%",
+          sourceType: "customer",
+          sourceId: "cust-vip-001",
+        },
       ],
-      reasoning: ["Scanned CRM loyalty records for VIP segment tags.", "Weighted spend velocity and margin coefficients to determine economic retention value."],
-      recommendedActions: [{ title: "Initiate Win-back Campaign", description: "Dispatch premium coupon voucher to Meera Rane.", priority: "high" as const, estimatedImpact: "Secures ₹3.8L account LTV", actionType: "OPEN_CUSTOMER" as const, entityId: "cust-vip-001" }],
+      reasoning: [
+        "Scanned CRM loyalty records for VIP segment tags.",
+        "Weighted spend velocity and margin coefficients to determine economic retention value.",
+      ],
+      recommendedActions: [
+        {
+          title: "Initiate Win-back Campaign",
+          description: "Dispatch premium coupon voucher to Meera Rane.",
+          priority: "high" as const,
+          estimatedImpact: "Secures ₹3.8L account LTV",
+          actionType: "OPEN_CUSTOMER" as const,
+          entityId: "cust-vip-001",
+        },
+      ],
       risks: [{ title: "VIP customer accounts attrition", severity: "high" as const }],
-      confidence: 0.94
+      confidence: 0.94,
     };
   }
 
@@ -990,15 +1161,38 @@ Here is the exact financial reconciliation:
 
     return {
       answer,
-      summary: "Sony India represents our highest operational supplier risk due to delivery lead time delays.",
+      summary:
+        "Sony India represents our highest operational supplier risk due to delivery lead time delays.",
       evidence: [
-        { label: "Sony SLA Compliance", value: "76% on-time", sourceType: "supplier", sourceId: "sup-sony" },
-        { label: "Sony Lead Time Delay", value: "7.4 days vs 4.6 days standard", sourceType: "supplier", sourceId: "sup-sony" }
+        {
+          label: "Sony SLA Compliance",
+          value: "76% on-time",
+          sourceType: "supplier",
+          sourceId: "sup-sony",
+        },
+        {
+          label: "Sony Lead Time Delay",
+          value: "7.4 days vs 4.6 days standard",
+          sourceType: "supplier",
+          sourceId: "sup-sony",
+        },
       ],
-      reasoning: ["Evaluated supplier shipping databases.", "Correlated shipping lead times with out-of-stock events and category margins."],
-      recommendedActions: [{ title: "Audit Sony SLA Contract", description: "Open supplier details to review lead times and contact info.", priority: "high" as const, estimatedImpact: "Reduces shipping bottlenecks", actionType: "OPEN_SUPPLIER" as const, entityId: "sup-sony" }],
+      reasoning: [
+        "Evaluated supplier shipping databases.",
+        "Correlated shipping lead times with out-of-stock events and category margins.",
+      ],
+      recommendedActions: [
+        {
+          title: "Audit Sony SLA Contract",
+          description: "Open supplier details to review lead times and contact info.",
+          priority: "high" as const,
+          estimatedImpact: "Reduces shipping bottlenecks",
+          actionType: "OPEN_SUPPLIER" as const,
+          entityId: "sup-sony",
+        },
+      ],
       risks: [{ title: "Premium category supply chain bottleneck", severity: "medium" as const }],
-      confidence: 0.92
+      confidence: 0.92,
     };
   }
 
@@ -1024,13 +1218,35 @@ Here is the exact financial reconciliation:
       answer,
       summary: "Under a +20% demand surge, Amul Milk will run out of stock in 2.5 days.",
       evidence: [
-        { label: "Amul Milk Stock", value: "128 units", sourceType: "product", sourceId: "SKU-10021" },
-        { label: "Amul Milk Daily Velocity", value: "42 units/day", sourceType: "product", sourceId: "SKU-10021" }
+        {
+          label: "Amul Milk Stock",
+          value: "128 units",
+          sourceType: "product",
+          sourceId: "SKU-10021",
+        },
+        {
+          label: "Amul Milk Daily Velocity",
+          value: "42 units/day",
+          sourceType: "product",
+          sourceId: "SKU-10021",
+        },
       ],
-      reasoning: ["Applied a 1.2x multiplier to historical transaction velocities.", "Projected inventory depletion curves for low-stock SKUs."],
-      recommendedActions: [{ title: "Place Urgent Amul PO", description: "Generate PO for 240 units to secure dairy shelf stock.", priority: "high" as const, estimatedImpact: "Protects grocery revenue", actionType: "CREATE_PO" as const, entityId: "rec-dairy-reorder-001" }],
+      reasoning: [
+        "Applied a 1.2x multiplier to historical transaction velocities.",
+        "Projected inventory depletion curves for low-stock SKUs.",
+      ],
+      recommendedActions: [
+        {
+          title: "Place Urgent Amul PO",
+          description: "Generate PO for 240 units to secure dairy shelf stock.",
+          priority: "high" as const,
+          estimatedImpact: "Protects grocery revenue",
+          actionType: "CREATE_PO" as const,
+          entityId: "rec-dairy-reorder-001",
+        },
+      ],
       risks: [{ title: "Dairy shelf stockout in 2.5 days", severity: "high" as const }],
-      confidence: 0.95
+      confidence: 0.95,
     };
   }
 
@@ -1055,15 +1271,28 @@ Here is the exact financial reconciliation:
 
     return {
       answer,
-      summary: "Electronics leads in revenue but Beauty is 4x more profitable due to higher margins and zero leaks.",
+      summary:
+        "Electronics leads in revenue but Beauty is 4x more profitable due to higher margins and zero leaks.",
       evidence: [
         { label: "Electronics Revenue", value: "₹3,40,000", sourceType: "analytics" },
-        { label: "Beauty Margin", value: "42% net margin", sourceType: "analytics" }
+        { label: "Beauty Margin", value: "42% net margin", sourceType: "analytics" },
       ],
-      reasoning: ["Compared total segment gross sales with corresponding COGS and operating allocations.", "Analyzed markdown metrics for core anchor brands."],
-      recommendedActions: [{ title: "Shift Budget to Beauty", description: "Onboard new beauty lines and expand beauty shelf spaces.", priority: "medium" as const, estimatedImpact: "Improves overall net margins", actionType: "NAVIGATE" as const, entityId: "/analytics" }],
+      reasoning: [
+        "Compared total segment gross sales with corresponding COGS and operating allocations.",
+        "Analyzed markdown metrics for core anchor brands.",
+      ],
+      recommendedActions: [
+        {
+          title: "Shift Budget to Beauty",
+          description: "Onboard new beauty lines and expand beauty shelf spaces.",
+          priority: "medium" as const,
+          estimatedImpact: "Improves overall net margins",
+          actionType: "NAVIGATE" as const,
+          entityId: "/analytics",
+        },
+      ],
       risks: [{ title: "Over-allocation in low-margin electronics", severity: "medium" as const }],
-      confidence: 0.94
+      confidence: 0.94,
     };
   }
 
@@ -1084,15 +1313,38 @@ Here is the exact financial reconciliation:
 
     return {
       answer,
-      summary: "Immediate reorder of 240 units of Amul Milk is highly recommended. Stockout predicted in 3 days.",
+      summary:
+        "Immediate reorder of 240 units of Amul Milk is highly recommended. Stockout predicted in 3 days.",
       evidence: [
-        { label: "Amul Milk Stock Count", value: "128 units", sourceType: "product", sourceId: "SKU-10021" },
-        { label: "Amul Milk Lead Time", value: "2.1 days", sourceType: "product", sourceId: "SKU-10021" }
+        {
+          label: "Amul Milk Stock Count",
+          value: "128 units",
+          sourceType: "product",
+          sourceId: "SKU-10021",
+        },
+        {
+          label: "Amul Milk Lead Time",
+          value: "2.1 days",
+          sourceType: "product",
+          sourceId: "SKU-10021",
+        },
       ],
-      reasoning: ["Evaluated stock-on-hand against daily transaction volumes.", "Modeled lead time delivery latency to determine ordering thresholds."],
-      recommendedActions: [{ title: "Place Amul Milk PO (240 units)", description: "Generate PO for ₹10,560 from Amul Foods.", priority: "high" as const, estimatedImpact: "Protects ₹16.3K revenue", actionType: "CREATE_PO" as const, entityId: "rec-dairy-reorder-001" }],
+      reasoning: [
+        "Evaluated stock-on-hand against daily transaction volumes.",
+        "Modeled lead time delivery latency to determine ordering thresholds.",
+      ],
+      recommendedActions: [
+        {
+          title: "Place Amul Milk PO (240 units)",
+          description: "Generate PO for ₹10,560 from Amul Foods.",
+          priority: "high" as const,
+          estimatedImpact: "Protects ₹16.3K revenue",
+          actionType: "CREATE_PO" as const,
+          entityId: "rec-dairy-reorder-001",
+        },
+      ],
       risks: [{ title: "Dairy shelf depletion in 3 days", severity: "high" as const }],
-      confidence: 0.98
+      confidence: 0.98,
     };
   }
 
@@ -1108,15 +1360,19 @@ Here is the exact financial reconciliation:
 
     return {
       answer,
-      summary: "All Command Center KPIs, transaction records, and account balances are fully reconciled.",
+      summary:
+        "All Command Center KPIs, transaction records, and account balances are fully reconciled.",
       evidence: [
         { label: "Gross Sales Mismatch Check", value: "0.00% difference", sourceType: "ledger" },
-        { label: "Cash Balance Mismatch Check", value: "0.00% difference", sourceType: "account" }
+        { label: "Cash Balance Mismatch Check", value: "0.00% difference", sourceType: "account" },
       ],
-      reasoning: ["Compared total sum of Transaction line totals with reported Gross Revenue.", "Verified double-entry cash accounts match reported treasury bank balances."],
+      reasoning: [
+        "Compared total sum of Transaction line totals with reported Gross Revenue.",
+        "Verified double-entry cash accounts match reported treasury bank balances.",
+      ],
       recommendedActions: [],
       risks: [],
-      confidence: 0.99
+      confidence: 0.99,
     };
   }
 
@@ -1134,13 +1390,35 @@ Here is the exact financial reconciliation:
       answer,
       summary: "HVAC Zone B compressor valve failed on May 2, causing a ₹1,280/day cash leak.",
       evidence: [
-        { label: "Anomaly Overnight Spike", value: "+163% usage", sourceType: "anomaly", sourceId: "anom-util-hvac-001" },
-        { label: "Accruing Daily Leak", value: "₹1,280/day", sourceType: "anomaly", sourceId: "anom-util-hvac-001" }
+        {
+          label: "Anomaly Overnight Spike",
+          value: "+163% usage",
+          sourceType: "anomaly",
+          sourceId: "anom-util-hvac-001",
+        },
+        {
+          label: "Accruing Daily Leak",
+          value: "₹1,280/day",
+          sourceType: "anomaly",
+          sourceId: "anom-util-hvac-001",
+        },
       ],
-      reasoning: ["Extracted historical utility reading sensor timestamps.", "Isolated start of deviation from baseline energy profiles."],
-      recommendedActions: [{ title: "Dispatch HVAC Crew", description: "Investigate Zone B compressor valves immediately.", priority: "high" as const, estimatedImpact: "Halts ₹38.4K monthly leak", actionType: "INVESTIGATE_ANOMALY" as const, entityId: "anom-util-hvac-001" }],
+      reasoning: [
+        "Extracted historical utility reading sensor timestamps.",
+        "Isolated start of deviation from baseline energy profiles.",
+      ],
+      recommendedActions: [
+        {
+          title: "Dispatch HVAC Crew",
+          description: "Investigate Zone B compressor valves immediately.",
+          priority: "high" as const,
+          estimatedImpact: "Halts ₹38.4K monthly leak",
+          actionType: "INVESTIGATE_ANOMALY" as const,
+          entityId: "anom-util-hvac-001",
+        },
+      ],
       risks: [{ title: "Accumulating utility costs", severity: "high" as const }],
-      confidence: 0.97
+      confidence: 0.97,
     };
   }
 
@@ -1165,18 +1443,35 @@ Here is the exact financial reconciliation:
 
     return {
       answer,
-      summary: "Implementing HVAC Zone B compressor maintenance is the highest-priority guaranteed cost-saving action today.",
+      summary:
+        "Implementing HVAC Zone B compressor maintenance is the highest-priority guaranteed cost-saving action today.",
       evidence: [
         { label: "HVAC labor cost", value: "₹5,000", sourceType: "expense" },
-        { label: "Amul Milk PO cost", value: "₹10,560", sourceType: "expense" }
+        { label: "Amul Milk PO cost", value: "₹10,560", sourceType: "expense" },
       ],
-      reasoning: ["Compared immediate capital deployment costs with projected 7-day revenue/savings outcomes."],
+      reasoning: [
+        "Compared immediate capital deployment costs with projected 7-day revenue/savings outcomes.",
+      ],
       recommendedActions: [
-        { title: "Dispatch HVAC Crew to Zone B", description: "Inspect compressor valves to plug the energy leak.", priority: "high" as const, estimatedImpact: "Saves ₹38.4K/month", actionType: "INVESTIGATE_ANOMALY" as const, entityId: "anom-util-hvac-001" },
-        { title: "Create Amul PO", description: "Order 240 units from Amul Foods.", priority: "high" as const, estimatedImpact: "Protects ₹16.3K revenue", actionType: "CREATE_PO" as const, entityId: "rec-dairy-reorder-001" }
+        {
+          title: "Dispatch HVAC Crew to Zone B",
+          description: "Inspect compressor valves to plug the energy leak.",
+          priority: "high" as const,
+          estimatedImpact: "Saves ₹38.4K/month",
+          actionType: "INVESTIGATE_ANOMALY" as const,
+          entityId: "anom-util-hvac-001",
+        },
+        {
+          title: "Create Amul PO",
+          description: "Order 240 units from Amul Foods.",
+          priority: "high" as const,
+          estimatedImpact: "Protects ₹16.3K revenue",
+          actionType: "CREATE_PO" as const,
+          entityId: "rec-dairy-reorder-001",
+        },
       ],
       risks: [],
-      confidence: 0.96
+      confidence: 0.96,
     };
   }
 
@@ -1191,14 +1486,28 @@ Here is the exact financial reconciliation:
 
     return {
       answer,
-      summary: "Challenging HVAC Zone B: Overnight energy spikes might be tenant shift work, not mechanical failures.",
+      summary:
+        "Challenging HVAC Zone B: Overnight energy spikes might be tenant shift work, not mechanical failures.",
       evidence: [
-        { label: "HVAC Zone B draw", value: "+163% overnight", sourceType: "anomaly", sourceId: "anom-util-hvac-001" }
+        {
+          label: "HVAC Zone B draw",
+          value: "+163% overnight",
+          sourceType: "anomaly",
+          sourceId: "anom-util-hvac-001",
+        },
       ],
       reasoning: ["Audited alternative occupancy hypotheses for HVAC spikes."],
-      recommendedActions: [{ title: "Verify Tenant Logs", description: "Check tenant building logs before sending HVAC crew.", priority: "low" as const, actionType: "NAVIGATE" as const, entityId: "/utilities" }],
+      recommendedActions: [
+        {
+          title: "Verify Tenant Logs",
+          description: "Check tenant building logs before sending HVAC crew.",
+          priority: "low" as const,
+          actionType: "NAVIGATE" as const,
+          entityId: "/utilities",
+        },
+      ],
       risks: [],
-      confidence: 0.95
+      confidence: 0.95,
     };
   }
 
@@ -1207,27 +1516,30 @@ Here is the exact financial reconciliation:
   const actions = getRecommendedActions(ctx.resolvedDate, roleScope);
 
   return {
-    answer: summary.orders === 0 
-      ? `There is currently no transaction activity recorded for ${ctx.resolvedDate}. Revenue and profit are at ₹0.`
-      : roleScope === "manager"
-        ? `GrandSquare Mall (Fashion scoped) is running steadily on ${ctx.resolvedDate}. Scoped sales total ₹${summary.grossRevenue} with a net profit margin estimate of 16%.`
-        : `GrandSquare Mall is performing steadily on ${ctx.resolvedDate}. Total gross revenue reached ₹${summary.grossRevenue} with a net profit of ₹${summary.netProfit} across ${summary.orders} orders.`,
-    summary: summary.orders === 0
-      ? "No business activity recorded."
-      : roleScope === "manager"
-        ? "Fashion department metrics are within standard guidelines."
-        : "GrandSquare Mall operations are performing within normal parameters.",
+    answer:
+      summary.orders === 0
+        ? `There is currently no transaction activity recorded for ${ctx.resolvedDate}. Revenue and profit are at ₹0.`
+        : roleScope === "manager"
+          ? `GrandSquare Mall (Fashion scoped) is running steadily on ${ctx.resolvedDate}. Scoped sales total ₹${summary.grossRevenue} with a net profit margin estimate of 16%.`
+          : `GrandSquare Mall is performing steadily on ${ctx.resolvedDate}. Total gross revenue reached ₹${summary.grossRevenue} with a net profit of ₹${summary.netProfit} across ${summary.orders} orders.`,
+    summary:
+      summary.orders === 0
+        ? "No business activity recorded."
+        : roleScope === "manager"
+          ? "Fashion department metrics are within standard guidelines."
+          : "GrandSquare Mall operations are performing within normal parameters.",
     evidence: [
       { label: "Gross Revenue", value: `₹${summary.grossRevenue}` },
       { label: "Net Profit", value: `₹${summary.netProfit}` },
       { label: "Active recommendations", value: `${summary.activeRecommendations} pending` },
     ],
-    reasoning: summary.orders === 0
-      ? ["No sales transactions found in the database for this date."]
-      : [
-          "Calculated from daily transaction ledgers.",
-          "Profit margins derived from standard COGS deductions.",
-        ],
+    reasoning:
+      summary.orders === 0
+        ? ["No sales transactions found in the database for this date."]
+        : [
+            "Calculated from daily transaction ledgers.",
+            "Profit margins derived from standard COGS deductions.",
+          ],
     recommendedActions: actions.slice(0, 2).map((r) => ({
       title: r.title,
       description: r.explanation,
@@ -1256,10 +1568,29 @@ Here is the exact financial reconciliation:
 export function formatDiagnosticResponse(
   res: AIResponseContract,
   resolvedDate: string,
+  query: string = "",
+  tools: ToolMetadata[] = [],
 ): AIResponseContract {
   if (res.answer.includes("## Answer")) {
     return res;
   }
+
+  // 1. Calculate Auditable Confidence Details
+  const confidenceDetails = calculateConfidenceDetails(query, tools, resolvedDate, resolvedDate);
+
+  // 2. Map Numeric Provenances & Detect Unsupported Claims
+  const { provenances, unsupported } = extractQuantitativeClaims(res.answer, tools);
+
+  // 3. Construct True Freshness Metadata
+  const queriedAt = new Date().toISOString();
+  const maxTxTimestamp = tools.length > 0 ? tools[0].sourceMaxTimestamp : resolvedDate;
+  const syncStatus = "UNKNOWN";
+
+  const newestTime = new Date(maxTxTimestamp).getTime();
+  const dataAgeSeconds = Math.max(0, Math.round((new Date().getTime() - newestTime) / 1000));
+
+  // Determine freshness classification
+  const freshnessStatus = dataAgeSeconds < 3600 ? "FRESH" : "STALE";
 
   const answerSection = `## Answer\n${res.answer}`;
   const whySection = `## Why\n${
@@ -1271,13 +1602,13 @@ export function formatDiagnosticResponse(
   const evidenceSection = `## Evidence\n${
     res.evidence && res.evidence.length > 0
       ? res.evidence.map((e) => `- **${e.label}**: ${e.value}`).join("\n")
-      : "- No critical discrepancy found in database records."
+      : "Insufficient database evidence available for a reliable conclusion."
   }`;
 
   const impactSection = `## Impact\n${
     res.risks && res.risks.length > 0
       ? res.risks.map((r) => `- ${r.title} (${r.severity} severity)`).join("\n")
-      : "- No critical operational or financial risk exposure."
+      : "No validated risk conclusion available from the retrieved evidence."
   }`;
 
   const actionSection = `## Recommended Action\n${
@@ -1293,10 +1624,24 @@ export function formatDiagnosticResponse(
       : "- No immediate intervention required."
   }`;
 
-  const confidenceSection = `## Confidence\n- Confidence Score: **${Math.round(
-    (res.confidence || 0.95) * 100,
-  )}%**`;
-  const freshnessSection = `## Data Freshness\n- Active Scenario Date: **${resolvedDate}**\n- Central PostgreSQL database is fully synchronized.`;
+  const confidenceSection = `## Confidence
+- Confidence Band: **${confidenceDetails.confidenceBand}**
+- Confidence Score: **${Math.round((confidenceDetails.confidenceScore || 0) * 100)}%**
+- Components:
+  - Data Completeness: **${confidenceDetails.components.dataCompletenessScore}**
+  - Temporal Alignment: **${confidenceDetails.components.temporalAlignmentScore}**
+  - Source Coverage: **${confidenceDetails.components.sourceCoverageScore}**
+  - Reconciliation Score: **${confidenceDetails.components.reconciliationScore}**
+  - Sample Adequacy: **${confidenceDetails.components.sampleAdequacyScore}**
+- Reasons:
+${confidenceDetails.confidenceReasons.map((r) => `  - ${r}`).join("\n")}`;
+
+  const freshnessSection = `## Data Freshness
+- Active Scenario Date: **${resolvedDate}**
+- Data Age: **${dataAgeSeconds} seconds**
+- Sync Status: **${syncStatus}**
+- Freshness Status: **${freshnessStatus}**
+- Queried At: **${queriedAt}**`;
 
   const structuredAnswer = [
     answerSection,
@@ -1311,5 +1656,318 @@ export function formatDiagnosticResponse(
   return {
     ...res,
     answer: structuredAnswer,
+    confidenceDetails,
+    claimProvenances: provenances,
+    unsupportedClaims: unsupported,
+    freshnessDetails: {
+      queriedAt,
+      sourceMaxTimestamp: maxTxTimestamp,
+      syncStatus,
+      dataAgeSeconds,
+    },
   };
+}
+
+export function localGetRevenueMetrics(params: {
+  dateRange?: { start?: string; end?: string };
+  roleScope: string | null;
+  activeScenarioDate: string;
+}): ToolResult<any> {
+  const startStr = params.dateRange?.start || params.activeScenarioDate;
+  const endStr = params.dateRange?.end || params.activeScenarioDate;
+  const txns = db.getTransactions().filter((t) => t.date >= startStr && t.date <= endStr);
+
+  const scopedTxns =
+    params.roleScope === "manager" ? txns.filter((t) => t.dept === "Fashion") : txns;
+
+  const grossSales = scopedTxns.reduce((sum, t) => sum + t.subtotal, 0);
+  const discountAmount = scopedTxns.reduce((sum, t) => sum + t.discount, 0);
+  const netSales = scopedTxns.reduce((sum, t) => sum + t.total, 0);
+  const transactionCount = scopedTxns.length;
+  const aov = transactionCount > 0 ? netSales / transactionCount : 0;
+  const paymentTotals = netSales;
+
+  return {
+    data: { grossSales, discountAmount, netSales, transactionCount, aov, paymentTotals },
+    meta: {
+      toolName: "getRevenueMetrics",
+      queryParameters: { dateRange: params.dateRange },
+      resolvedDateRange: { start: startStr, end: endStr },
+      roleScope: params.roleScope,
+      rowsExamined: transactionCount,
+      computedMetrics: {
+        grossSales,
+        discountAmount,
+        netSales,
+        transactionCount,
+        aov,
+        paymentTotals,
+      },
+      sourceTables: ["Transaction"],
+      queriedAt: new Date().toISOString(),
+      sourceMaxTimestamp: endStr,
+      warnings: [],
+      reconciliationStatus: "VERIFIED",
+      freshnessStatus: "FRESH",
+      syncStatus: "UNKNOWN",
+    },
+  };
+}
+
+export function localGetInventoryRisk(params: {
+  dateRange?: { start?: string; end?: string };
+  roleScope: string | null;
+  activeScenarioDate: string;
+}): ToolResult<any> {
+  const startStr = params.dateRange?.start || params.activeScenarioDate;
+  const endStr = params.dateRange?.end || params.activeScenarioDate;
+
+  const products = db.getProducts();
+  const scopedProducts =
+    params.roleScope === "manager" ? products.filter((p) => p.dept === "Fashion") : products;
+
+  const lowStockCount = scopedProducts.filter((p) => p.stock <= p.reorder && p.stock > 0).length;
+  const outOfStockCount = scopedProducts.filter((p) => p.stock === 0).length;
+  const totalInventoryValue = scopedProducts.reduce((sum, p) => sum + p.stock * p.cost, 0);
+
+  const expiringCount = 0;
+  const expiredCount = 0;
+
+  return {
+    data: { lowStockCount, outOfStockCount, totalInventoryValue, expiringCount, expiredCount },
+    meta: {
+      toolName: "getInventoryRisk",
+      queryParameters: { dateRange: params.dateRange },
+      resolvedDateRange: { start: startStr, end: endStr },
+      roleScope: params.roleScope,
+      rowsExamined: scopedProducts.length,
+      computedMetrics: { lowStockCount, outOfStockCount, totalInventoryValue },
+      sourceTables: ["Product"],
+      queriedAt: new Date().toISOString(),
+      sourceMaxTimestamp: endStr,
+      warnings: [],
+      reconciliationStatus: "VERIFIED",
+      freshnessStatus: "FRESH",
+      syncStatus: "UNKNOWN",
+    },
+  };
+}
+
+export function localGetExpenseMetrics(params: {
+  dateRange?: { start?: string; end?: string };
+  roleScope: string | null;
+  activeScenarioDate: string;
+}): ToolResult<any> {
+  const startStr = params.dateRange?.start || params.activeScenarioDate;
+  const endStr = params.dateRange?.end || params.activeScenarioDate;
+
+  const expenses = db.getExpenses().filter((e) => e.date >= startStr && e.date <= endStr);
+  const scopedExpenses =
+    params.roleScope === "manager" ? expenses.filter((e) => e.dept === "Fashion") : expenses;
+
+  const totalExpense = scopedExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const categoriesMap: Record<string, number> = {};
+  scopedExpenses.forEach((e) => {
+    categoriesMap[e.category] = (categoriesMap[e.category] || 0) + e.amount;
+  });
+
+  const warnings: string[] = [];
+  const categoryNames = Object.keys(categoriesMap).map((c) => c.toLowerCase());
+  const hasPayroll = categoryNames.some(
+    (c) => c.includes("payroll") || c.includes("salary") || c.includes("staff"),
+  );
+  if (!hasPayroll) {
+    warnings.push("Payroll evidence unavailable in current expense database categories.");
+  }
+
+  return {
+    data: { totalExpense, categories: categoriesMap },
+    meta: {
+      toolName: "getExpenseMetrics",
+      queryParameters: { dateRange: params.dateRange },
+      resolvedDateRange: { start: startStr, end: endStr },
+      roleScope: params.roleScope,
+      rowsExamined: scopedExpenses.length,
+      computedMetrics: { totalExpense },
+      sourceTables: ["Expense"],
+      queriedAt: new Date().toISOString(),
+      sourceMaxTimestamp: endStr,
+      warnings,
+      reconciliationStatus: "VERIFIED",
+      freshnessStatus: "FRESH",
+      syncStatus: "UNKNOWN",
+    },
+  };
+}
+
+export function calculateConfidenceDetails(
+  query: string,
+  tools: ToolMetadata[],
+  resolvedDate: string,
+  activeScenarioDate: string,
+): ConfidenceDetails {
+  const q = query.toLowerCase();
+
+  let dataCompletenessScore = 1.0;
+  const warnings: string[] = [];
+  if (q.includes("revenue") && !tools.some((t) => t.toolName === "getRevenueMetrics")) {
+    dataCompletenessScore -= 0.3;
+    warnings.push("Missing revenue tool execution");
+  }
+  if (q.includes("stock") && !tools.some((t) => t.toolName === "getInventoryRisk")) {
+    dataCompletenessScore -= 0.3;
+    warnings.push("Missing inventory risk tool execution");
+  }
+  if (q.includes("expense") && !tools.some((t) => t.toolName === "getExpenseMetrics")) {
+    dataCompletenessScore -= 0.3;
+    warnings.push("Missing expense tool execution");
+  }
+  dataCompletenessScore = Math.max(0, dataCompletenessScore);
+
+  let temporalAlignmentScore = 1.0;
+  const isFuture = q.includes("tomorrow") || q.includes("forecast") || q.includes("next week");
+  if (isFuture) {
+    temporalAlignmentScore = 0.6;
+    warnings.push("Query requests predictive future projection");
+  } else if (resolvedDate !== activeScenarioDate) {
+    if (tools.some((t) => t.warnings.some((w) => w.includes("historical")))) {
+      temporalAlignmentScore = 0.7;
+      warnings.push("Historical inventory reconstruction is partial");
+    }
+  }
+
+  const sourceCoverageScore = tools.length > 0 ? 1.0 : 0.0;
+
+  let reconciliationScore = 1.0;
+  if (tools.some((t) => t.reconciliationStatus === "MISMATCH")) {
+    reconciliationScore = 0.5;
+    warnings.push("Database reconciliation warning detected");
+  }
+
+  let sampleAdequacyScore = 1.0;
+  const totalRows = tools.reduce((sum, t) => sum + t.rowsExamined, 0);
+  if (totalRows === 0) {
+    sampleAdequacyScore = 0.2;
+    warnings.push("No transaction or expense records found for this date range");
+  } else if (totalRows < 5) {
+    sampleAdequacyScore = 0.6;
+    warnings.push("Very small transaction sample size");
+  }
+
+  const forecastReliabilityScore = isFuture ? 0.0 : "N/A";
+  const contradictionScore = reconciliationScore;
+
+  const applicableScores = [
+    dataCompletenessScore,
+    temporalAlignmentScore,
+    sourceCoverageScore,
+    reconciliationScore,
+    sampleAdequacyScore,
+  ];
+  if (typeof forecastReliabilityScore === "number") {
+    applicableScores.push(forecastReliabilityScore);
+  }
+
+  const scoreSum = applicableScores.reduce((sum, s) => sum + s, 0);
+  const confidenceScore = scoreSum / applicableScores.length;
+
+  let confidenceBand: "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN" = "HIGH";
+  if (confidenceScore < 0.5) {
+    confidenceBand = "LOW";
+  } else if (confidenceScore < 0.8) {
+    confidenceBand = "MEDIUM";
+  }
+
+  return {
+    confidenceScore: Math.round(confidenceScore * 100) / 100,
+    confidenceBand,
+    confidenceReasons:
+      warnings.length > 0 ? warnings : ["All database metrics reconciled successfully."],
+    components: {
+      dataCompletenessScore,
+      temporalAlignmentScore,
+      sourceCoverageScore,
+      reconciliationScore,
+      sampleAdequacyScore,
+      forecastReliabilityScore,
+      contradictionScore,
+    },
+  };
+}
+
+export function extractQuantitativeClaims(
+  answer: string,
+  tools: ToolMetadata[],
+): { provenances: ClaimProvenance[]; unsupported: string[] } {
+  const provenances: ClaimProvenance[] = [];
+  const unsupported: string[] = [];
+
+  const numbersRegex = /(?:₹\s?\d+(?:,\d{2,3})*(?:\.\d+)?(?:L|Cr)?|\b\d+(?:\.\d+)?%|\b\d+\b)/g;
+  let claimCounter = 1;
+
+  const knownMetrics: Record<string, number> = {};
+  tools.forEach((t) => {
+    Object.entries(t.computedMetrics).forEach(([k, v]) => {
+      if (typeof v === "number") {
+        knownMetrics[`${t.toolName}.${k}`] = v;
+      }
+    });
+  });
+
+  const matches = answer.match(numbersRegex) || [];
+  const uniqueMatches = Array.from(new Set(matches));
+
+  uniqueMatches.forEach((m) => {
+    if (
+      m === "2026" ||
+      m === "2024" ||
+      m === "1" ||
+      m === "2" ||
+      m === "3" ||
+      m === "4" ||
+      m === "5"
+    ) {
+      return;
+    }
+
+    let numVal = parseFloat(m.replace(/[^\d.]/g, ""));
+    if (m.includes("L")) numVal *= 100000;
+    if (m.includes("Cr")) numVal *= 10000000;
+
+    let provenanceType: ClaimProvenance["provenanceType"] = "UNSUPPORTED";
+    let sourceTool: string | undefined;
+    let sourceMetric: string | undefined;
+
+    for (const [key, val] of Object.entries(knownMetrics)) {
+      if (Math.abs(val - numVal) < 0.01) {
+        provenanceType = "DIRECT";
+        const parts = key.split(".");
+        sourceTool = parts[0];
+        sourceMetric = parts[1];
+        break;
+      }
+    }
+
+    // Removed all legacy special-case numeric checks.
+    // Claims are only direct/calculated if they dynamically align with executed tools metadata.
+
+    if (provenanceType === "UNSUPPORTED") {
+      unsupported.push(m);
+    }
+
+    provenances.push({
+      claimId: `claim-${claimCounter++}`,
+      claimText: m,
+      numericValue: numVal,
+      unit: m.includes("%") ? "%" : m.includes("₹") ? "INR" : "units",
+      claimType: m.includes("₹") ? "currency" : m.includes("%") ? "percentage" : "count",
+      provenanceType,
+      sourceTool,
+      sourceMetric,
+      evidenceIds: [],
+      assumptionIds: [],
+    });
+  });
+
+  return { provenances, unsupported };
 }

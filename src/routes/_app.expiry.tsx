@@ -157,7 +157,9 @@ function Expiry() {
                         {p.batchNumber}
                       </td>
                       <td className="py-3 text-right font-semibold">{fmtNum(p.stock)}</td>
-                      <td className="py-3 font-medium">{new Date(p.expiry).toLocaleDateString()}</td>
+                      <td className="py-3 font-medium">
+                        {new Date(p.expiry).toLocaleDateString()}
+                      </td>
                       <td
                         className={`py-3 text-right font-bold ${p.days <= 2 ? "text-destructive" : p.days <= 7 ? "text-warning" : ""}`}
                       >
@@ -175,11 +177,7 @@ function Expiry() {
                             size="sm"
                             className="gradient-primary text-primary-foreground font-semibold py-1 h-7 text-[10px]"
                             onClick={() => {
-                              applyMarkdown(
-                                p.productId,
-                                p.batchNumber,
-                                p.days <= 2 ? 30 : 20,
-                              );
+                              applyMarkdown(p.productId, p.batchNumber, p.days <= 2 ? 30 : 20);
                             }}
                           >
                             <Sparkles className="h-3 w-3 mr-1" /> {rec}

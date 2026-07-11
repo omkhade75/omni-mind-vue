@@ -39,8 +39,16 @@ import {
 } from "recharts";
 import { fmtINR, fmtNum } from "@/lib/mock-data";
 import { useState, useEffect } from "react";
-import { getTransactionsServer, createTransactionServer, type TransactionListItem } from "@/lib/server-transactions";
-import { getProductsServer, getProductOptionsServer, type ProductListItem } from "@/lib/server-products";
+import {
+  getTransactionsServer,
+  createTransactionServer,
+  type TransactionListItem,
+} from "@/lib/server-transactions";
+import {
+  getProductsServer,
+  getProductOptionsServer,
+  type ProductListItem,
+} from "@/lib/server-products";
 import { getCustomersServer, type CustomerListItem } from "@/lib/server-customers";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -51,7 +59,8 @@ export const Route = createFileRoute("/_app/sales")({
       { title: "Sales Intelligence — OmniMind AI" },
       {
         name: "description",
-        content: "Sales intelligence with department, category, hourly, weekday, and payment splits.",
+        content:
+          "Sales intelligence with department, category, hourly, weekday, and payment splits.",
       },
     ],
   }),
@@ -77,7 +86,9 @@ function RouteComponent() {
   const [formCustomerId, setFormCustomerId] = useState<string>("walkin");
   const [formDepartmentId, setFormDepartmentId] = useState("");
   const [formPaymentMethod, setFormPaymentMethod] = useState("UPI");
-  const [cartItems, setCartItems] = useState<Array<{ productId: string; quantity: number; discount: number }>>([]);
+  const [cartItems, setCartItems] = useState<
+    Array<{ productId: string; quantity: number; discount: number }>
+  >([]);
 
   // Temp item selection
   const [selectedItemSku, setSelectedItemSku] = useState("");
@@ -91,7 +102,7 @@ function RouteComponent() {
         data: {
           role: user?.role || "owner",
           email: user?.email || "",
-        }
+        },
       };
       const txs = await getTransactionsServer(payload);
       const prods = await getProductsServer(payload);
@@ -99,8 +110,8 @@ function RouteComponent() {
         data: {
           role: user?.role || "owner",
           email: user?.email || "",
-          status: "Active"
-        }
+          status: "Active",
+        },
       });
       const opts = await getProductOptionsServer(payload);
 
@@ -128,19 +139,22 @@ function RouteComponent() {
 
   const addToCart = () => {
     if (!selectedItemSku || Number(selectedItemQty) <= 0) return;
-    
+
     // Check if item already exists in cart
-    const existingIndex = cartItems.findIndex(i => i.productId === selectedItemSku);
+    const existingIndex = cartItems.findIndex((i) => i.productId === selectedItemSku);
     if (existingIndex > -1) {
       const updated = [...cartItems];
       updated[existingIndex].quantity += Number(selectedItemQty);
       setCartItems(updated);
     } else {
-      setCartItems([...cartItems, {
-        productId: selectedItemSku,
-        quantity: Number(selectedItemQty),
-        discount: Number(selectedItemDiscount) || 0
-      }]);
+      setCartItems([
+        ...cartItems,
+        {
+          productId: selectedItemSku,
+          quantity: Number(selectedItemQty),
+          discount: Number(selectedItemDiscount) || 0,
+        },
+      ]);
     }
     toast.success("Added product to transaction cart.");
   };
@@ -166,7 +180,7 @@ function RouteComponent() {
           paymentMethod: formPaymentMethod,
           role: user?.role || "owner",
           emailUser: user?.email || "",
-        }
+        },
       });
       toast.success("Transaction billed and stock updated successfully.");
       setCheckoutOpen(false);
@@ -186,7 +200,7 @@ function RouteComponent() {
     // calculate COGS from transaction items cost snapshot
     const itemCogs = t.items.reduce((itemSum, item) => {
       // Find matching cost snapshot or product cost
-      const prod = products.find(p => p.id === item.productId);
+      const prod = products.find((p) => p.id === item.productId);
       const cost = prod ? prod.cost : item.price * 0.6;
       return itemSum + item.quantity * cost;
     }, 0);
@@ -203,19 +217,21 @@ function RouteComponent() {
     deptRevenueMap[t.dept] = (deptRevenueMap[t.dept] || 0) + t.total;
   });
 
-  const departmentRevenue = Object.keys(deptRevenueMap).map(name => ({
-    name,
-    value: deptRevenueMap[name]
-  })).sort((a, b) => b.value - a.value);
+  const departmentRevenue = Object.keys(deptRevenueMap)
+    .map((name) => ({
+      name,
+      value: deptRevenueMap[name],
+    }))
+    .sort((a, b) => b.value - a.value);
 
   // Payment splits
   const payMap: Record<string, number> = {};
   transactions.forEach((t) => {
     payMap[t.payment] = (payMap[t.payment] || 0) + 1;
   });
-  const paymentSplit = Object.keys(payMap).map(name => ({
+  const paymentSplit = Object.keys(payMap).map((name) => ({
     name,
-    v: payMap[name]
+    v: payMap[name],
   }));
 
   // Group by date for 30-day Area chart (using completed transaction totals)
@@ -238,7 +254,7 @@ function RouteComponent() {
 
   // Estimate total cart amount
   const cartTotal = cartItems.reduce((sum, item) => {
-    const prod = products.find(p => p.id === item.productId);
+    const prod = products.find((p) => p.id === item.productId);
     const price = prod ? prod.price : 0;
     return sum + (price * item.quantity - item.discount);
   }, 0);
@@ -392,7 +408,9 @@ function RouteComponent() {
                   const hour = 9 + i;
                   return {
                     hour: `${hour}:00`,
-                    sales: transactions.filter(t => t.time.startsWith(String(hour).padStart(2, "0"))).length,
+                    sales: transactions.filter((t) =>
+                      t.time.startsWith(String(hour).padStart(2, "0")),
+                    ).length,
                   };
                 })}
               >
@@ -450,8 +468,12 @@ function RouteComponent() {
               <tbody className="divide-y divide-hairline">
                 {transactions.slice(0, 12).map((t) => (
                   <tr key={t.id} className="hover:bg-surface/50 transition-colors">
-                    <td className="py-3 font-mono text-[11px] text-muted-foreground">{t.transactionNumber}</td>
-                    <td className="py-3">{t.date} {t.time}</td>
+                    <td className="py-3 font-mono text-[11px] text-muted-foreground">
+                      {t.transactionNumber}
+                    </td>
+                    <td className="py-3">
+                      {t.date} {t.time}
+                    </td>
                     <td className="py-3">
                       {t.customerId ? (
                         <button
@@ -465,11 +487,17 @@ function RouteComponent() {
                       )}
                     </td>
                     <td className="py-3 text-muted-foreground">{t.dept}</td>
-                    <td className="py-3 text-right">{t.items.reduce((acc, i) => acc + i.quantity, 0)}</td>
+                    <td className="py-3 text-right">
+                      {t.items.reduce((acc, i) => acc + i.quantity, 0)}
+                    </td>
                     <td className="py-3 text-right font-semibold pr-4">{fmtINR(t.total)}</td>
                     <td className="py-3 pl-4 font-medium text-foreground">{t.payment}</td>
                     <td className="py-3">
-                      <StatusPill tone={t.status === "Completed" || t.status === "Paid" ? "success" : "warning"}>
+                      <StatusPill
+                        tone={
+                          t.status === "Completed" || t.status === "Paid" ? "success" : "warning"
+                        }
+                      >
                         {t.status}
                       </StatusPill>
                     </td>
@@ -526,7 +554,7 @@ function RouteComponent() {
             {/* Cart Builder */}
             <div className="border border-hairline rounded-lg p-3 space-y-3 bg-surface/50">
               <span className="font-semibold text-primary block">Transaction Cart Builder</span>
-              
+
               <div className="grid grid-cols-3 gap-2 items-end">
                 <div className="space-y-1">
                   <Label>Product SKU</Label>
@@ -553,27 +581,46 @@ function RouteComponent() {
                     onChange={(e) => setSelectedItemQty(e.target.value)}
                   />
                 </div>
-                <Button type="button" onClick={addToCart} className="bg-primary hover:bg-primary/95 text-primary-foreground h-8 text-xs font-semibold">
+                <Button
+                  type="button"
+                  onClick={addToCart}
+                  className="bg-primary hover:bg-primary/95 text-primary-foreground h-8 text-xs font-semibold"
+                >
                   Add Item
                 </Button>
               </div>
 
               {/* Cart List */}
               {cartItems.length === 0 ? (
-                <p className="text-[10px] text-muted-foreground italic text-center py-2">Cart is empty.</p>
+                <p className="text-[10px] text-muted-foreground italic text-center py-2">
+                  Cart is empty.
+                </p>
               ) : (
                 <div className="space-y-1.5 max-h-40 overflow-y-auto">
                   {cartItems.map((item, idx) => {
-                    const prod = products.find(p => p.id === item.productId);
+                    const prod = products.find((p) => p.id === item.productId);
                     return (
-                      <div key={idx} className="flex justify-between items-center text-[10px] bg-sidebar border border-hairline p-2 rounded">
+                      <div
+                        key={idx}
+                        className="flex justify-between items-center text-[10px] bg-sidebar border border-hairline p-2 rounded"
+                      >
                         <div className="min-w-0 flex-1">
-                          <p className="font-semibold truncate">{prod ? prod.name : item.productId}</p>
-                          <p className="text-muted-foreground">Qty: {item.quantity} · Rate: {prod ? fmtINR(prod.price) : 0}</p>
+                          <p className="font-semibold truncate">
+                            {prod ? prod.name : item.productId}
+                          </p>
+                          <p className="text-muted-foreground">
+                            Qty: {item.quantity} · Rate: {prod ? fmtINR(prod.price) : 0}
+                          </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="font-bold">{prod ? fmtINR((prod.price * item.quantity) - item.discount) : 0}</span>
-                          <button type="button" onClick={() => removeFromCart(idx)} className="text-destructive hover:bg-destructive/10 p-1 rounded">
+                          <span className="font-bold">
+                            {prod ? fmtINR(prod.price * item.quantity - item.discount) : 0}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeFromCart(idx)}
+                            className="text-destructive hover:bg-destructive/10 p-1 rounded"
+                          >
                             <Trash2 className="h-3 w-3" />
                           </button>
                         </div>
@@ -601,7 +648,9 @@ function RouteComponent() {
               </div>
 
               <div className="rounded-lg bg-primary/10 border border-primary/20 p-3 flex flex-col justify-center text-right">
-                <span className="text-[9px] uppercase tracking-wider text-muted-foreground">Billed Total Amount</span>
+                <span className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                  Billed Total Amount
+                </span>
                 <span className="text-lg font-bold text-primary mt-0.5">{fmtINR(cartTotal)}</span>
               </div>
             </div>
@@ -610,7 +659,11 @@ function RouteComponent() {
               <Button type="button" variant="ghost" onClick={() => setCheckoutOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving || cartItems.length === 0} className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
+              <Button
+                type="submit"
+                disabled={saving || cartItems.length === 0}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+              >
                 {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Complete Checkout
               </Button>
             </DialogFooter>

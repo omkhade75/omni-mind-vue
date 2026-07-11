@@ -117,9 +117,10 @@ function Forecasting() {
             "Festive season shopping patterns (historical peak shopping volumes)",
             "Promotional events and festive decorations spike footfall (+24.5%)",
             "High correlation with premium Fashion cart size additions (+18.4%)",
-            "Accelerated cashier processing speed override at POS"
+            "Accelerated cashier processing speed override at POS",
           ],
-          narrative: "The AI forecasts a substantial surge in overall revenue, heavily weighted towards the first floor Fashion and Beauty departments. Footfall conversion rate is modeled at 42% (up from 32% baseline), driving a projected ₹84.2L peak week. Retail inventory draws will increase by 28.4%, so immediate replenishment is advised for top-selling SKUs."
+          narrative:
+            "The AI forecasts a substantial surge in overall revenue, heavily weighted towards the first floor Fashion and Beauty departments. Footfall conversion rate is modeled at 42% (up from 32% baseline), driving a projected ₹84.2L peak week. Retail inventory draws will increase by 28.4%, so immediate replenishment is advised for top-selling SKUs.",
         };
       case "Promotion Campaign":
         return {
@@ -129,9 +130,10 @@ function Forecasting() {
             "Active marketing campaign discount factors (15-20% average markdown)",
             "Push notification click-through rate models from CRM loyalty lists",
             "Basket size expansion (+15.6% orders) offset by slightly lower margins",
-            "Spike in walk-in customer conversion rate"
+            "Spike in walk-in customer conversion rate",
           ],
-          narrative: "Under this scenario, the model predicts high transaction volume driven by discount elasticities. While the average order value is compressed by ~5%, the increased order counts (+15.6%) will secure a net positive revenue return of ₹74.8L. The AI recommends cross-promoting high-margin cosmetics to beauty segments to buffer the promotional margins."
+          narrative:
+            "Under this scenario, the model predicts high transaction volume driven by discount elasticities. While the average order value is compressed by ~5%, the increased order counts (+15.6%) will secure a net positive revenue return of ₹74.8L. The AI recommends cross-promoting high-margin cosmetics to beauty segments to buffer the promotional margins.",
         };
       case "Rainy Weekend":
         return {
@@ -141,9 +143,10 @@ function Forecasting() {
             "Local meteorological precipitation models (>15mm rainfall forecast)",
             "Negative transit friction coefficient (diminishing out-of-town footfall)",
             "Increased average customer dwell time (+45 minutes in-mall)",
-            "Food Court and Cinema transactional spike offsets"
+            "Food Court and Cinema transactional spike offsets",
           ],
-          narrative: "Heavy rain alters customer behavior inside the mall. While retail fashion dispatches drop due to lower overall visitor counts, food and beverage/entertainment revenues historically experience a +12% increase. The forecast predicts a total revenue of ₹48.6L. The AI suggests optimizing HVAC temperatures to conserve energy during lower occupancy hours."
+          narrative:
+            "Heavy rain alters customer behavior inside the mall. While retail fashion dispatches drop due to lower overall visitor counts, food and beverage/entertainment revenues historically experience a +12% increase. The forecast predicts a total revenue of ₹48.6L. The AI suggests optimizing HVAC temperatures to conserve energy during lower occupancy hours.",
         };
       case "Supplier Delay":
         return {
@@ -153,9 +156,10 @@ function Forecasting() {
             "Delayed supplier shipping logs (average +5.2 days backlog)",
             "Rising out-of-stock count on primary anchor-tenant items",
             "Substituted buying behavior coefficients",
-            "Lead time volatility overrides"
+            "Lead time volatility overrides",
           ],
-          narrative: "This scenario represents supply chain constraints. Delays in replenishment lead to stockouts in key high-margin electronics and grocery items, causing a projected -8.8% decline in total orders. Estimated weekly revenue drops to ₹53.0L. The AI urges immediate diversification of vendors to mitigate category stock exhaustion."
+          narrative:
+            "This scenario represents supply chain constraints. Delays in replenishment lead to stockouts in key high-margin electronics and grocery items, causing a projected -8.8% decline in total orders. Estimated weekly revenue drops to ₹53.0L. The AI urges immediate diversification of vendors to mitigate category stock exhaustion.",
         };
       case "Normal":
       default:
@@ -166,9 +170,10 @@ function Forecasting() {
             "90-day moving average historical baseline data",
             "Standard calendar adjustments (weekends vs weekdays)",
             "Stable utility usage and baseline footfall velocity (+9.4% YoY)",
-            "Zero active external disruption parameters"
+            "Zero active external disruption parameters",
           ],
-          narrative: "This baseline forecast represents the mall operating under ordinary conditions. Using a 90-day historical moving average, the AI expects steady growth with a projected weekly revenue of ₹62.4L. Utility baselines, logistics dispatches, and customer segments are anticipated to follow stable historical trends."
+          narrative:
+            "This baseline forecast represents the mall operating under ordinary conditions. Using a 90-day historical moving average, the AI expects steady growth with a projected weekly revenue of ₹62.4L. Utility baselines, logistics dispatches, and customer segments are anticipated to follow stable historical trends.",
         };
     }
   };
@@ -197,12 +202,12 @@ function Forecasting() {
       changeOrders = "+21.2%";
       changeInventory = "+28.4%";
     } else if (scenario === "Promotion Campaign") {
-      scenarioMult = 1.20;
+      scenarioMult = 1.2;
       changeFootfall = "+18.2%";
       changeOrders = "+15.6%";
       changeInventory = "+19.8%";
     } else if (scenario === "Rainy Weekend") {
-      scenarioMult = 0.80;
+      scenarioMult = 0.8;
       changeFootfall = "-12.4%";
       changeOrders = "-14.1%";
       changeInventory = "-8.2%";
@@ -232,7 +237,10 @@ function Forecasting() {
       },
       {
         t: "Inventory Draw",
-        v: inventoryVal >= 10000000 ? `₹${(inventoryVal / 10000000).toFixed(2)}Cr` : `₹${(inventoryVal / 100000).toFixed(1)}L`,
+        v:
+          inventoryVal >= 10000000
+            ? `₹${(inventoryVal / 10000000).toFixed(2)}Cr`
+            : `₹${(inventoryVal / 100000).toFixed(1)}L`,
         c: changeInventory,
         isNegative: changeInventory.startsWith("-"),
       },
@@ -289,43 +297,43 @@ function Forecasting() {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={forecastData}>
                 <CartesianGrid stroke="var(--color-hairline)" vertical={false} />
-              <XAxis dataKey="day" tickLine={false} axisLine={false} />
-              <YAxis
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(v: any) => `${Number(v) / 1000}K`}
-                width={44}
-              />
-              <Tooltip contentStyle={ttStyle} />
-              <Area
-                type="monotone"
-                dataKey="upper"
-                stroke="none"
-                fill="var(--color-primary)"
-                fillOpacity={0.08}
-              />
-              <Area
-                type="monotone"
-                dataKey="lower"
-                stroke="none"
-                fill="var(--color-background)"
-                fillOpacity={1}
-              />
-              <Line
-                type="monotone"
-                dataKey="actual"
-                stroke="var(--color-cyan)"
-                strokeWidth={2}
-                dot={false}
-              />
-              <Line
-                type="monotone"
-                dataKey="forecast"
-                stroke="var(--color-primary)"
-                strokeWidth={2}
-                strokeDasharray="5 4"
-                dot={false}
-              />
+                <XAxis dataKey="day" tickLine={false} axisLine={false} />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v: any) => `${Number(v) / 1000}K`}
+                  width={44}
+                />
+                <Tooltip contentStyle={ttStyle} />
+                <Area
+                  type="monotone"
+                  dataKey="upper"
+                  stroke="none"
+                  fill="var(--color-primary)"
+                  fillOpacity={0.08}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="lower"
+                  stroke="none"
+                  fill="var(--color-background)"
+                  fillOpacity={1}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="actual"
+                  stroke="var(--color-cyan)"
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="forecast"
+                  stroke="var(--color-primary)"
+                  strokeWidth={2}
+                  strokeDasharray="5 4"
+                  dot={false}
+                />
               </LineChart>
             </ResponsiveContainer>
           )}
@@ -339,7 +347,8 @@ function Forecasting() {
             Next Saturday revenue is forecast at{" "}
             <span className="font-semibold text-foreground">{summary.range}</span>. Under the{" "}
             <span className="font-semibold">{scenario}</span> scenario, expect Fashion contribution
-            to shift by <span className="font-semibold">{summary.fashionShift}</span> and Grocery baseline to hold <span className="font-semibold">{summary.groceryBaseline}</span>.
+            to shift by <span className="font-semibold">{summary.fashionShift}</span> and Grocery
+            baseline to hold <span className="font-semibold">{summary.groceryBaseline}</span>.
           </p>
         </div>
       </SectionCard>
@@ -354,7 +363,7 @@ function Forecasting() {
             <p
               className={cn(
                 "mt-1 text-xs font-medium",
-                k.isNegative ? "text-destructive" : "text-success"
+                k.isNegative ? "text-destructive" : "text-success",
               )}
             >
               {k.c} vs current period
@@ -363,21 +372,30 @@ function Forecasting() {
         ))}
       </div>
 
-      <SectionCard title="AI Forecast Diagnostics & Model Variables" subtitle="Model details, confidence weights, and variables analyzed">
+      <SectionCard
+        title="AI Forecast Diagnostics & Model Variables"
+        subtitle="Model details, confidence weights, and variables analyzed"
+      >
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="space-y-4">
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Prediction Model</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                Prediction Model
+              </p>
               <p className="text-sm font-semibold text-foreground mt-1">{explanation.model}</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Model Confidence Index</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                Model Confidence Index
+              </p>
               <p className="text-sm font-semibold text-primary mt-1">{explanation.confidence}</p>
             </div>
           </div>
           <div className="md:col-span-2 space-y-4">
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Key Variables Scoped</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                Key Variables Scoped
+              </p>
               <ul className="mt-2 space-y-1.5">
                 {explanation.factors.map((f, idx) => (
                   <li key={idx} className="text-xs text-foreground/80 flex items-start gap-2">
@@ -388,8 +406,12 @@ function Forecasting() {
               </ul>
             </div>
             <div className="pt-3 border-t border-hairline">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Analytical Insights & Outlook</p>
-              <p className="text-xs text-muted-foreground leading-relaxed mt-1">{explanation.narrative}</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                Analytical Insights & Outlook
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                {explanation.narrative}
+              </p>
             </div>
           </div>
         </div>

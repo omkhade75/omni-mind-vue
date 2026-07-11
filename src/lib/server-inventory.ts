@@ -66,16 +66,14 @@ export const mutateInventoryServer = createServerFn({ method: "POST" })
       const currentSourceQty = sourceStock ? sourceStock.quantityOnHand : 0;
 
       // Handle stock validations
-      const isReduction = [
-        "SALE",
-        "ADJUSTMENT_OUT",
-        "DAMAGE",
-        "EXPIRED",
-        "TRANSFER"
-      ].includes(data.movementType);
+      const isReduction = ["SALE", "ADJUSTMENT_OUT", "DAMAGE", "EXPIRED", "TRANSFER"].includes(
+        data.movementType,
+      );
 
       if (isReduction && currentSourceQty < data.quantity) {
-        throw new Error(`Insufficient stock at source location. Available: ${currentSourceQty}, Requested: ${data.quantity}`);
+        throw new Error(
+          `Insufficient stock at source location. Available: ${currentSourceQty}, Requested: ${data.quantity}`,
+        );
       }
 
       // Update source location
@@ -100,7 +98,9 @@ export const mutateInventoryServer = createServerFn({ method: "POST" })
           locationId: data.locationId,
           movementType: data.movementType === "TRANSFER" ? "ADJUSTMENT_OUT" : data.movementType,
           quantity: data.quantity,
-          reason: data.reason || (data.movementType === "TRANSFER" ? `Transfer to ${data.targetLocationId}` : null),
+          reason:
+            data.reason ||
+            (data.movementType === "TRANSFER" ? `Transfer to ${data.targetLocationId}` : null),
           performedBy: data.role,
         },
       });
@@ -108,7 +108,9 @@ export const mutateInventoryServer = createServerFn({ method: "POST" })
       // Handle transfer target location
       if (data.movementType === "TRANSFER" && data.targetLocationId) {
         await tx.inventoryStock.upsert({
-          where: { productId_locationId: { productId: data.productId, locationId: data.targetLocationId } },
+          where: {
+            productId_locationId: { productId: data.productId, locationId: data.targetLocationId },
+          },
           update: {
             quantityOnHand: { increment: data.quantity },
             availableQty: { increment: data.quantity },
@@ -146,7 +148,12 @@ export const mutateInventoryServer = createServerFn({ method: "POST" })
       // AuditLog
       await tx.auditLog.create({
         data: {
-          userId: data.role === "manager" ? "rohan-kulkarni" : data.role === "admin" ? "priya-nair" : "aarav-mehra",
+          userId:
+            data.role === "manager"
+              ? "rohan-kulkarni"
+              : data.role === "admin"
+                ? "priya-nair"
+                : "aarav-mehra",
           action: `INVENTORY_${data.movementType}`,
           entityType: "Product",
           entityId: data.productId,
@@ -331,28 +338,27 @@ export const getExpiryIntelligenceServer = createServerFn({ method: "POST" })
       },
       include: {
         product: {
-          include: { category: true }
+          include: { category: true },
         },
-      }
+      },
     });
 
     const activeDate = data.activeDate ? new Date(data.activeDate) : new Date();
 
-    const perishable = batches.map(batch => {
-      const days = Math.ceil(
-        (batch.expiryDate!.getTime() - activeDate.getTime()) / 86400000,
-      );
+    const perishable = batches.map((batch) => {
+      const days = Math.ceil((batch.expiryDate!.getTime() - activeDate.getTime()) / 86400000);
 
-      const deptName = batch.product.departmentId === "dept-grocery" 
-        ? "Grocery" 
-        : batch.product.departmentId === "dept-fashion" 
-        ? "Fashion" 
-        : batch.product.departmentId === "dept-electronics" 
-        ? "Electronics" 
-        : batch.product.departmentId === "dept-beauty" 
-        ? "Beauty" 
-        : "Other";
-      
+      const deptName =
+        batch.product.departmentId === "dept-grocery"
+          ? "Grocery"
+          : batch.product.departmentId === "dept-fashion"
+            ? "Fashion"
+            : batch.product.departmentId === "dept-electronics"
+              ? "Electronics"
+              : batch.product.departmentId === "dept-beauty"
+                ? "Beauty"
+                : "Other";
+
       return {
         id: batch.id,
         productId: batch.product.id,

@@ -7,7 +7,12 @@ import { Sparkles, Truck, Plus, Loader2, Edit, Archive, FileText, Phone } from "
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { getSuppliers, addSupplier, editSupplierServer, archiveSupplierServer } from "@/lib/server-suppliers";
+import {
+  getSuppliers,
+  addSupplier,
+  editSupplierServer,
+  archiveSupplierServer,
+} from "@/lib/server-suppliers";
 import { initiateVapiCallServer } from "@/lib/server-vapi";
 import { toast } from "sonner";
 import {
@@ -55,10 +60,12 @@ function Suppliers() {
           recipientName,
           role: "supplier",
           messageContext: `Calling supplier ${recipientName} to discuss stock reordering status, fulfillment rates, and delivery logistics for GrandSquare Mall.`,
-        }
+        },
       });
       if (res.success) {
-        toast.success(`AI voice call triggered successfully to ${recipientName}! Reference ID: ${res.callId}`);
+        toast.success(
+          `AI voice call triggered successfully to ${recipientName}! Reference ID: ${res.callId}`,
+        );
       } else {
         toast.error(`Failed to initiate call: ${res.error}`);
       }
@@ -226,9 +233,20 @@ function Suppliers() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <Kpi label="Active Suppliers" v={suppliers.length.toString()} />
         <Kpi label="Pending Payments" v={fmtINR(totalPending, { compact: true })} tone="warning" />
-        <Kpi label="Open POs" v={suppliers.filter(s => s.pending > 0).length.toString()} />
-        <Kpi label="Avg Score" v={suppliers.length ? Math.round(suppliers.reduce((a, b) => a + b.score, 0) / suppliers.length).toString() : "0"} />
-        <Kpi label="High Risk" v={suppliers.filter(s => s.risk === "High").length.toString()} tone={suppliers.filter(s => s.risk === "High").length > 0 ? "danger" : undefined} />
+        <Kpi label="Open POs" v={suppliers.filter((s) => s.pending > 0).length.toString()} />
+        <Kpi
+          label="Avg Score"
+          v={
+            suppliers.length
+              ? Math.round(suppliers.reduce((a, b) => a + b.score, 0) / suppliers.length).toString()
+              : "0"
+          }
+        />
+        <Kpi
+          label="High Risk"
+          v={suppliers.filter((s) => s.risk === "High").length.toString()}
+          tone={suppliers.filter((s) => s.risk === "High").length > 0 ? "danger" : undefined}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.4fr_1fr]">
@@ -279,7 +297,11 @@ function Suppliers() {
                       <td className="py-2.5 pl-4">
                         <StatusPill
                           tone={
-                            s.risk === "High" ? "danger" : s.risk === "Medium" ? "warning" : "success"
+                            s.risk === "High"
+                              ? "danger"
+                              : s.risk === "Medium"
+                                ? "warning"
+                                : "success"
                           }
                         >
                           {s.risk}
@@ -395,7 +417,7 @@ function Suppliers() {
                     : "Reliable partner. Maintain current relationship. Explore volume discount on next quarterly review."}
               </p>
             </div>
-            
+
             <div className="mt-4">
               <Link to="/purchase-orders" search={{ supplier: sel.id }}>
                 <Button
@@ -481,14 +503,18 @@ function Suppliers() {
               <Button type="button" variant="ghost" onClick={() => setAddOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
+              <Button
+                type="submit"
+                disabled={saving}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+              >
                 {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Save Supplier
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
-      
+
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-[425px] bg-sidebar border border-hairline text-foreground">
@@ -560,7 +586,11 @@ function Suppliers() {
               <Button type="button" variant="ghost" onClick={() => setEditOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
+              <Button
+                type="submit"
+                disabled={saving}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+              >
                 {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Save Changes
               </Button>
             </DialogFooter>

@@ -42,9 +42,10 @@ export async function seedLedgerAccounts(tx: any) {
   }
 
   // 3. Seed initial cash reserves if Cash account exists but has no ledger entries recorded
-  const cashAc = existingAccounts.find((a: any) => a.code === "1000") || 
-                 await tx.ledgerAccount.findUnique({ where: { code: "1000" } });
-                 
+  const cashAc =
+    existingAccounts.find((a: any) => a.code === "1000") ||
+    (await tx.ledgerAccount.findUnique({ where: { code: "1000" } }));
+
   if (cashAc) {
     const entriesCount = await tx.ledgerEntry.count({
       where: { accountId: cashAc.id },
@@ -75,13 +76,15 @@ export async function recordDoubleEntry(
     description: string;
     debits: Array<{ code: string; amount: number }>;
     credits: Array<{ code: string; amount: number }>;
-  }
+  },
 ) {
   // 1. Verify debits sum equals credits sum
   const debitsSum = data.debits.reduce((sum, d) => sum + d.amount, 0);
   const creditsSum = data.credits.reduce((sum, c) => sum + c.amount, 0);
   if (Math.abs(debitsSum - creditsSum) > 0.01) {
-    throw new Error(`Double-entry balance mismatch! Debits: ₹${debitsSum}, Credits: ₹${creditsSum}`);
+    throw new Error(
+      `Double-entry balance mismatch! Debits: ₹${debitsSum}, Credits: ₹${creditsSum}`,
+    );
   }
 
   // 2. Ensure accounts exist
@@ -126,51 +129,50 @@ export async function recordDoubleEntry(
 /**
  * Fetch trial balance and total debit/credit totals.
  */
-export const getLedgerBalancesServer = createServerFn({ method: "GET" })
-  .handler(async () => {
-    await prisma.$transaction(async (tx) => {
-      await seedLedgerAccounts(tx);
-    });
+export const getLedgerBalancesServer = createServerFn({ method: "GET" }).handler(async () => {
+  await prisma.$transaction(async (tx) => {
+    await seedLedgerAccounts(tx);
+  });
 
-    const accounts = await prisma.ledgerAccount.findMany({
-      include: {
-        entries: true,
-      },
-    });
+  const accounts = await prisma.ledgerAccount.findMany({
+    include: {
+      entries: true,
+    },
+  });
 
-    const trialBalance = accounts.map((ac) => {
-      const totalDebits = ac.entries.reduce((sum, e) => sum + Number(e.debitAmount), 0);
-      const totalCredits = ac.entries.reduce((sum, e) => sum + Number(e.creditAmount), 0);
+  const trialBalance = accounts.map((ac) => {
+    const totalDebits = ac.entries.reduce((sum, e) => sum + Number(e.debitAmount), 0);
+    const totalCredits = ac.entries.reduce((sum, e) => sum + Number(e.creditAmount), 0);
 
-      // Debit Normal: Assets & Expenses
-      // Credit Normal: Liabilities, Equity, Revenues
-      let balance = 0;
-      if (ac.type === "ASSET" || ac.type === "EXPENSE") {
-        balance = totalDebits - totalCredits;
-      } else {
-        balance = totalCredits - totalDebits;
-      }
-
-      return {
-        id: ac.id,
-        code: ac.code,
-        name: ac.name,
-        type: ac.type,
-        debits: totalDebits,
-        credits: totalCredits,
-        balance,
-      };
-    });
-
-    const totalDebits = trialBalance.reduce((sum, a) => sum + a.debits, 0);
-    const totalCredits = trialBalance.reduce((sum, a) => sum + a.credits, 0);
+    // Debit Normal: Assets & Expenses
+    // Credit Normal: Liabilities, Equity, Revenues
+    let balance = 0;
+    if (ac.type === "ASSET" || ac.type === "EXPENSE") {
+      balance = totalDebits - totalCredits;
+    } else {
+      balance = totalCredits - totalDebits;
+    }
 
     return {
-      trialBalance,
-      totalDebits,
-      totalCredits,
+      id: ac.id,
+      code: ac.code,
+      name: ac.name,
+      type: ac.type,
+      debits: totalDebits,
+      credits: totalCredits,
+      balance,
     };
   });
+
+  const totalDebits = trialBalance.reduce((sum, a) => sum + a.debits, 0);
+  const totalCredits = trialBalance.reduce((sum, a) => sum + a.credits, 0);
+
+  return {
+    trialBalance,
+    totalDebits,
+    totalCredits,
+  };
+});
 
 export const recordIncomingRevenueServer = createServerFn({ method: "POST" })
   .validator(
@@ -180,7 +182,7 @@ export const recordIncomingRevenueServer = createServerFn({ method: "POST" })
       description: string;
       role: string;
       emailUser: string;
-    }) => data
+    }) => data,
   )
   .handler(async ({ data }) => {
     return prisma.$transaction(async (tx) => {
@@ -202,35 +204,34 @@ export const recordIncomingRevenueServer = createServerFn({ method: "POST" })
     });
   });
 
-export const getIncomingPaymentsServer = createServerFn({ method: "GET" })
-  .handler(async () => {
-    const entries = await prisma.ledgerEntry.findMany({
-      where: {
-        account: {
-          code: { in: ["4000", "4100", "4200", "4300"] },
-        },
-        creditAmount: { gt: 0 } // Credits represent revenue inflow
+export const getIncomingPaymentsServer = createServerFn({ method: "GET" }).handler(async () => {
+  const entries = await prisma.ledgerEntry.findMany({
+    where: {
+      account: {
+        code: { in: ["4000", "4100", "4200", "4300"] },
       },
-      include: {
-        account: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
-    return entries.map(e => ({
-      id: e.id,
-      journalId: e.journalId,
-      accountCode: e.account.code,
-      accountName: e.account.name,
-      amount: Number(e.creditAmount),
-      description: e.description || "Inflow payment received",
-      date: e.createdAt.toISOString(),
-      referenceType: e.referenceType,
-      referenceId: e.referenceId,
-    }));
+      creditAmount: { gt: 0 }, // Credits represent revenue inflow
+    },
+    include: {
+      account: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
   });
+
+  return entries.map((e) => ({
+    id: e.id,
+    journalId: e.journalId,
+    accountCode: e.account.code,
+    accountName: e.account.name,
+    amount: Number(e.creditAmount),
+    description: e.description || "Inflow payment received",
+    date: e.createdAt.toISOString(),
+    referenceType: e.referenceType,
+    referenceId: e.referenceId,
+  }));
+});
 
 export const recordTaxPaymentServer = createServerFn({ method: "POST" })
   .validator(
@@ -241,7 +242,7 @@ export const recordTaxPaymentServer = createServerFn({ method: "POST" })
       challanNumber: string;
       role: string;
       emailUser: string;
-    }) => data
+    }) => data,
   )
   .handler(async ({ data }) => {
     return prisma.$transaction(async (tx) => {
@@ -264,29 +265,28 @@ export const recordTaxPaymentServer = createServerFn({ method: "POST" })
     });
   });
 
-export const getTaxPaymentsServer = createServerFn({ method: "GET" })
-  .handler(async () => {
-    const entries = await prisma.ledgerEntry.findMany({
-      where: {
-        account: {
-          code: "5600",
-        },
-        debitAmount: { gt: 0 } // Debits represent tax expenses incurred/paid
+export const getTaxPaymentsServer = createServerFn({ method: "GET" }).handler(async () => {
+  const entries = await prisma.ledgerEntry.findMany({
+    where: {
+      account: {
+        code: "5600",
       },
-      include: {
-        account: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
-    return entries.map(e => ({
-      id: e.id,
-      journalId: e.journalId,
-      amount: Number(e.debitAmount),
-      description: e.description || "Tax payment recorded",
-      date: e.createdAt.toISOString(),
-      referenceId: e.referenceId,
-    }));
+      debitAmount: { gt: 0 }, // Debits represent tax expenses incurred/paid
+    },
+    include: {
+      account: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
   });
+
+  return entries.map((e) => ({
+    id: e.id,
+    journalId: e.journalId,
+    amount: Number(e.debitAmount),
+    description: e.description || "Tax payment recorded",
+    date: e.createdAt.toISOString(),
+    referenceId: e.referenceId,
+  }));
+});

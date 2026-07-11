@@ -44,13 +44,40 @@ export const Route = createFileRoute("/_app/time-machine")({
 
 export function TimeMachine() {
   const navigate = useNavigate();
-  const { activeDate, changeDate, products, openProduct360 } = useBusinessData();
+  const { activeDate, changeDate, products, openProduct360, transactions } = useBusinessData();
 
   const parsedDate = new Date(activeDate);
   const [month, setMonth] = useState(parsedDate.getMonth()); // Month (0-11)
   const [year, setYear] = useState(parsedDate.getFullYear());
 
-  const cells = useMemo(() => getMonthDays(year, month), [month, year]);
+  const cells = useMemo(() => {
+    const baseCells = getMonthDays(year, month);
+    return baseCells.map((cell) => {
+      if (!cell) return null;
+      const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(cell.day).padStart(2, "0")}`;
+      const dayTxns = transactions.filter((t: any) => t.date.split("T")[0] === dateStr);
+      if (dayTxns.length > 0) {
+        const actualRevenue = dayTxns.reduce(
+          (sum: number, t: any) => (t.status === "Completed" ? sum + t.total : sum),
+          0,
+        );
+        const state =
+          actualRevenue > 200000
+            ? "peak"
+            : actualRevenue > 150000
+              ? "good"
+              : actualRevenue > 110000
+                ? "avg"
+                : "low";
+        return {
+          ...cell,
+          revenue: actualRevenue,
+          state,
+        };
+      }
+      return cell;
+    });
+  }, [month, year, transactions]);
 
   const handleSelectDay = (day: number) => {
     const formatted = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;

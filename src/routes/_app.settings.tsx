@@ -9,7 +9,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Save, Loader2, Building, MapPin, DollarSign, Clock, Phone, Key, ShieldCheck } from "lucide-react";
+import {
+  Save,
+  Loader2,
+  Building,
+  MapPin,
+  DollarSign,
+  Clock,
+  Phone,
+  Key,
+  ShieldCheck,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_app/settings")({
   head: () => ({
@@ -100,7 +110,7 @@ function SettingsPage() {
           location: mall.location,
           currency: mall.currency,
           timezone: mall.timezone,
-        }
+        },
       });
       toast.success("Settings updated successfully", {
         description: "Your workspace settings have been saved to the database.",
@@ -167,10 +177,7 @@ function SettingsPage() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <div className="col-span-1 md:col-span-2 lg:col-span-2 space-y-6">
           {/* Workspace Form (Dynamic) */}
-          <SectionCard
-            title="Workspace Settings"
-            subtitle="General details about your mall"
-          >
+          <SectionCard title="Workspace Settings" subtitle="General details about your mall">
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
@@ -226,7 +233,11 @@ function SettingsPage() {
               {canEdit && (
                 <div className="pt-4 flex justify-end">
                   <Button onClick={handleSave} disabled={isSaving} className="gap-2">
-                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    {isSaving ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4" />
+                    )}
                     Save Changes
                   </Button>
                 </div>
@@ -303,8 +314,16 @@ function SettingsPage() {
 
                 {canEdit && (
                   <div className="pt-4 flex justify-end">
-                    <Button onClick={handleSaveVapi} disabled={savingVapi} className="gap-2 bg-violet hover:bg-violet/90 text-white font-semibold">
-                      {savingVapi ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    <Button
+                      onClick={handleSaveVapi}
+                      disabled={savingVapi}
+                      className="gap-2 bg-violet hover:bg-violet/90 text-white font-semibold"
+                    >
+                      {savingVapi ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4" />
+                      )}
                       Save Credentials
                     </Button>
                   </div>
@@ -359,7 +378,9 @@ function SettingsPage() {
                       <Input
                         className="pl-9"
                         value={whatsapp.twilioWhatsAppSender}
-                        onChange={(e) => handleWhatsAppChange("twilioWhatsAppSender", e.target.value)}
+                        onChange={(e) =>
+                          handleWhatsAppChange("twilioWhatsAppSender", e.target.value)
+                        }
                         placeholder="e.g. whatsapp:+14155238886"
                         disabled={!canEdit || savingWhatsApp}
                       />
@@ -372,7 +393,9 @@ function SettingsPage() {
                       <Input
                         className="pl-9"
                         value={whatsapp.ownerWhatsAppNumber}
-                        onChange={(e) => handleWhatsAppChange("ownerWhatsAppNumber", e.target.value)}
+                        onChange={(e) =>
+                          handleWhatsAppChange("ownerWhatsAppNumber", e.target.value)
+                        }
                         placeholder="e.g. +919876543210"
                         disabled={!canEdit || savingWhatsApp}
                       />
@@ -385,7 +408,9 @@ function SettingsPage() {
                       <Input
                         className="pl-9"
                         value={whatsapp.managerWhatsAppNumber}
-                        onChange={(e) => handleWhatsAppChange("managerWhatsAppNumber", e.target.value)}
+                        onChange={(e) =>
+                          handleWhatsAppChange("managerWhatsAppNumber", e.target.value)
+                        }
                         placeholder="e.g. +919876543211"
                         disabled={!canEdit || savingWhatsApp}
                       />
@@ -395,8 +420,16 @@ function SettingsPage() {
 
                 {canEdit && (
                   <div className="pt-4 flex justify-end">
-                    <Button onClick={handleSaveWhatsApp} disabled={savingWhatsApp} className="gap-2 bg-emerald-600 hover:bg-emerald-600/90 text-white font-semibold">
-                      {savingWhatsApp ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    <Button
+                      onClick={handleSaveWhatsApp}
+                      disabled={savingWhatsApp}
+                      className="gap-2 bg-emerald-600 hover:bg-emerald-600/90 text-white font-semibold"
+                    >
+                      {savingWhatsApp ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4" />
+                      )}
                       Save WhatsApp Settings
                     </Button>
                   </div>

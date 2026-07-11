@@ -4,13 +4,35 @@ import { KpiCard } from "@/components/kpi-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/lib/auth-context";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { getLedgerBalancesServer } from "@/lib/server-ledger";
-import { getInvestmentsServer, investCorporateCashServer, liquidateInvestmentServer, type InvestmentItem } from "@/lib/server-investments";
-import { Loader2, ArrowUpRight, ArrowDownRight, Wallet, TrendingUp, DollarSign, Activity, Coins, Globe, Landmark } from "lucide-react";
+import {
+  getInvestmentsServer,
+  investCorporateCashServer,
+  liquidateInvestmentServer,
+  type InvestmentItem,
+} from "@/lib/server-investments";
+import {
+  Loader2,
+  ArrowUpRight,
+  ArrowDownRight,
+  Wallet,
+  TrendingUp,
+  DollarSign,
+  Activity,
+  Coins,
+  Globe,
+  Landmark,
+} from "lucide-react";
 import { fmtINR } from "@/lib/mock-data";
 import {
   AreaChart,
@@ -35,9 +57,30 @@ export const Route = createFileRoute("/_app/market-intelligence")({
 const COMMODITIES = [
   { name: "Gold (XAU)", symbol: "XAU", price: 62450, unit: "10g", trend: 1.2, color: "#eab308" },
   { name: "Silver (XAG)", symbol: "XAG", price: 74200, unit: "kg", trend: -0.4, color: "#94a3b8" },
-  { name: "Tech Stock Index (TCH)", symbol: "TCH", price: 18450, unit: "share", trend: 2.1, color: "#3b82f6" },
-  { name: "Retail Industry Index (RTL)", symbol: "RTL", price: 12800, unit: "share", trend: 0.8, color: "#10b981" },
-  { name: "Crude Oil (WTI)", symbol: "WTI", price: 6450, unit: "barrel", trend: -1.5, color: "#f97316" },
+  {
+    name: "Tech Stock Index (TCH)",
+    symbol: "TCH",
+    price: 18450,
+    unit: "share",
+    trend: 2.1,
+    color: "#3b82f6",
+  },
+  {
+    name: "Retail Industry Index (RTL)",
+    symbol: "RTL",
+    price: 12800,
+    unit: "share",
+    trend: 0.8,
+    color: "#10b981",
+  },
+  {
+    name: "Crude Oil (WTI)",
+    symbol: "WTI",
+    price: 6450,
+    unit: "barrel",
+    trend: -1.5,
+    color: "#f97316",
+  },
 ];
 
 const HISTORICAL_CHART_DATA = [
@@ -50,7 +93,7 @@ const HISTORICAL_CHART_DATA = [
 
 function MarketIntelligencePage() {
   const { user } = useAuth();
-  
+
   // Data states
   const [cashBalance, setCashBalance] = useState(0);
   const [portfolioValue, setPortfolioValue] = useState(0);
@@ -69,7 +112,7 @@ function MarketIntelligencePage() {
   const loadData = async () => {
     try {
       // 1. Load general ledger balances to find Cash (code 1000)
-      const res = await getLedgerBalancesServer() as any;
+      const res = (await getLedgerBalancesServer()) as any;
       const trialBalance = res?.trialBalance || [];
       const cashAc = trialBalance.find((b: any) => b.code === "1000");
       setCashBalance(cashAc ? Number(cashAc.balance) : 0);
@@ -119,7 +162,7 @@ function MarketIntelligencePage() {
           totalCost,
           role: user?.role || "owner",
           emailUser: user?.email || "",
-        }
+        },
       });
 
       toast.success(`Treasury Purchase Complete!`, {
@@ -144,7 +187,7 @@ function MarketIntelligencePage() {
           liquidatedPrice: price,
           role: user?.role || "owner",
           emailUser: user?.email || "",
-        }
+        },
       });
 
       toast.success(`Asset Liquidated!`, {
@@ -227,9 +270,12 @@ function MarketIntelligencePage() {
                       )}
                     </span>
                   </div>
-                  <h4 className="font-bold text-base text-zinc-900 truncate">{c.name.split(" (")[0]}</h4>
+                  <h4 className="font-bold text-base text-zinc-900 truncate">
+                    {c.name.split(" (")[0]}
+                  </h4>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Price: <span className="font-semibold text-zinc-800">{fmtINR(c.price)}</span> / {c.unit}
+                    Price: <span className="font-semibold text-zinc-800">{fmtINR(c.price)}</span> /{" "}
+                    {c.unit}
                   </p>
                 </div>
               ))}
@@ -252,7 +298,9 @@ function MarketIntelligencePage() {
                   <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-100" />
                   <XAxis dataKey="day" className="text-xs text-muted-foreground" />
                   <YAxis className="text-xs text-muted-foreground" domain={["auto", "auto"]} />
-                  <Tooltip formatter={(value: any) => [fmtINR(Number(value)), activeAsset.symbol]} />
+                  <Tooltip
+                    formatter={(value: any) => [fmtINR(Number(value)), activeAsset.symbol]}
+                  />
                   <Area
                     type="monotone"
                     dataKey={activeAsset.symbol}
@@ -313,7 +361,9 @@ function MarketIntelligencePage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-zinc-500">Total Purchase Cost:</span>
-                  <span className="font-semibold text-zinc-900 text-indigo-600">{fmtINR(totalCost)}</span>
+                  <span className="font-semibold text-zinc-900 text-indigo-600">
+                    {fmtINR(totalCost)}
+                  </span>
                 </div>
                 <div className="flex justify-between pt-1 border-t text-xs">
                   <span className="text-zinc-500">Resulting Cash Balance:</span>
@@ -351,7 +401,8 @@ function MarketIntelligencePage() {
       <SectionCard title="Corporate Investment Ledger (Ledger code 1400)">
         {holdings.length === 0 ? (
           <div className="text-center py-12 text-zinc-500">
-            No active or liquidated investments on file. Deploy treasury reserves above to populate the ledger.
+            No active or liquidated investments on file. Deploy treasury reserves above to populate
+            the ledger.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -381,8 +432,12 @@ function MarketIntelligencePage() {
                       <td className="px-4 py-4 text-right">{fmtINR(h.purchasePrice)}</td>
                       <td className="px-4 py-4 text-right font-mono">{h.quantity}</td>
                       <td className="px-4 py-4 text-right font-semibold">{fmtINR(h.totalCost)}</td>
-                      <td className="px-4 py-4 text-right font-semibold text-zinc-900">{fmtINR(h.currentValue)}</td>
-                      <td className={`px-4 py-4 text-right font-bold ${gainLoss >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                      <td className="px-4 py-4 text-right font-semibold text-zinc-900">
+                        {fmtINR(h.currentValue)}
+                      </td>
+                      <td
+                        className={`px-4 py-4 text-right font-bold ${gainLoss >= 0 ? "text-emerald-600" : "text-rose-600"}`}
+                      >
                         {gainLoss >= 0 ? "+" : ""}
                         {fmtINR(gainLoss)} ({pct}%)
                       </td>
@@ -403,7 +458,16 @@ function MarketIntelligencePage() {
                             size="sm"
                             variant="outline"
                             className="text-emerald-700 border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800"
-                            onClick={() => handleLiquidate(h.id, h.purchasePrice * (1 + (COMMODITIES.find(c => c.symbol === h.symbol)?.trend || 0)/100), h.assetName)}
+                            onClick={() =>
+                              handleLiquidate(
+                                h.id,
+                                h.purchasePrice *
+                                  (1 +
+                                    (COMMODITIES.find((c) => c.symbol === h.symbol)?.trend || 0) /
+                                      100),
+                                h.assetName,
+                              )
+                            }
                             disabled={liquidatingId === h.id}
                           >
                             {liquidatingId === h.id ? (

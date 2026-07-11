@@ -30,12 +30,12 @@ export const getAccountsDataServer = createServerFn({ method: "POST" })
     // 1. Accounts Receivable (Customer owes us)
     const receivables = await prisma.transaction.findMany({
       where: {
-        paymentStatus: { in: ["Pending", "Failed"] }
+        paymentStatus: { in: ["Pending", "Failed"] },
       },
       include: {
-        customer: true
+        customer: true,
       },
-      orderBy: { transactionDate: "desc" }
+      orderBy: { transactionDate: "desc" },
     });
 
     // 2. Accounts Payable (We owe Supplier)
@@ -48,39 +48,35 @@ export const getAccountsDataServer = createServerFn({ method: "POST" })
         referenceId: true,
       },
     });
-    const paidPoIds = new Set(paidEntries.map(e => e.referenceId).filter(Boolean));
+    const paidPoIds = new Set(paidEntries.map((e) => e.referenceId).filter(Boolean));
 
     const payables = await prisma.purchaseOrder.findMany({
       where: {
-        status: { in: ["Submitted", "Ordered", "Partially_Received", "Sent", "Received"] } // Exclude Draft
+        status: { in: ["Submitted", "Ordered", "Partially_Received", "Sent", "Received"] }, // Exclude Draft
       },
       include: {
-        supplier: true
+        supplier: true,
       },
-      orderBy: { orderDate: "desc" }
+      orderBy: { orderDate: "desc" },
     });
 
-    const unpaidPayables = payables.filter(p => !paidPoIds.has(p.id));
+    const unpaidPayables = payables.filter((p) => !paidPoIds.has(p.id));
 
     // 3. Fixed Deposits
     let fds = await prisma.fixedDeposit.findMany({
-      orderBy: { startDate: "desc" }
+      orderBy: { startDate: "desc" },
     });
-
-
 
     // 4. Corporate Loans
     let loans = await prisma.corporateLoan.findMany({
-      orderBy: { takenDate: "desc" }
+      orderBy: { takenDate: "desc" },
     });
-
-
 
     // 5. Fetch General Cash Ledger Account Balance (Code 1000)
     await seedLedgerAccounts(prisma);
     const cashAccount = await prisma.ledgerAccount.findUnique({
       where: { code: "1000" },
-      include: { entries: true }
+      include: { entries: true },
     });
     let cashBalance = 0;
     if (cashAccount) {
@@ -91,16 +87,18 @@ export const getAccountsDataServer = createServerFn({ method: "POST" })
 
     return {
       cashBalance,
-      receivables: receivables.map(r => ({
+      receivables: receivables.map((r) => ({
         id: r.id,
         transactionNumber: r.transactionNumber,
         date: r.transactionDate.toISOString(),
         amount: Number(r.totalAmount),
         status: r.paymentStatus,
-        customerName: r.customer ? `${r.customer.firstName} ${r.customer.lastName}`.trim() : "Walk-in Customer",
-        customerId: r.customerId
+        customerName: r.customer
+          ? `${r.customer.firstName} ${r.customer.lastName}`.trim()
+          : "Walk-in Customer",
+        customerId: r.customerId,
       })),
-      payables: unpaidPayables.map(p => ({
+      payables: unpaidPayables.map((p) => ({
         id: p.id,
         poNumber: p.poNumber,
         date: p.orderDate.toISOString(),
@@ -108,9 +106,9 @@ export const getAccountsDataServer = createServerFn({ method: "POST" })
         status: p.status,
         supplierName: p.supplier ? p.supplier.name : "Unknown Supplier",
         supplierId: p.supplierId,
-        isPaid: false // By definition, we only filtered unpaid payables
+        isPaid: false, // By definition, we only filtered unpaid payables
       })),
-      fds: fds.map(f => ({
+      fds: fds.map((f) => ({
         id: f.id,
         bankName: f.bankName,
         principal: Number(f.principal),
@@ -120,7 +118,7 @@ export const getAccountsDataServer = createServerFn({ method: "POST" })
         startDate: f.startDate.toISOString(),
         matureDate: f.matureDate.toISOString(),
       })) as FixedDepositItem[],
-      loans: loans.map(l => ({
+      loans: loans.map((l) => ({
         id: l.id,
         bankName: l.bankName,
         principal: Number(l.principal),
@@ -142,7 +140,7 @@ export const createFixedDepositServer = createServerFn({ method: "POST" })
       duration: number;
       role: string;
       emailUser: string;
-    }) => data
+    }) => data,
   )
   .handler(async ({ data }) => {
     const result = await prisma.$transaction(async (tx) => {
@@ -154,11 +152,16 @@ export const createFixedDepositServer = createServerFn({ method: "POST" })
         include: { entries: true },
       });
       const cashBalance = cashAccount
-        ? cashAccount.entries.reduce((sum, e) => sum + Number(e.debitAmount) - Number(e.creditAmount), 0)
+        ? cashAccount.entries.reduce(
+            (sum, e) => sum + Number(e.debitAmount) - Number(e.creditAmount),
+            0,
+          )
         : 0;
 
       if (cashBalance < data.principal) {
-        throw new Error(`Insufficient cash balance (₹${cashBalance.toFixed(0)}) to create FD of ₹${data.principal.toFixed(0)}.`);
+        throw new Error(
+          `Insufficient cash balance (₹${cashBalance.toFixed(0)}) to create FD of ₹${data.principal.toFixed(0)}.`,
+        );
       }
 
       const matureDate = new Date(Date.now() + data.duration * 30 * 24 * 3600 * 1000);
@@ -199,7 +202,7 @@ export const createCorporateLoanServer = createServerFn({ method: "POST" })
       duration: number;
       role: string;
       emailUser: string;
-    }) => data
+    }) => data,
   )
   .handler(async ({ data }) => {
     const result = await prisma.$transaction(async (tx) => {
@@ -233,14 +236,7 @@ export const createCorporateLoanServer = createServerFn({ method: "POST" })
   });
 
 export const repayLoanServer = createServerFn({ method: "POST" })
-  .validator(
-    (data: {
-      loanId: string;
-      amount: number;
-      role: string;
-      emailUser: string;
-    }) => data
-  )
+  .validator((data: { loanId: string; amount: number; role: string; emailUser: string }) => data)
   .handler(async ({ data }) => {
     const result = await prisma.$transaction(async (tx) => {
       await seedLedgerAccounts(tx);
@@ -259,11 +255,16 @@ export const repayLoanServer = createServerFn({ method: "POST" })
         include: { entries: true },
       });
       const cashBalance = cashAccount
-        ? cashAccount.entries.reduce((sum, e) => sum + Number(e.debitAmount) - Number(e.creditAmount), 0)
+        ? cashAccount.entries.reduce(
+            (sum, e) => sum + Number(e.debitAmount) - Number(e.creditAmount),
+            0,
+          )
         : 0;
 
       if (cashBalance < data.amount) {
-        throw new Error(`Insufficient cash balance (₹${cashBalance.toFixed(0)}) to make repayment of ₹${data.amount.toFixed(0)}.`);
+        throw new Error(
+          `Insufficient cash balance (₹${cashBalance.toFixed(0)}) to make repayment of ₹${data.amount.toFixed(0)}.`,
+        );
       }
 
       const newBalance = Math.max(0, Number(loan.balance) - data.amount);
@@ -326,13 +327,16 @@ export const payPurchaseOrderServer = createServerFn({ method: "POST" })
       });
 
       const cashBalance = cashAccount
-        ? cashAccount.entries.reduce((sum, e) => sum + Number(e.debitAmount) - Number(e.creditAmount), 0)
+        ? cashAccount.entries.reduce(
+            (sum, e) => sum + Number(e.debitAmount) - Number(e.creditAmount),
+            0,
+          )
         : 0;
 
       const poAmount = Number(po.totalAmount);
       if (cashBalance < poAmount) {
         throw new Error(
-          `Insufficient cash reserves. Available: ₹${cashBalance.toLocaleString("en-IN")}, Required: ₹${poAmount.toLocaleString("en-IN")}`
+          `Insufficient cash reserves. Available: ₹${cashBalance.toLocaleString("en-IN")}, Required: ₹${poAmount.toLocaleString("en-IN")}`,
         );
       }
 
@@ -365,4 +369,3 @@ export const payPurchaseOrderServer = createServerFn({ method: "POST" })
 
     return { success: true, poId: result };
   });
-

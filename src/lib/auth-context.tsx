@@ -1,5 +1,11 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { getCurrentSessionServer, loginServer, logoutServer, demoLoginServer, type AuthUser } from "./server-auth";
+import {
+  getCurrentSessionServer,
+  loginServer,
+  logoutServer,
+  demoLoginServer,
+  type AuthUser,
+} from "./server-auth";
 
 export type Role = "owner" | "admin" | "manager";
 
@@ -91,9 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <Ctx.Provider value={{ user, loading, login, demoLogin, logout }}>
-      {children}
-    </Ctx.Provider>
+    <Ctx.Provider value={{ user, loading, login, demoLogin, logout }}>{children}</Ctx.Provider>
   );
 }
 

@@ -76,12 +76,14 @@ export const createTransactionServer = createServerFn({ method: "POST" })
         // Fetch all stock locations for this product to deduct sequentially
         const stockRecords = await tx.inventoryStock.findMany({
           where: { productId: prod.id },
-          orderBy: { locationId: 'asc' } // Try to deduct from loc-retail first if possible
+          orderBy: { locationId: "asc" }, // Try to deduct from loc-retail first if possible
         });
 
         const totalStock = stockRecords.reduce((sum, s) => sum + s.quantityOnHand, 0);
         if (totalStock < item.quantity) {
-          throw new Error(`Insufficient total stock for ${prod.name}. Available: ${totalStock}, Requested: ${item.quantity}`);
+          throw new Error(
+            `Insufficient total stock for ${prod.name}. Available: ${totalStock}, Requested: ${item.quantity}`,
+          );
         }
 
         const itemSubtotal = price * item.quantity;
@@ -97,7 +99,7 @@ export const createTransactionServer = createServerFn({ method: "POST" })
         // FIFO Product Batch depletion
         const productBatches = await tx.productBatch.findMany({
           where: { productId: prod.id, quantityRemaining: { gt: 0 } },
-          orderBy: { expiryDate: "asc" }
+          orderBy: { expiryDate: "asc" },
         });
 
         let batchDeductRemaining = item.quantity;
@@ -109,7 +111,7 @@ export const createTransactionServer = createServerFn({ method: "POST" })
           if (qtyToDeduct > 0) {
             await tx.productBatch.update({
               where: { id: batch.id },
-              data: { quantityRemaining: { decrement: qtyToDeduct } }
+              data: { quantityRemaining: { decrement: qtyToDeduct } },
             });
             if (!assignedBatchId) {
               assignedBatchId = batch.id;
@@ -133,7 +135,7 @@ export const createTransactionServer = createServerFn({ method: "POST" })
         let remainingToDeduct = item.quantity;
         for (const stockRecord of stockRecords) {
           if (remainingToDeduct <= 0) break;
-          
+
           const qtyToDeduct = Math.min(stockRecord.quantityOnHand, remainingToDeduct);
           if (qtyToDeduct > 0) {
             stockUpdates.push({
@@ -141,7 +143,7 @@ export const createTransactionServer = createServerFn({ method: "POST" })
               locationId: stockRecord.locationId,
               qty: qtyToDeduct,
             });
-            
+
             // Add to inventory movement ledger
             movementData.push({
               productId: prod.id,
@@ -151,7 +153,7 @@ export const createTransactionServer = createServerFn({ method: "POST" })
               reason: "POS Sale Checkout",
               performedBy: data.role,
             });
-            
+
             remainingToDeduct -= qtyToDeduct;
           }
         }
@@ -260,7 +262,10 @@ export const createTransactionServer = createServerFn({ method: "POST" })
       }
 
       // 7.5 Record Double-Entry Ledger Entries
-      const totalCost = txItemsData.reduce((sum, item) => sum + (Number(item.costPriceSnapshot) * item.quantity), 0);
+      const totalCost = txItemsData.reduce(
+        (sum, item) => sum + Number(item.costPriceSnapshot) * item.quantity,
+        0,
+      );
       const { recordDoubleEntry } = await import("./server-ledger");
       await recordDoubleEntry(tx, {
         journalId: `JNL-SALE-${transaction.id}`,
@@ -269,11 +274,11 @@ export const createTransactionServer = createServerFn({ method: "POST" })
         description: `POS Sale Receipt: ${transaction.transactionNumber}`,
         debits: [
           { code: "1000", amount: totalAmount }, // Debit Cash
-          { code: "5000", amount: totalCost },   // Debit COGS
+          { code: "5000", amount: totalCost }, // Debit COGS
         ],
         credits: [
           { code: "4000", amount: totalAmount }, // Credit Sales Revenue
-          { code: "1300", amount: totalCost },   // Credit Inventory Asset
+          { code: "1300", amount: totalCost }, // Credit Inventory Asset
         ],
       });
 
@@ -292,7 +297,12 @@ export const createTransactionServer = createServerFn({ method: "POST" })
       // 9. AuditLog
       await tx.auditLog.create({
         data: {
-          userId: data.role === "manager" ? "rohan-kulkarni" : data.role === "admin" ? "priya-nair" : "aarav-mehra",
+          userId:
+            data.role === "manager"
+              ? "rohan-kulkarni"
+              : data.role === "admin"
+                ? "priya-nair"
+                : "aarav-mehra",
           action: "TRANSACTION_CREATED",
           entityType: "Transaction",
           entityId: transaction.id,
@@ -304,10 +314,15 @@ export const createTransactionServer = createServerFn({ method: "POST" })
     });
 
     // --- WHATSAPP NOTIFICATIONS ---
-    
+
     // 1. Send low stock alerts asynchronously
     for (const alert of result.outOfStockAlerts) {
-      sendOwnerStockAlertWhatsApp(alert.productName, alert.remainingStock, alert.reorderLevel, alert.sku).catch(err => {
+      sendOwnerStockAlertWhatsApp(
+        alert.productName,
+        alert.remainingStock,
+        alert.reorderLevel,
+        alert.sku,
+      ).catch((err) => {
         console.error("Failed to send stock alert:", err);
       });
     }
@@ -321,7 +336,7 @@ export const createTransactionServer = createServerFn({ method: "POST" })
           totalAmount: result.transaction.totalAmount,
           itemsCount: data.items.length,
           customerName: customer.firstName,
-        }).catch(err => {
+        }).catch((err) => {
           console.error("Failed to send customer bill:", err);
         });
       }
@@ -331,7 +346,7 @@ export const createTransactionServer = createServerFn({ method: "POST" })
         totalAmount: result.transaction.totalAmount,
         itemsCount: data.items.length,
         customerName: "Walk-in Customer",
-      }).catch(err => {
+      }).catch((err) => {
         console.error("Failed to send walk-in customer bill:", err);
       });
     }
@@ -378,7 +393,9 @@ export const getTransactionsServer = createServerFn({ method: "POST" })
       return {
         id: t.id,
         transactionNumber: t.transactionNumber,
-        customerName: t.customer ? `${t.customer.firstName} ${t.customer.lastName}`.trim() : "Walk-in Customer",
+        customerName: t.customer
+          ? `${t.customer.firstName} ${t.customer.lastName}`.trim()
+          : "Walk-in Customer",
         customerId: t.customerId,
         customerType: t.customer?.customerType || null,
         dept: deptObj ? deptObj.name : "Others",
@@ -401,10 +418,10 @@ export const getTransactionsServer = createServerFn({ method: "POST" })
     });
 
     const investments = await prisma.investment.findMany({
-      orderBy: { purchasedAt: "desc" }
+      orderBy: { purchasedAt: "desc" },
     });
 
-    const investmentItems: TransactionListItem[] = investments.map(inv => ({
+    const investmentItems: TransactionListItem[] = investments.map((inv) => ({
       id: inv.id,
       transactionNumber: `INV-${inv.id.slice(0, 6).toUpperCase()}`,
       customerName: "Corporate Treasury",
@@ -420,16 +437,18 @@ export const getTransactionsServer = createServerFn({ method: "POST" })
       total: Number(inv.totalCost),
       payment: "Ledger 1000",
       status: inv.status === "Active" ? "Completed" : "Refunded",
-      items: [{
-        productId: inv.id,
-        productName: `${inv.assetName} (${inv.symbol})`,
-        quantity: Number(inv.quantity),
-        price: Number(inv.purchasePrice)
-      }]
+      items: [
+        {
+          productId: inv.id,
+          productName: `${inv.assetName} (${inv.symbol})`,
+          quantity: Number(inv.quantity),
+          price: Number(inv.purchasePrice),
+        },
+      ],
     }));
 
     const combinedList = [...mappedList, ...investmentItems];
-    
+
     // Sort combined list by date and time descending
     combinedList.sort((a, b) => {
       const dateA = new Date(`${a.date}T${a.time}`);

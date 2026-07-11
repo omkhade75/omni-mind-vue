@@ -4,7 +4,7 @@ import { readWhatsAppConfig } from "./server-whatsapp-config";
 
 /**
  * WhatsApp Notification Service (Mock / Real Twilio Integration)
- * 
+ *
  * This service handles sending WhatsApp notifications for the OmniMind platform.
  * To enable real Twilio WhatsApp delivery:
  * 1. Set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN in the .env file.
@@ -27,7 +27,7 @@ export async function sendCustomerBillWhatsApp(
     totalAmount: any;
     itemsCount: number;
     customerName: string;
-  }
+  },
 ) {
   const formattedPhone = customerPhone.startsWith("+") ? customerPhone : `+91${customerPhone}`;
   const messageBody = `*OmniMind POS Receipt* 🧾\n\nHi ${transaction.customerName},\nThank you for shopping with us! Here are your transaction details:\n\n*Receipt No:* ${transaction.transactionNumber}\n*Items Purchased:* ${transaction.itemsCount}\n*Total Amount Paid:* ${fmtINR(transaction.totalAmount)}\n\nHave a great day!`;
@@ -78,7 +78,7 @@ export async function sendCustomerBillWhatsApp(
             Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString("base64")}`,
           },
           body: params.toString(),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -125,9 +125,9 @@ export async function sendOwnerStockAlertWhatsApp(
   productName: string,
   remainingStock: number,
   reorderLevel: number,
-  sku: string
+  sku: string,
 ) {
-  const ownerPhone = process.env.OWNER_WHATSAPP_NUMBER || "+919876543210"; 
+  const ownerPhone = process.env.OWNER_WHATSAPP_NUMBER || "+919876543210";
   const messageBody = `🚨 *EMERGENCY LOW STOCK ALERT* 🚨\n\n*Product:* ${productName}\n*SKU:* ${sku}\n\n*Current Stock:* ${remainingStock}\n*Reorder Threshold:* ${reorderLevel}\n\nThis product has fallen below the safety threshold. Please generate a Purchase Order immediately to avoid a complete stockout.`;
 
   console.log("==========================================");
@@ -175,7 +175,7 @@ export async function sendOwnerStockAlertWhatsApp(
             Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString("base64")}`,
           },
           body: params.toString(),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -225,7 +225,7 @@ export async function sendEodReportWhatsApp(
     orders: number;
     anomalies: number;
   },
-  recipients: string[]
+  recipients: string[],
 ) {
   const messageBody = `📊 *OmniMind End of Day Report* 📊\n\n*Date:* ${stats.date}\n\n*Gross Revenue:* ${fmtINR(stats.revenue)}\n*Net Profit:* ${fmtINR(stats.profit)}\n*Total Orders:* ${stats.orders}\n*Active Anomalies:* ${stats.anomalies}\n\nGreat work today! Open OmniMind Command Center for detailed analytics.`;
 
@@ -243,7 +243,9 @@ export async function sendEodReportWhatsApp(
       const log = await prisma.messageLog.create({
         data: {
           channel: "WHATSAPP",
-          recipientName: phone.includes("9876543210") ? "Aarav Mehra (Owner)" : "Priya Nair (Admin)",
+          recipientName: phone.includes("9876543210")
+            ? "Aarav Mehra (Owner)"
+            : "Priya Nair (Admin)",
           recipientPhone: formattedPhone,
           messageType: "EOD_REPORT",
           body: messageBody,
@@ -277,7 +279,7 @@ export async function sendEodReportWhatsApp(
               Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString("base64")}`,
             },
             body: params.toString(),
-          }
+          },
         );
 
         if (!response.ok) {

@@ -7,7 +7,7 @@ async function main() {
     where: { name: { contains: "Samsung" } },
   });
   console.log("Product found:", product);
-  
+
   if (product) {
     const batches = await prisma.productBatch.findMany({
       where: { productId: product.id },
@@ -16,4 +16,6 @@ async function main() {
   }
 }
 
-main().catch(console.error).finally(() => prisma.$disconnect());
+main()
+  .catch(console.error)
+  .finally(() => prisma.$disconnect());

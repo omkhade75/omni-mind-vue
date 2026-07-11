@@ -13,10 +13,30 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { useState, useEffect, useRef } from "react";
 import { createTransactionServer } from "@/lib/server-transactions";
-import { getProductsServer, getProductOptionsServer, addProductServer, autoCategorizeProductServer, type ProductListItem } from "@/lib/server-products";
-import { getCustomersServer, addCustomerServer, type CustomerListItem } from "@/lib/server-customers";
+import {
+  getProductsServer,
+  getProductOptionsServer,
+  addProductServer,
+  autoCategorizeProductServer,
+  type ProductListItem,
+} from "@/lib/server-products";
+import {
+  getCustomersServer,
+  addCustomerServer,
+  type CustomerListItem,
+} from "@/lib/server-customers";
 import { toast } from "sonner";
-import { Plus, Trash2, Loader2, FileText, CheckCircle2, ShoppingCart, Calculator, UserPlus, Sparkles } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Loader2,
+  FileText,
+  CheckCircle2,
+  ShoppingCart,
+  Calculator,
+  UserPlus,
+  Sparkles,
+} from "lucide-react";
 import { fmtINR } from "@/lib/mock-data";
 import { useBusinessData } from "@/lib/business-context";
 import {
@@ -53,7 +73,9 @@ function RouteComponent() {
   const [walkinPhone, setWalkinPhone] = useState("");
   const [formDepartmentId, setFormDepartmentId] = useState("");
   const [formPaymentMethod, setFormPaymentMethod] = useState("UPI");
-  const [cartItems, setCartItems] = useState<Array<{ productId: string; quantity: number; discount: number }>>([]);
+  const [cartItems, setCartItems] = useState<
+    Array<{ productId: string; quantity: number; discount: number }>
+  >([]);
 
   // Temp item selection
   const [selectedItemSku, setSelectedItemSku] = useState("");
@@ -61,7 +83,7 @@ function RouteComponent() {
   const [selectedItemDiscount, setSelectedItemDiscount] = useState("0");
 
   const [saving, setSaving] = useState(false);
-  
+
   // Invoice state
   const [completedTxn, setCompletedTxn] = useState<any>(null);
 
@@ -110,15 +132,15 @@ function RouteComponent() {
         data: {
           role: user?.role || "owner",
           email: user?.email || "",
-        }
+        },
       };
       const prods = await getProductsServer(payload);
       const custs = await getCustomersServer({
         data: {
           role: user?.role || "owner",
           email: user?.email || "",
-          status: "Active"
-        }
+          status: "Active",
+        },
       });
       const opts = await getProductOptionsServer(payload);
 
@@ -148,7 +170,7 @@ function RouteComponent() {
     if (cartItems.length > 0 && products.length > 0) {
       // Find the departmentId of the most recently added product in the cart
       const latestItemProductId = cartItems[cartItems.length - 1].productId;
-      const product = products.find(p => p.id === latestItemProductId);
+      const product = products.find((p) => p.id === latestItemProductId);
       if (product && product.departmentId) {
         setFormDepartmentId(product.departmentId);
       }
@@ -188,7 +210,7 @@ function RouteComponent() {
         setAddingCustomProd(true);
         const sku = "SKU-CUST-" + Date.now().toString().slice(-5);
         const barcode = "BAR-CUST-" + Date.now().toString().slice(-5);
-        
+
         await addProductServer({
           data: {
             name: customProdName,
@@ -204,7 +226,7 @@ function RouteComponent() {
             locationId: "loc-retail",
             role: user?.role || "owner",
             emailUser: user?.email || "",
-          }
+          },
         });
 
         // Add newly registered product locally
@@ -217,11 +239,16 @@ function RouteComponent() {
           name: customProdName,
           category: customProdCatName || "Packaged Foods",
           categoryId: customProdCatId || "cat-packagedfoods",
-          dept: departments.find(d => d.id === (customProdDeptId || formDepartmentId))?.name || "Grocery",
+          dept:
+            departments.find((d) => d.id === (customProdDeptId || formDepartmentId))?.name ||
+            "Grocery",
           departmentId: customProdDeptId || formDepartmentId || "dept-grocery",
           price: Number(customProdPrice),
           cost: Number(customProdCost),
-          margin: Math.round(((Number(customProdPrice) - Number(customProdCost)) / Number(customProdPrice)) * 100) || 0,
+          margin:
+            Math.round(
+              ((Number(customProdPrice) - Number(customProdCost)) / Number(customProdPrice)) * 100,
+            ) || 0,
           stock: Number(customProdStock) || 10,
           reorder: 5,
           status: "Active",
@@ -231,7 +258,7 @@ function RouteComponent() {
           sold: 0,
           revenue: 0,
         };
-        
+
         setProducts((prev) => [...prev, newProd]);
         productSkuToCart = sku;
 
@@ -254,18 +281,21 @@ function RouteComponent() {
         setAddingCustomProd(false);
       }
     }
-    
-    const existingIndex = cartItems.findIndex(i => i.productId === productSkuToCart);
+
+    const existingIndex = cartItems.findIndex((i) => i.productId === productSkuToCart);
     if (existingIndex > -1) {
       const updated = [...cartItems];
       updated[existingIndex].quantity += Number(selectedItemQty);
       setCartItems(updated);
     } else {
-      setCartItems([...cartItems, {
-        productId: productSkuToCart,
-        quantity: Number(selectedItemQty),
-        discount: Number(selectedItemDiscount) || 0
-      }]);
+      setCartItems([
+        ...cartItems,
+        {
+          productId: productSkuToCart,
+          quantity: Number(selectedItemQty),
+          discount: Number(selectedItemDiscount) || 0,
+        },
+      ]);
     }
     toast.success("Added product to transaction cart.");
   };
@@ -293,20 +323,20 @@ function RouteComponent() {
           role: user?.role || "owner",
           emailUser: user?.email || "",
           transactionDate: activeDate,
-        }
+        },
       };
-      const res = await createTransactionServer(req) as any;
-      
+      const res = (await createTransactionServer(req)) as any;
+
       toast.success("Transaction billed and stock updated successfully.");
-      
+
       // Build a local object to show the Invoice Print View
-      const customer = customers.find(c => c.id === formCustomerId);
+      const customer = customers.find((c) => c.id === formCustomerId);
       setCompletedTxn({
         id: "INV-" + Date.now().toString().slice(-6),
         date: new Date().toLocaleString(),
         customerName: customer ? customer.name : "Walk-in Customer",
-        items: cartItems.map(item => {
-          const prod = products.find(p => p.id === item.productId);
+        items: cartItems.map((item) => {
+          const prod = products.find((p) => p.id === item.productId);
           return {
             name: prod ? prod.name : "Unknown",
             qty: item.quantity,
@@ -315,12 +345,12 @@ function RouteComponent() {
             taxRate: 18, // Fixed 18% GST display
           };
         }),
-        paymentMethod: formPaymentMethod
+        paymentMethod: formPaymentMethod,
       });
-      
+
       setCartItems([]);
       setWalkinPhone("");
-      
+
       // Reload customers so visits/spend increases in memory
       loadData();
     } catch (err: any) {
@@ -334,18 +364,18 @@ function RouteComponent() {
   let cartSubtotal = 0;
   let cartTax = 0;
   let cartDiscount = 0;
-  
-  cartItems.forEach(item => {
-    const prod = products.find(p => p.id === item.productId);
+
+  cartItems.forEach((item) => {
+    const prod = products.find((p) => p.id === item.productId);
     const price = prod ? prod.price : 0;
-    const itemSub = (price * item.quantity);
+    const itemSub = price * item.quantity;
     cartSubtotal += itemSub;
     cartDiscount += item.discount;
     // Assuming 18% GST (9% CGST + 9% SGST)
     const taxable = itemSub - item.discount;
-    cartTax += (taxable * 0.18);
+    cartTax += taxable * 0.18;
   });
-  
+
   const cartTotal = cartSubtotal - cartDiscount + cartTax;
 
   if (loading) {
@@ -366,7 +396,7 @@ function RouteComponent() {
       invSubtotal += sub;
       invDiscount += it.discount;
       const taxable = sub - it.discount;
-      invTax += (taxable * 0.18);
+      invTax += taxable * 0.18;
     });
     const invTotal = invSubtotal - invDiscount + invTax;
 
@@ -376,7 +406,7 @@ function RouteComponent() {
           title="Checkout Complete"
           subtitle="Invoice generated successfully. Visit counts and customer spend have been incremented."
         />
-        
+
         <div className="bg-white border border-zinc-200 shadow-sm rounded-xl overflow-hidden p-8">
           <div className="flex justify-between items-start mb-8 border-b pb-6">
             <div>
@@ -390,11 +420,14 @@ function RouteComponent() {
             <div className="text-right">
               <p className="font-semibold text-zinc-900">Invoice #: {completedTxn.id}</p>
               <p className="text-zinc-500 text-sm">Date: {completedTxn.date}</p>
-              <p className="text-zinc-500 text-sm">Billed To: <span className="font-medium text-zinc-900">{completedTxn.customerName}</span></p>
+              <p className="text-zinc-500 text-sm">
+                Billed To:{" "}
+                <span className="font-medium text-zinc-900">{completedTxn.customerName}</span>
+              </p>
               <p className="text-zinc-500 text-sm">Payment: {completedTxn.paymentMethod}</p>
             </div>
           </div>
-          
+
           <table className="w-full text-sm mb-8">
             <thead className="bg-zinc-50 border-y">
               <tr>
@@ -411,7 +444,7 @@ function RouteComponent() {
                 const sub = it.price * it.qty;
                 const d = it.discount;
                 const tax = (sub - d) * 0.18;
-                const tot = (sub - d) + tax;
+                const tot = sub - d + tax;
                 return (
                   <tr key={i}>
                     <td className="py-3 px-4 text-zinc-900">{it.name}</td>
@@ -419,13 +452,15 @@ function RouteComponent() {
                     <td className="py-3 px-4 text-right text-zinc-600">{fmtINR(it.price)}</td>
                     <td className="py-3 px-4 text-right text-zinc-600">{fmtINR(it.discount)}</td>
                     <td className="py-3 px-4 text-right text-zinc-600">{fmtINR(tax)}</td>
-                    <td className="py-3 px-4 text-right font-medium text-zinc-900">{fmtINR(tot)}</td>
+                    <td className="py-3 px-4 text-right font-medium text-zinc-900">
+                      {fmtINR(tot)}
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-          
+
           <div className="flex justify-end border-t pt-6">
             <div className="w-64 space-y-3">
               <div className="flex justify-between text-zinc-600">
@@ -450,15 +485,13 @@ function RouteComponent() {
               </div>
             </div>
           </div>
-          
+
           <div className="mt-8 flex justify-end gap-3">
             <Button variant="outline" onClick={() => window.print()}>
               <FileText className="h-4 w-4 mr-2" />
               Print Invoice
             </Button>
-            <Button onClick={() => setCompletedTxn(null)}>
-              New Bill
-            </Button>
+            <Button onClick={() => setCompletedTxn(null)}>New Bill</Button>
           </div>
         </div>
       </div>
@@ -485,7 +518,9 @@ function RouteComponent() {
                       <SelectValue placeholder="Select a product..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="custom">✨ -- Add Custom Unregistered Product --</SelectItem>
+                      <SelectItem value="custom">
+                        ✨ -- Add Custom Unregistered Product --
+                      </SelectItem>
                       {products.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
                           {p.name} ({p.sku}) - {fmtINR(p.price)}
@@ -512,7 +547,12 @@ function RouteComponent() {
                     onChange={(e) => setSelectedItemDiscount(e.target.value)}
                   />
                 </div>
-                <Button type="button" onClick={addToCart} className="bg-indigo-600 hover:bg-indigo-700" disabled={addingCustomProd}>
+                <Button
+                  type="button"
+                  onClick={addToCart}
+                  className="bg-indigo-600 hover:bg-indigo-700"
+                  disabled={addingCustomProd}
+                >
                   {addingCustomProd ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin mr-2" /> Registering...
@@ -591,7 +631,9 @@ function RouteComponent() {
                         </SelectTrigger>
                         <SelectContent>
                           {departments.map((d) => (
-                            <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                            <SelectItem key={d.id} value={d.id}>
+                              {d.name}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -605,8 +647,13 @@ function RouteComponent() {
                     </div>
                   ) : customProdCatName ? (
                     <div className="text-xs text-emerald-700 bg-emerald-50 p-2 rounded border border-emerald-100 flex items-center justify-between">
-                      <span>🏷️ Auto-detected Category: <strong>{customProdCatName}</strong> ({departments.find(d => d.id === customProdDeptId)?.name || "Grocery"})</span>
-                      <span className="text-[10px] bg-emerald-100 px-1.5 py-0.5 rounded font-mono text-emerald-800">Confidence: 99%</span>
+                      <span>
+                        🏷️ Auto-detected Category: <strong>{customProdCatName}</strong> (
+                        {departments.find((d) => d.id === customProdDeptId)?.name || "Grocery"})
+                      </span>
+                      <span className="text-[10px] bg-emerald-100 px-1.5 py-0.5 rounded font-mono text-emerald-800">
+                        Confidence: 99%
+                      </span>
                     </div>
                   ) : null}
                 </div>
@@ -626,7 +673,10 @@ function RouteComponent() {
                   if (!p) return null;
                   const itemTotal = p.price * item.quantity - item.discount;
                   return (
-                    <div key={idx} className="flex items-center justify-between p-3 border rounded-lg bg-zinc-50/50">
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-3 border rounded-lg bg-zinc-50/50"
+                    >
                       <div>
                         <p className="font-medium text-zinc-900">{p.name}</p>
                         <p className="text-sm text-zinc-500">
@@ -684,12 +734,15 @@ function RouteComponent() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-zinc-500">
-                  Selecting a customer will automatically increment their Visit Count and Spend Amount.
+                  Selecting a customer will automatically increment their Visit Count and Spend
+                  Amount.
                 </p>
 
                 {formCustomerId === "walkin" && (
                   <div className="pt-2 space-y-1 animate-in slide-in-from-top-1 duration-200">
-                    <Label className="text-xs text-zinc-600">Send WhatsApp Bill To (Optional)</Label>
+                    <Label className="text-xs text-zinc-600">
+                      Send WhatsApp Bill To (Optional)
+                    </Label>
                     <Input
                       type="tel"
                       value={walkinPhone}
@@ -709,7 +762,9 @@ function RouteComponent() {
                   </SelectTrigger>
                   <SelectContent>
                     {departments.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -829,11 +884,11 @@ function QuickRegisterCustomerDialog({
           notes: "Quick registered via POS panel.",
           role: user?.role || "owner",
           emailUser: user?.email || "",
-        }
+        },
       });
 
       toast.success(`Customer "${first} ${last}" registered successfully!`);
-      
+
       onSuccess({
         id: (res as any).id || "CUST-" + Date.now().toString().slice(-5),
         customerCode: (res as any).customerCode || "CUST-" + Date.now().toString().slice(-5),
@@ -846,7 +901,7 @@ function QuickRegisterCustomerDialog({
         visits: 0,
         spend: 0,
         aov: 0,
-        favDept: departments.find(d => d.id === dept)?.name || "Fashion",
+        favDept: departments.find((d) => d.id === dept)?.name || "Fashion",
         segment: "Bronze",
         customerType: "B2C",
         churn: 12,
@@ -874,27 +929,49 @@ function QuickRegisterCustomerDialog({
         <DialogHeader>
           <DialogTitle>Quick Register Customer</DialogTitle>
           <DialogDescription>
-            Register a new loyalty customer directly to enable POS WhatsApp receipts and point accumulation.
+            Register a new loyalty customer directly to enable POS WhatsApp receipts and point
+            accumulation.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>First Name</Label>
-              <Input value={first} onChange={(e) => setFirst(e.target.value)} placeholder="Aarav" required />
+              <Input
+                value={first}
+                onChange={(e) => setFirst(e.target.value)}
+                placeholder="Aarav"
+                required
+              />
             </div>
             <div className="space-y-1">
               <Label>Last Name</Label>
-              <Input value={last} onChange={(e) => setLast(e.target.value)} placeholder="Mehra" required />
+              <Input
+                value={last}
+                onChange={(e) => setLast(e.target.value)}
+                placeholder="Mehra"
+                required
+              />
             </div>
           </div>
           <div className="space-y-1">
             <Label>Phone Number (WhatsApp)</Label>
-            <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="e.g. +919876543210" required />
+            <Input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="e.g. +919876543210"
+              required
+            />
           </div>
           <div className="space-y-1">
             <Label>Email (Optional)</Label>
-            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="aarav@gmail.com" />
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="aarav@gmail.com"
+            />
           </div>
           <div className="space-y-1">
             <Label>Preferred Sales Department</Label>
@@ -904,7 +981,9 @@ function QuickRegisterCustomerDialog({
               </SelectTrigger>
               <SelectContent>
                 {departments.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -913,7 +992,11 @@ function QuickRegisterCustomerDialog({
             <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold" disabled={saving}>
+            <Button
+              type="submit"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+              disabled={saving}
+            >
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Register Customer
             </Button>

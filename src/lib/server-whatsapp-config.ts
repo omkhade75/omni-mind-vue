@@ -26,9 +26,12 @@ export function readWhatsAppConfig(): WhatsAppConfig {
   const envConfig: Partial<WhatsAppConfig> = {};
   if (process.env.TWILIO_ACCOUNT_SID) envConfig.twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
   if (process.env.TWILIO_AUTH_TOKEN) envConfig.twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
-  if (process.env.TWILIO_WHATSAPP_SENDER) envConfig.twilioWhatsAppSender = process.env.TWILIO_WHATSAPP_SENDER;
-  if (process.env.OWNER_WHATSAPP_NUMBER) envConfig.ownerWhatsAppNumber = process.env.OWNER_WHATSAPP_NUMBER;
-  if (process.env.MANAGER_WHATSAPP_NUMBER) envConfig.managerWhatsAppNumber = process.env.MANAGER_WHATSAPP_NUMBER;
+  if (process.env.TWILIO_WHATSAPP_SENDER)
+    envConfig.twilioWhatsAppSender = process.env.TWILIO_WHATSAPP_SENDER;
+  if (process.env.OWNER_WHATSAPP_NUMBER)
+    envConfig.ownerWhatsAppNumber = process.env.OWNER_WHATSAPP_NUMBER;
+  if (process.env.MANAGER_WHATSAPP_NUMBER)
+    envConfig.managerWhatsAppNumber = process.env.MANAGER_WHATSAPP_NUMBER;
 
   try {
     const configPath = getConfigPath();
@@ -62,10 +65,9 @@ export function writeWhatsAppConfig(config: WhatsAppConfig) {
   }
 }
 
-export const getWhatsAppConfigServer = createServerFn({ method: "GET" })
-  .handler(async () => {
-    return readWhatsAppConfig();
-  });
+export const getWhatsAppConfigServer = createServerFn({ method: "GET" }).handler(async () => {
+  return readWhatsAppConfig();
+});
 
 export const updateWhatsAppConfigServer = createServerFn({ method: "POST" })
   .validator((data: { data: WhatsAppConfig }) => data)

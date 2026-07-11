@@ -1,13 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { prisma } from "./server/prisma";
-import {
-  useSession,
-  clearSession,
-} from "@tanstack/start-server-core";
+import { useSession, clearSession } from "@tanstack/start-server-core";
 import type { SessionConfig } from "@tanstack/start-server-core";
 
 // Session configuration - password comes from env, never hardcoded
-const SESSION_SECRET = process.env.SESSION_SECRET || "omnimind-ai-session-secret-change-in-production-please-32chars!";
+const SESSION_SECRET =
+  process.env.SESSION_SECRET || "omnimind-ai-session-secret-change-in-production-please-32chars!";
 
 const sessionConfig: SessionConfig = {
   password: SESSION_SECRET,
@@ -35,9 +33,7 @@ export type AuthUser = {
  * In production, you'd verify bcrypt/argon2 hashed passwords.
  */
 export const loginServer = createServerFn({ method: "POST" })
-  .validator(
-    (data: { email: string; password: string }) => data
-  )
+  .validator((data: { email: string; password: string }) => data)
   .handler(async ({ data: payload }) => {
     const user = await prisma.user.findUnique({
       where: { email: payload.email },
@@ -53,7 +49,13 @@ export const loginServer = createServerFn({ method: "POST" })
     // if (!valid) throw new Error("Invalid email or password");
 
     // Create server session
-    const session = await useSession<{ userId: string; role: string; email: string; name: string; departmentId: string | null }>(sessionConfig);
+    const session = await useSession<{
+      userId: string;
+      role: string;
+      email: string;
+      name: string;
+      departmentId: string | null;
+    }>(sessionConfig);
     await session.update({
       userId: user.id,
       role: user.role,
@@ -102,7 +104,13 @@ export const demoLoginServer = createServerFn({ method: "POST" })
 
     if (!user) throw new Error(`No ${dbRole} user found in database`);
 
-    const session = await useSession<{ userId: string; role: string; email: string; name: string; departmentId: string | null }>(sessionConfig);
+    const session = await useSession<{
+      userId: string;
+      role: string;
+      email: string;
+      name: string;
+      departmentId: string | null;
+    }>(sessionConfig);
     await session.update({
       userId: user.id,
       role: user.role,
@@ -127,36 +135,40 @@ export const demoLoginServer = createServerFn({ method: "POST" })
  * Get the current authenticated user from the server session.
  * Returns null if no valid session exists.
  */
-export const getCurrentSessionServer = createServerFn({ method: "GET" })
-  .handler(async () => {
-    try {
-      const session = await useSession<{ userId: string; role: string; email: string; name: string; departmentId: string | null }>(sessionConfig);
-      if (!session.data.userId) {
-        return { user: null };
-      }
-
-      return {
-        user: {
-          id: session.data.userId,
-          name: session.data.name || "",
-          email: session.data.email || "",
-          role: session.data.role || "",
-          departmentId: session.data.departmentId || null,
-        } as AuthUser,
-      };
-    } catch {
+export const getCurrentSessionServer = createServerFn({ method: "GET" }).handler(async () => {
+  try {
+    const session = await useSession<{
+      userId: string;
+      role: string;
+      email: string;
+      name: string;
+      departmentId: string | null;
+    }>(sessionConfig);
+    if (!session.data.userId) {
       return { user: null };
     }
-  });
+
+    return {
+      user: {
+        id: session.data.userId,
+        name: session.data.name || "",
+        email: session.data.email || "",
+        role: session.data.role || "",
+        departmentId: session.data.departmentId || null,
+      } as AuthUser,
+    };
+  } catch {
+    return { user: null };
+  }
+});
 
 /**
  * Logout: clears the server session cookie.
  */
-export const logoutServer = createServerFn({ method: "POST" })
-  .handler(async () => {
-    await clearSession(sessionConfig);
-    return { success: true };
-  });
+export const logoutServer = createServerFn({ method: "POST" }).handler(async () => {
+  await clearSession(sessionConfig);
+  return { success: true };
+});
 
 /**
  * Reads and returns the securely authenticated session user.
@@ -164,7 +176,13 @@ export const logoutServer = createServerFn({ method: "POST" })
  */
 export async function getSecureSessionUser(): Promise<AuthUser | null> {
   try {
-    const session = await useSession<{ userId: string; role: string; email: string; name: string; departmentId: string | null }>(sessionConfig);
+    const session = await useSession<{
+      userId: string;
+      role: string;
+      email: string;
+      name: string;
+      departmentId: string | null;
+    }>(sessionConfig);
     if (!session.data.userId) {
       return null;
     }

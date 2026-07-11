@@ -14,15 +14,22 @@ async function main() {
     console.log("QUERY SUCCESS: Found", suppliers.length, "suppliers.");
 
     const products = await prisma.product.findMany({
-      include: { category: true }
+      include: { category: true },
     });
-    
-    const productMap = new Map(products.map(p => [p.id, p]));
+
+    const productMap = new Map(products.map((p) => [p.id, p]));
 
     const mapped = suppliers.map((s) => {
-      const receivedPOs = s.purchaseOrders.filter((po) => po.status === "Received" || po.status === "Partially_Received");
+      const receivedPOs = s.purchaseOrders.filter(
+        (po) => po.status === "Received" || po.status === "Partially_Received",
+      );
       const pendingPOs = s.purchaseOrders.filter(
-        (po) => po.status === "Draft" || po.status === "Ordered" || po.status === "Sent" || po.status === "Approved" || po.status === "Submitted"
+        (po) =>
+          po.status === "Draft" ||
+          po.status === "Ordered" ||
+          po.status === "Sent" ||
+          po.status === "Approved" ||
+          po.status === "Submitted",
       );
 
       const spend = receivedPOs.reduce((sum, po) => sum + Number(po.totalAmount), 0);

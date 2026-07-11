@@ -61,7 +61,11 @@ export function KpiCard({
                 positive ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive",
               )}
             >
-              {positive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+              {positive ? (
+                <ArrowUpRight className="h-3 w-3" />
+              ) : (
+                <ArrowDownRight className="h-3 w-3" />
+              )}
               {Math.abs(delta!).toFixed(1)}%
             </span>
           )}
@@ -88,9 +92,7 @@ export function KpiCard({
           )}
         </div>
       )}
-      {hasDelta && (
-        <p className="mt-1.5 text-[10px] text-muted-foreground">vs previous period</p>
-      )}
+      {hasDelta && <p className="mt-1.5 text-[10px] text-muted-foreground">vs previous period</p>}
     </button>
   );
 }

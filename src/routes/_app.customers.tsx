@@ -8,7 +8,7 @@ import {
   addCustomerServer,
   editCustomerServer,
   archiveCustomerServer,
-  type CustomerListItem
+  type CustomerListItem,
 } from "@/lib/server-customers";
 import {
   Bar,
@@ -116,7 +116,7 @@ function Customers() {
           sortOrder,
           role: user?.role || "owner",
           email: user?.email || "",
-        }
+        },
       });
       setCustomers(res);
       if (res.length > 0) {
@@ -157,7 +157,7 @@ function Customers() {
           notes: formNotes,
           role: user?.role || "owner",
           emailUser: user?.email || "",
-        }
+        },
       });
       toast.success(`Successfully registered customer ${formFirstName} ${formLastName}.`);
       setAddOpen(false);
@@ -192,7 +192,7 @@ function Customers() {
           notes: formNotes,
           role: user?.role || "owner",
           emailUser: user?.email || "",
-        }
+        },
       });
       toast.success("Successfully updated customer details.");
       setEditOpen(false);
@@ -214,7 +214,7 @@ function Customers() {
           id: selectedCust.id,
           role: user?.role || "owner",
           emailUser: user?.email || "",
-        }
+        },
       });
       toast.success("Customer archived successfully.");
       loadCustomers();
@@ -255,7 +255,7 @@ function Customers() {
   // Derived KPI values from list
   const totalSpend = customers.reduce((sum, c) => sum + c.spend, 0);
   const avgLtv = customers.length > 0 ? Math.round(totalSpend / customers.length) : 0;
-  const churnRiskCount = customers.filter(c => c.churn > 50).length;
+  const churnRiskCount = customers.filter((c) => c.churn > 50).length;
 
   // Segment breakdown
   const segmentCounts = customers.reduce((acc: Record<string, number>, c) => {
@@ -263,16 +263,16 @@ function Customers() {
     return acc;
   }, {});
 
-  const chartSegments = Object.keys(segmentCounts).map(name => ({
+  const chartSegments = Object.keys(segmentCounts).map((name) => ({
     name,
-    v: segmentCounts[name]
+    v: segmentCounts[name],
   }));
 
   // Acquisition last 30 days
   const acquisitionData = Array.from({ length: 30 }, (_, i) => {
     const day = i + 1;
     const dateStr = `2026-05-${String(day).padStart(2, "0")}`;
-    const newJoined = customers.filter(c => c.joined === dateStr).length;
+    const newJoined = customers.filter((c) => c.joined === dateStr).length;
     return {
       d: `${day}`,
       new: newJoined,
@@ -291,19 +291,30 @@ function Customers() {
           <Button
             variant="outline"
             className="border-hairline bg-surface hover:text-[#007AFF] transition-colors gap-2"
-            onClick={() => toast.info("AI Voice Campaigns are coming soon! The AI assistant will autonomously call customers to share personalized offers.")}
+            onClick={() =>
+              toast.info(
+                "AI Voice Campaigns are coming soon! The AI assistant will autonomously call customers to share personalized offers.",
+              )
+            }
           >
             <PhoneCall className="h-4 w-4 text-[#007AFF]" /> AI Voice Call
           </Button>
           <Button
             variant="outline"
             className="border-hairline bg-surface hover:text-[#25D366] transition-colors gap-2"
-            onClick={() => toast.info("WhatsApp Mass Broadcasting is coming soon! You will be able to send offers and greetings to all matching customers.")}
+            onClick={() =>
+              toast.info(
+                "WhatsApp Mass Broadcasting is coming soon! You will be able to send offers and greetings to all matching customers.",
+              )
+            }
           >
             <WhatsappIcon className="h-4 w-4 text-[#25D366]" /> Notify Customers
           </Button>
           <Button
-            onClick={() => { resetForm(); setAddOpen(true); }}
+            onClick={() => {
+              resetForm();
+              setAddOpen(true);
+            }}
             className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-2"
           >
             <Plus className="h-4 w-4" /> Add Customer
@@ -313,11 +324,32 @@ function Customers() {
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
         <Kpi label="Total Customers" v={fmtNum(customers.length)} />
-        <Kpi label="New (30d)" v={fmtNum(customers.filter(c => c.joined.startsWith("2026-05")).length)} />
-        <Kpi label="Returning Rate" v={customers.length > 0 ? `${Math.round((customers.filter(c => c.visits > 1).length / customers.length) * 100)}%` : "0%"} />
-        <Kpi label="Repeat Rate" v={customers.length > 0 ? `${Math.round((customers.filter(c => c.visits > 2).length / customers.length) * 100)}%` : "0%"} />
+        <Kpi
+          label="New (30d)"
+          v={fmtNum(customers.filter((c) => c.joined.startsWith("2026-05")).length)}
+        />
+        <Kpi
+          label="Returning Rate"
+          v={
+            customers.length > 0
+              ? `${Math.round((customers.filter((c) => c.visits > 1).length / customers.length) * 100)}%`
+              : "0%"
+          }
+        />
+        <Kpi
+          label="Repeat Rate"
+          v={
+            customers.length > 0
+              ? `${Math.round((customers.filter((c) => c.visits > 2).length / customers.length) * 100)}%`
+              : "0%"
+          }
+        />
         <Kpi label="Avg LTV" v={fmtINR(avgLtv, { compact: true })} />
-        <Kpi label="High Churn Risk" v={fmtNum(churnRiskCount)} tone={churnRiskCount > 0 ? "warning" : undefined} />
+        <Kpi
+          label="High Churn Risk"
+          v={fmtNum(churnRiskCount)}
+          tone={churnRiskCount > 0 ? "warning" : undefined}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
@@ -676,7 +708,11 @@ function Customers() {
               <Button type="button" variant="ghost" onClick={() => setAddOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
+              <Button
+                type="submit"
+                disabled={saving}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+              >
                 {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Save Customer
               </Button>
             </DialogFooter>
@@ -778,7 +814,11 @@ function Customers() {
               <Button type="button" variant="ghost" onClick={() => setEditOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
+              <Button
+                type="submit"
+                disabled={saving}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+              >
                 {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Save Changes
               </Button>
             </DialogFooter>

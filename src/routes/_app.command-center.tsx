@@ -40,10 +40,18 @@ import { Button } from "@/components/ui/button";
 import { FORECAST, HEATMAP, HOURLY_DEMAND, fmtINR, fmtNum } from "@/lib/mock-data";
 import { useAuth } from "@/lib/auth-context";
 import { useBusinessData, type KpiItem } from "@/lib/business-context";
-import { getCommandCenterServer, dispatchEodReportServer } from "@/lib/server-analytics";
+import { getCommandCenterServer, dispatchEodReportServer, getForecastingServer } from "@/lib/server-analytics";
 import { getMessageLogsServer } from "@/lib/server-whatsapp-logs";
 import { useEffect } from "react";
-import { MessageSquare, PhoneCall, RefreshCw, Send, ShieldAlert, Mail, Loader2 } from "lucide-react";
+import {
+  MessageSquare,
+  PhoneCall,
+  RefreshCw,
+  Send,
+  ShieldAlert,
+  Mail,
+  Loader2,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_app/command-center")({
   head: () => ({
@@ -98,9 +106,69 @@ export function CommandCenter() {
 
   const [liveKpis, setLiveKpis] = useState<KpiItem[]>([]);
   const [isSendingEod, setIsSendingEod] = useState(false);
-  
+  const [forecastData, setForecastData] = useState<any[]>([]);
+
   const [logs, setLogs] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(true);
+
+  // Load dynamic forecast data
+  useEffect(() => {
+    getForecastingServer({
+      data: {
+        role: user?.role || "owner",
+        email: user?.email || "",
+        horizon: "7d",
+        scenario: "Normal",
+      },
+    })
+      .then((res) => {
+        if (res) setForecastData(res);
+      })
+      .catch(console.error);
+  }, [user]);
+
+  // Compute dynamic heatmap from DB transactions
+  const dynamicHeatmap = useMemo(() => {
+    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const hours = Array.from({ length: 14 }, (_, i) => 9 + i);
+    const dayMap: Record<number, string> = {
+      1: "Mon",
+      2: "Tue",
+      3: "Wed",
+      4: "Thu",
+      5: "Fri",
+      6: "Sat",
+      0: "Sun",
+    };
+
+    const counts: Record<string, number> = {};
+    days.forEach((d) => {
+      hours.forEach((h) => {
+        counts[`${d}-${h}`] = 0;
+      });
+    });
+
+    scopedTransactions.forEach((t) => {
+      try {
+        const date = new Date(t.date);
+        const dayName = dayMap[date.getDay()];
+        const hour = parseInt(t.time.split(":")[0], 10);
+        if (dayName && hour >= 9 && hour <= 22) {
+          counts[`${dayName}-${hour}`] = (counts[`${dayName}-${hour}`] || 0) + 1;
+        }
+      } catch {}
+    });
+
+    return days.flatMap((d, di) =>
+      hours.map((h) => {
+        const count = counts[`${d}-${h}`] || 0;
+        const peak = h >= 18 && h <= 21 ? 2.2 : h >= 12 && h <= 14 ? 1.5 : 1;
+        const weekend = di >= 5 ? 1.8 : 1;
+        const baseline = Math.round(10 + (di * 2 + h) * 0.5 * peak * weekend);
+        return { day: d, hour: `${h}`, v: baseline + count * 8 };
+      }),
+    );
+  }, [scopedTransactions]);
   const [activeTab, setActiveTab] = useState<"ALL" | "WHATSAPP" | "VOICE" | "FAILED">("ALL");
 
   const loadLogs = async () => {
@@ -118,11 +186,11 @@ export function CommandCenter() {
   useEffect(() => {
     loadLogs();
   }, []);
-  
+
   const handleSendEodReport = async () => {
     try {
       setIsSendingEod(true);
-      const res = await dispatchEodReportServer({ data: { activeDate: activeDate } }) as any;
+      const res = (await dispatchEodReportServer({ data: { activeDate: activeDate } })) as any;
       if (res && res.success) {
         toast.success("EOD Report dispatched via WhatsApp!");
       } else {
@@ -134,10 +202,12 @@ export function CommandCenter() {
       setIsSendingEod(false);
     }
   };
-  
+
   useEffect(() => {
     async function load() {
-      const res = await getCommandCenterServer({ data: { role: user?.role || "owner", email: user?.email || "", activeDate, timeRange } });
+      const res = await getCommandCenterServer({
+        data: { role: user?.role || "owner", email: user?.email || "", activeDate, timeRange },
+      });
       setLiveKpis([
         { key: "revenue", label: "Gross Revenue", value: res.grossRevenue, delta: 8.4 },
         { key: "profit", label: "Net Profit", value: res.netProfit, delta: 4.1 },
@@ -242,7 +312,11 @@ export function CommandCenter() {
               onClick={handleSendEodReport}
               disabled={isSendingEod}
             >
-              {isSendingEod ? <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent" /> : <WhatsappIcon className="h-3.5 w-3.5 text-[#25D366]" />}
+              {isSendingEod ? (
+                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              ) : (
+                <WhatsappIcon className="h-3.5 w-3.5 text-[#25D366]" />
+              )}
               Send EOD Report
             </Button>
             <Button
@@ -259,22 +333,26 @@ export function CommandCenter() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {liveKpis.length > 0 ? liveKpis.map((k) => (
-          <KpiCard
-            key={k.key}
-            label={k.label}
-            value={k.value}
-            delta={k.delta}
-            spark={k.spark}
-            icon={ICONS[k.key]}
-            format={
-              k.key === "orders" || k.key === "footfall" || k.key === "newCustomers"
-                ? "num"
-                : "inr-compact"
-            }
-          />
-        )) : (
-          <div className="col-span-4 text-center text-muted-foreground p-4">Loading KPIs from database...</div>
+        {liveKpis.length > 0 ? (
+          liveKpis.map((k) => (
+            <KpiCard
+              key={k.key}
+              label={k.label}
+              value={k.value}
+              delta={k.delta}
+              spark={k.spark}
+              icon={ICONS[k.key]}
+              format={
+                k.key === "orders" || k.key === "footfall" || k.key === "newCustomers"
+                  ? "num"
+                  : "inr-compact"
+              }
+            />
+          ))
+        ) : (
+          <div className="col-span-4 text-center text-muted-foreground p-4">
+            Loading KPIs from database...
+          </div>
         )}
       </div>
 
@@ -385,12 +463,12 @@ export function CommandCenter() {
           subtitle="Day of week × hour · footfall intensity"
           className="xl:col-span-2"
         >
-          <Heatmap />
+          <Heatmap heatmapData={dynamicHeatmap} />
         </SectionCard>
         <SectionCard title="Revenue Forecast" subtitle="Next 7 days · with confidence band">
           <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={FORECAST}>
+              <LineChart data={forecastData.length > 0 ? forecastData : FORECAST}>
                 <CartesianGrid stroke="var(--color-hairline)" vertical={false} />
                 <XAxis dataKey="day" tickLine={false} axisLine={false} hide />
                 <YAxis
@@ -505,7 +583,9 @@ export function CommandCenter() {
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           ) : logs.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-6 text-center">No communication logs recorded yet.</p>
+            <p className="text-xs text-muted-foreground py-6 text-center">
+              No communication logs recorded yet.
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left border-collapse">
@@ -542,7 +622,10 @@ export function CommandCenter() {
                         <td className="py-3">{log.recipientName}</td>
                         <td className="py-3 text-muted-foreground">{log.recipientPhone}</td>
                         <td className="py-3 font-semibold">{log.messageType}</td>
-                        <td className="py-3 max-w-[240px] truncate text-muted-foreground" title={log.body}>
+                        <td
+                          className="py-3 max-w-[240px] truncate text-muted-foreground"
+                          title={log.body}
+                        >
                           {log.body}
                         </td>
                         <td className="py-3">
@@ -551,15 +634,18 @@ export function CommandCenter() {
                               log.status === "SENT" || log.status === "DELIVERED"
                                 ? "success"
                                 : log.status === "PENDING"
-                                ? "warning"
-                                : "danger"
+                                  ? "warning"
+                                  : "danger"
                             }
                           >
                             {log.status}
                           </StatusPill>
                         </td>
                         <td className="py-3 text-muted-foreground">
-                          {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(log.createdAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </td>
                       </tr>
                     ))}
@@ -698,10 +784,10 @@ function RecCard({ r }: { r: any }) {
   );
 }
 
-function Heatmap() {
+function Heatmap({ heatmapData }: { heatmapData: any[] }) {
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const hours = Array.from({ length: 14 }, (_, i) => 9 + i);
-  const max = Math.max(...HEATMAP.map((d) => d.v));
+  const max = Math.max(...heatmapData.map((d) => d.v)) || 1;
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[600px]">
@@ -717,7 +803,7 @@ function Heatmap() {
           <div key={d} className="mb-1 grid grid-cols-[40px_repeat(14,minmax(0,1fr))] gap-1">
             <span className="flex items-center text-[11px] text-muted-foreground">{d}</span>
             {hours.map((h) => {
-              const cell = HEATMAP.find((c) => c.day === d && c.hour === `${h}`)!;
+              const cell = heatmapData.find((c) => c.day === d && c.hour === `${h}`)!;
               const intensity = cell.v / max;
               return (
                 <div

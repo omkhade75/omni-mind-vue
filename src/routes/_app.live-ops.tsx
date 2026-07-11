@@ -11,7 +11,7 @@ import {
   Wallet,
   Activity,
 } from "lucide-react";
-import { LIVE_FEED, HOURLY_DEMAND, DEPARTMENTS } from "@/lib/mock-data";
+import { DEPARTMENTS } from "@/lib/mock-data";
 import { useBusinessData } from "@/lib/business-context";
 import {
   Area,
@@ -54,26 +54,35 @@ export function LiveOps() {
     return () => clearInterval(id);
   }, []);
 
-  const { activeDate, transactions } = useBusinessData();
+  const {
+    activeDate,
+    transactions,
+    expenses,
+    recommendations,
+    anomalies,
+    purchaseOrders,
+    staff,
+  } = useBusinessData();
 
   // Filter transactions to the current active date (defaults to today's local date)
   const activeDateStr = activeDate.split("T")[0];
-  const dayTxns = transactions.filter(t => t.date.split("T")[0] === activeDateStr);
+  const dayTxns = transactions.filter((t) => t.date.split("T")[0] === activeDateStr);
 
   // 1. Footfall & Checkouts pseudo-fluctuations
-  const footfallFluctuation = Math.floor(Math.sin(t / 10000) * 15) + Math.floor(Math.cos(t / 5000) * 8);
-  const displayFootfall = (1842 + footfallFluctuation + (dayTxns.length * 5)).toLocaleString("en-IN");
+  const footfallFluctuation =
+    Math.floor(Math.sin(t / 10000) * 15) + Math.floor(Math.cos(t / 5000) * 8);
+  const displayFootfall = (1842 + footfallFluctuation + dayTxns.length * 5).toLocaleString("en-IN");
 
   const checkoutFluctuation = Math.abs(Math.floor(Math.sin(t / 8000) * 2));
   const displayCheckouts = `${18 + checkoutFluctuation} / 22`;
 
   const staffFluctuation = Math.floor(Math.sin(t / 15000) * 3);
-  const displayStaff = 142 + staffFluctuation;
+  const displayStaff = (staff.length || 142) + staffFluctuation;
 
   // 2. Sales this hour: base 1.42L + any today sales in the current hour
   const currentHour = new Date().getHours();
   const salesThisHourVal = dayTxns
-    .filter(t => {
+    .filter((t) => {
       try {
         return new Date(t.date).getHours() === currentHour;
       } catch {
@@ -84,13 +93,14 @@ export function LiveOps() {
   const displaySalesThisHour = `₹${((142000 + salesThisHourVal) / 100000).toFixed(2)}L`;
 
   // 3. Txn/min: base 14.2 + increment based on daily checkouts
-  const displayTxnMin = (14.2 + (dayTxns.length * 0.1)).toFixed(1);
+  const displayTxnMin = (14.2 + dayTxns.length * 0.1).toFixed(1);
 
   // 4. Live Sales - hourly chart data overlay
-  const hourlySalesChart = HOURLY_DEMAND.map((d) => {
-    const hourNum = parseInt(d.hour);
+  const hourlySalesChart = Array.from({ length: 14 }, (_, i) => {
+    const hourNum = 9 + i;
+    const hourStr = `${String(hourNum).padStart(2, "0")}:00`;
     const liveSales = dayTxns
-      .filter(t => {
+      .filter((t) => {
         try {
           return new Date(t.date).getHours() === hourNum;
         } catch {
@@ -98,9 +108,12 @@ export function LiveOps() {
         }
       })
       .reduce((sum, t) => sum + (t.total || 0), 0);
+    
+    // Add baseline for display aesthetics
+    const baselineSales = Math.round(15000 + Math.sin(hourNum / 2) * 5000);
     return {
-      hour: d.hour,
-      sales: d.sales + liveSales,
+      hour: hourStr,
+      sales: baselineSales + liveSales,
     };
   });
 
@@ -109,7 +122,10 @@ export function LiveOps() {
     try {
       const diffMs = Date.now() - new Date(dateStr).getTime();
       if (diffMs < 0 || diffMs > 24 * 60 * 60 * 1000) {
-        return new Date(dateStr).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+        return new Date(dateStr).toLocaleTimeString("en-IN", {
+          hour: "numeric",
+          minute: "2-digit",
+        });
       }
       const mins = Math.max(1, Math.floor(diffMs / 60000));
       if (mins < 60) return `${mins} min ago`;
@@ -120,26 +136,46 @@ export function LiveOps() {
   };
 
   const combinedFeed = [
-    ...dayTxns.map((tx) => {
-      return {
-        type: "sale",
-        text: `New sale ₹${(tx.total || 0).toLocaleString("en-IN")} - ${tx.dept || "Others"} - ${tx.payment || "UPI"}`,
-        t: getTimeAgo(tx.date),
-        timestamp: new Date(tx.date).getTime(),
-      };
-    }),
-    ...LIVE_FEED.map((f, i) => ({
-      ...f,
-      timestamp: Date.now() - (i + 1) * 5 * 60000, // mock older timestamps
-    }))
-  ].sort((a, b) => b.timestamp - a.timestamp);
+    ...transactions.map((tx) => ({
+      type: "sale",
+      text: `New sale ₹${tx.total.toLocaleString("en-IN")} · ${tx.dept} · ${tx.payment}`,
+      t: getTimeAgo(tx.date),
+      timestamp: new Date(tx.date).getTime(),
+    })),
+    ...expenses.map((ex) => ({
+      type: "expense",
+      text: `Expense added ₹${ex.amount.toLocaleString("en-IN")} · ${ex.desc}`,
+      t: getTimeAgo(ex.date),
+      timestamp: new Date(ex.date).getTime(),
+    })),
+    ...recommendations.map((rec) => ({
+      type: "ai",
+      text: `AI generated: "${rec.title}"`,
+      t: "recently",
+      timestamp: Date.now() - 4 * 60 * 60 * 1000,
+    })),
+    ...anomalies.map((anom) => ({
+      type: "alert",
+      text: `Anomaly: ${anom.metric} is ${anom.actual} (expected ${anom.expected})`,
+      t: getTimeAgo(anom.date),
+      timestamp: new Date(anom.date).getTime(),
+    })),
+    ...purchaseOrders.map((po) => ({
+      type: "delivery",
+      text: `PO ${po.id} for ${po.productName} is ${po.status}`,
+      t: getTimeAgo(po.date),
+      timestamp: new Date(po.date).getTime(),
+    })),
+  ]
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, 15);
 
   // 6. Departments live visitor fluctuations
   const getDeptVisitors = (index: number) => {
     const fluctuation = Math.floor(Math.sin((t + index * 1200) / 4000) * 8);
     // Overlay base department visitors with real transactions count
     const deptName = DEPARTMENTS[index];
-    const deptTxnsCount = transactions.filter(tx => tx.dept === deptName).length;
+    const deptTxnsCount = transactions.filter((tx) => tx.dept === deptName).length;
     return 120 + index * 42 + fluctuation + deptTxnsCount * 2;
   };
 

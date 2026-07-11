@@ -10,7 +10,13 @@ import { KpiCard } from "@/components/kpi-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -31,7 +37,17 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { Loader2, Plus, Wallet, FileText, Landmark, ShieldCheck, ArrowUpRight, Shield, AlertTriangle } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Wallet,
+  FileText,
+  Landmark,
+  ShieldCheck,
+  ArrowUpRight,
+  Shield,
+  AlertTriangle,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_app/tax")({
   head: () => ({
@@ -63,7 +79,9 @@ function RouteComponent() {
   // Dialog & Form States
   const [showFilingModal, setShowFilingModal] = useState(false);
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState<"GST" | "Corporate Income Tax" | "Property Tax" | "TDS">("GST");
+  const [category, setCategory] = useState<"GST" | "Corporate Income Tax" | "Property Tax" | "TDS">(
+    "GST",
+  );
   const [description, setDescription] = useState("");
   const [challanNumber, setChallanNumber] = useState("");
   const [saving, setSaving] = useState(false);
@@ -100,7 +118,7 @@ function RouteComponent() {
           challanNumber,
           role: user?.role || "owner",
           emailUser: user?.email || "",
-        }
+        },
       });
 
       toast.success("Tax Challan payment recorded in General Ledger!");
@@ -125,16 +143,16 @@ function RouteComponent() {
 
   // 1. GST Collected (from completed sales tax fields)
   const thisMonthSales = transactions.filter(
-    (t) => t.date.split("T")[0].startsWith(activeYearMonth) && t.status === "Completed"
+    (t) => t.date.split("T")[0].startsWith(activeYearMonth) && t.status === "Completed",
   );
   const gstCollected = thisMonthSales.reduce((sum, t) => sum + (t.tax || 0), 0);
 
   // 2. Input Tax Credit (from completed purchase orders)
   const thisMonthPOs = purchaseOrders.filter(
-    (po) => po.date.split("T")[0].startsWith(activeYearMonth) && po.status === "Received"
+    (po) => po.date.split("T")[0].startsWith(activeYearMonth) && po.status === "Received",
   );
   // Estimate ITC as 18% of PO total amount if tax field is not explicit
-  const inputTaxCredit = thisMonthPOs.reduce((sum, po) => sum + (Number(po.totalCost) * 0.18), 0);
+  const inputTaxCredit = thisMonthPOs.reduce((sum, po) => sum + Number(po.totalCost) * 0.18, 0);
 
   // Net GST Payable
   const gstPayable = Math.max(0, gstCollected - inputTaxCredit);
@@ -169,9 +187,24 @@ function RouteComponent() {
 
   // --- Graph 1: GST Inflow vs Outflow Trend ---
   const gstTrendData = [
-    { name: "Week 1", Collected: gstCollected * 0.2, Credit: inputTaxCredit * 0.2, Net: gstPayable * 0.2 },
-    { name: "Week 2", Collected: gstCollected * 0.35, Credit: inputTaxCredit * 0.3, Net: gstPayable * 0.35 },
-    { name: "Week 3", Collected: gstCollected * 0.65, Credit: inputTaxCredit * 0.6, Net: gstPayable * 0.6 },
+    {
+      name: "Week 1",
+      Collected: gstCollected * 0.2,
+      Credit: inputTaxCredit * 0.2,
+      Net: gstPayable * 0.2,
+    },
+    {
+      name: "Week 2",
+      Collected: gstCollected * 0.35,
+      Credit: inputTaxCredit * 0.3,
+      Net: gstPayable * 0.35,
+    },
+    {
+      name: "Week 3",
+      Collected: gstCollected * 0.65,
+      Credit: inputTaxCredit * 0.6,
+      Net: gstPayable * 0.6,
+    },
     { name: "Week 4", Collected: gstCollected, Credit: inputTaxCredit, Net: gstPayable },
   ];
 
@@ -194,7 +227,9 @@ function RouteComponent() {
       <div className="p-4 bg-indigo-50/20 border border-indigo-100 rounded-xl flex gap-3 text-sm text-indigo-700 dark:bg-indigo-950/20 dark:border-indigo-900/60 dark:text-indigo-300">
         <Shield className="h-5 w-5 shrink-0 mt-0.5" />
         <div>
-          <span className="font-semibold">Compliance Notice:</span> This panel tracks automated tax provisions and ledger records dynamically compiled from POS sales, utilities, and procurement. Consult a chartered accountant for official tax filings and submissions.
+          <span className="font-semibold">Compliance Notice:</span> This panel tracks automated tax
+          provisions and ledger records dynamically compiled from POS sales, utilities, and
+          procurement. Consult a chartered accountant for official tax filings and submissions.
         </div>
       </div>
 
@@ -228,7 +263,6 @@ function RouteComponent() {
 
       {/* Grid: Sections breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
         {/* GST Control Card */}
         <SectionCard title="GST Breakdown (Current Quarter)">
           <div className="space-y-4">
@@ -238,7 +272,9 @@ function RouteComponent() {
             </div>
             <div className="flex justify-between items-center pb-2 border-b">
               <span className="text-sm text-zinc-500">Input Tax Credit (Procurement Inflow):</span>
-              <span className="font-semibold text-zinc-900 text-emerald-600">-{fmtINR(inputTaxCredit)}</span>
+              <span className="font-semibold text-zinc-900 text-emerald-600">
+                -{fmtINR(inputTaxCredit)}
+              </span>
             </div>
             <div className="flex justify-between items-center pt-2">
               <span className="text-sm font-semibold text-zinc-700">Net GST Liability:</span>
@@ -256,11 +292,15 @@ function RouteComponent() {
             </div>
             <div className="flex justify-between items-center pb-2 border-b">
               <span className="text-sm text-zinc-500">Advance Tax Paid:</span>
-              <span className="font-semibold text-zinc-900 text-emerald-600">-{fmtINR(advanceTaxPaid)}</span>
+              <span className="font-semibold text-zinc-900 text-emerald-600">
+                -{fmtINR(advanceTaxPaid)}
+              </span>
             </div>
             <div className="flex justify-between items-center pt-2">
               <span className="text-sm font-semibold text-zinc-700">Remaining Tax Provisions:</span>
-              <span className={`font-bold text-lg ${incomeTaxProvision - advanceTaxPaid > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+              <span
+                className={`font-bold text-lg ${incomeTaxProvision - advanceTaxPaid > 0 ? "text-rose-600" : "text-emerald-600"}`}
+              >
                 {fmtINR(incomeTaxProvision - advanceTaxPaid)}
               </span>
             </div>
@@ -284,12 +324,10 @@ function RouteComponent() {
             </div>
           </div>
         </SectionCard>
-
       </div>
 
       {/* Dynamic Graph Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
         {/* GST Trend Chart */}
         <div className="lg:col-span-2">
           <SectionCard title="GST Liability Progression Chart">
@@ -297,18 +335,47 @@ function RouteComponent() {
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={gstTrendData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
-                  <XAxis dataKey="name" stroke="#a1a1aa" fontSize={11} tickLine={false} axisLine={false} />
+                  <XAxis
+                    dataKey="name"
+                    stroke="#a1a1aa"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                  />
                   <YAxis
                     stroke="#a1a1aa"
                     fontSize={11}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(val: number) => `₹${val >= 1000 ? (val / 1000).toFixed(0) + "k" : val}`}
+                    tickFormatter={(val: number) =>
+                      `₹${val >= 1000 ? (val / 1000).toFixed(0) + "k" : val}`
+                    }
                   />
                   <Tooltip formatter={(val: any) => fmtINR(Number(val))} />
-                  <Area type="monotone" dataKey="Collected" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.1} strokeWidth={2} />
-                  <Area type="monotone" dataKey="Credit" stroke="#10b981" fill="#10b981" fillOpacity={0.05} strokeWidth={1.5} />
-                  <Area type="monotone" dataKey="Net" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.1} strokeWidth={2} />
+                  <Area
+                    type="monotone"
+                    dataKey="Collected"
+                    stroke="#4f46e5"
+                    fill="#4f46e5"
+                    fillOpacity={0.1}
+                    strokeWidth={2}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="Credit"
+                    stroke="#10b981"
+                    fill="#10b981"
+                    fillOpacity={0.05}
+                    strokeWidth={1.5}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="Net"
+                    stroke="#f59e0b"
+                    fill="#f59e0b"
+                    fillOpacity={0.1}
+                    strokeWidth={2}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -341,7 +408,10 @@ function RouteComponent() {
             {pieData.map((d, index) => (
               <div key={d.name} className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-1.5">
-                  <span className="h-3 w-3 rounded-full" style={{ backgroundColor: COLORS[index] }} />
+                  <span
+                    className="h-3 w-3 rounded-full"
+                    style={{ backgroundColor: COLORS[index] }}
+                  />
                   <span className="text-zinc-500">{d.name}</span>
                 </div>
                 <span className="font-semibold text-zinc-800">{fmtINR(d.value)}</span>
@@ -349,7 +419,6 @@ function RouteComponent() {
             ))}
           </div>
         </SectionCard>
-
       </div>
 
       {/* Challan Filing history */}
@@ -384,11 +453,15 @@ function RouteComponent() {
                 {taxPayments.map((tp) => (
                   <tr key={tp.id} className="hover:bg-zinc-50/50">
                     <td className="px-4 py-3">
-                      <div className="font-semibold text-zinc-900">Challan #{tp.referenceId || "N/A"}</div>
+                      <div className="font-semibold text-zinc-900">
+                        Challan #{tp.referenceId || "N/A"}
+                      </div>
                       <div className="text-xs text-zinc-500">{tp.description}</div>
                     </td>
                     <td className="px-4 py-3 text-zinc-500 font-mono text-xs">{tp.journalId}</td>
-                    <td className="px-4 py-3 text-right font-bold text-rose-600">-{fmtINR(tp.amount)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-rose-600">
+                      -{fmtINR(tp.amount)}
+                    </td>
                     <td className="px-4 py-3 text-center text-zinc-500 text-xs">
                       {new Date(tp.date).toLocaleDateString("en-IN", {
                         day: "numeric",
@@ -410,7 +483,8 @@ function RouteComponent() {
           <DialogHeader>
             <DialogTitle>Record Tax Challan Payment</DialogTitle>
             <DialogDescription>
-              Post a tax payment transaction to the General Ledger. This will credit Cash (1000) and debit Tax & Compliance Expense (5600).
+              Post a tax payment transaction to the General Ledger. This will credit Cash (1000) and
+              debit Tax & Compliance Expense (5600).
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleRecordTax} className="space-y-4 py-2">
@@ -422,7 +496,9 @@ function RouteComponent() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="GST">GST Payment</SelectItem>
-                  <SelectItem value="Corporate Income Tax">Corporate Income Tax / Advance Tax</SelectItem>
+                  <SelectItem value="Corporate Income Tax">
+                    Corporate Income Tax / Advance Tax
+                  </SelectItem>
                   <SelectItem value="Property Tax">PCMC Property Tax</SelectItem>
                   <SelectItem value="TDS">TDS Settlement</SelectItem>
                 </SelectContent>
@@ -460,10 +536,19 @@ function RouteComponent() {
               />
             </div>
             <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" onClick={() => setShowFilingModal(false)} disabled={saving}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowFilingModal(false)}
+                disabled={saving}
+              >
                 Cancel
               </Button>
-              <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold" disabled={saving}>
+              <Button
+                type="submit"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold"
+                disabled={saving}
+              >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Authorize Challan Transfer
               </Button>

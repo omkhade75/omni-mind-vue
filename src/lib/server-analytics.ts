@@ -4,7 +4,9 @@ import { sendEodReportWhatsApp } from "./server-whatsapp";
 import { readWhatsAppConfig } from "./server-whatsapp-config";
 
 export const getCommandCenterServer = createServerFn({ method: "POST" })
-  .validator((data: { role: string; email: string; activeDate?: string; timeRange?: string }) => data)
+  .validator(
+    (data: { role: string; email: string; activeDate?: string; timeRange?: string }) => data,
+  )
   .handler(async ({ data }) => {
     const activeDate = data.activeDate ? new Date(data.activeDate) : new Date();
     const timeRange = data.timeRange || "today";
@@ -53,10 +55,10 @@ export const getCommandCenterServer = createServerFn({ method: "POST" })
 
     const grossRevenue = transactions.reduce((sum, t) => sum + Number(t.totalAmount), 0);
     const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
-    
+
     // Simplistic cost estimate if actual costs aren't strictly tracked per item in a live summary
     // Let's assume an average margin of 40% before expenses.
-    const netProfit = (grossRevenue * 0.40) - totalExpenses;
+    const netProfit = grossRevenue * 0.4 - totalExpenses;
 
     const activeAnomalies = await prisma.utilityReading.count({
       where: {
@@ -65,7 +67,7 @@ export const getCommandCenterServer = createServerFn({ method: "POST" })
           lte: endDate,
         },
         value: { gt: 1000 }, // Dummy anomaly logic
-      }
+      },
     });
 
     return {
@@ -81,35 +83,131 @@ export const getCommandCenterServer = createServerFn({ method: "POST" })
 export const getAnomaliesServer = createServerFn({ method: "POST" })
   .validator((data: { role: string; email: string; activeDate?: string }) => data)
   .handler(async ({ data }) => {
-    // Generate some deterministic anomalies based on db
-    const activeAnomalies = [
-      {
-        id: "ANOM-01",
-        severity: "High",
-        metric: "Grid energy draw",
-        expected: "24 kWh",
-        actual: "41 kWh",
-        deviation: "+71%",
-        when: "02:00 AM (2 hrs)",
-        cause: "Suspect compressor valve failure on Roof Unit B.",
-        action: "Dispatch HVAC contractor immediately.",
-        status: "New",
-      },
-      {
-        id: "ANOM-02",
-        severity: "Medium",
-        metric: "Yogurt Expiry Velocity",
-        expected: "12 units/day",
-        actual: "3 units/day",
-        deviation: "-75%",
-        when: "Past 48 hrs",
-        cause: "Shelf placement obscured by new promotional stand.",
-        action: "Relocate stand; Apply 20% markdown to clear remaining batch.",
-        status: "Investigating",
-      }
-    ];
+    const anomalies = await prisma.anomaly.findMany({
+      orderBy: { detectedAt: "desc" },
+    });
 
-    return activeAnomalies;
+    if (anomalies.length === 0) {
+      // Seed initial anomalies in database so it is populated via PostgreSQL
+      const seeded = [
+        await prisma.anomaly.create({
+          data: {
+            type: "Energy Surge",
+            severity: "High",
+            title: "Grid energy draw spike",
+            description: "Suspect compressor valve failure on Roof Unit B.",
+            evidence: JSON.stringify({ expected: "24 kWh", actual: "41 kWh", deviation: "+71%" }),
+            entityType: "UtilityReading",
+            status: "Active",
+            detectedAt: new Date(),
+          },
+        }),
+        await prisma.anomaly.create({
+          data: {
+            type: "Expiry Risk",
+            severity: "Medium",
+            title: "Yogurt Expiry Velocity",
+            description: "Shelf placement obscured by new promotional stand.",
+            evidence: JSON.stringify({ expected: "12 units/day", actual: "3 units/day", deviation: "-75%" }),
+            entityType: "Product",
+            status: "Active",
+            detectedAt: new Date(),
+          },
+        }),
+      ];
+      return seeded.map((a) => ({
+        id: a.id,
+        severity: a.severity,
+        metric: a.type,
+        expected: JSON.parse(a.evidence).expected,
+        actual: JSON.parse(a.evidence).actual,
+        deviation: JSON.parse(a.evidence).deviation,
+        when: "Just now",
+        cause: a.description,
+        action: "Investigate immediate mitigation options.",
+        status: a.status,
+      }));
+    }
+
+    return anomalies.map((a) => {
+      let parsedEvidence = { expected: "N/A", actual: "N/A", deviation: "0%" };
+      try {
+        parsedEvidence = JSON.parse(a.evidence);
+      } catch {}
+      return {
+        id: a.id,
+        severity: a.severity,
+        metric: a.type,
+        expected: parsedEvidence.expected,
+        actual: parsedEvidence.actual,
+        deviation: parsedEvidence.deviation,
+        when: a.detectedAt.toISOString().split("T")[0],
+        cause: a.description,
+        action: "Relocate stand or apply markdown / dispatch contractor.",
+        status: a.status,
+      };
+    });
+  });
+
+export const getRecommendationsServer = createServerFn({ method: "POST" })
+  .validator((data: { role: string; email: string }) => data)
+  .handler(async () => {
+    const recs = await prisma.recommendation.findMany({
+      orderBy: { generatedAt: "desc" },
+    });
+
+    if (recs.length === 0) {
+      // Seed initial recommendations in database
+      const seeded = [
+        await prisma.recommendation.create({
+          data: {
+            type: "MARKDOWN",
+            title: "Apply 20% markdown on expiring Yogurt",
+            summary: "Accelerate sales velocity for remaining batch expiring in 48 hours.",
+            evidence: JSON.stringify({ expectedVelocity: "12/day", actual: "3/day" }),
+            confidence: 0.95,
+            priority: "high",
+            expectedImpact: "₹1,200 recovered margin",
+            status: "New",
+          },
+        }),
+        await prisma.recommendation.create({
+          data: {
+            type: "PO",
+            title: "Reorder Lakmé Foundation (24 units)",
+            summary: "Current stock level (4 units) is below reorder point (15 units).",
+            evidence: JSON.stringify({ stock: 4, reorder: 15 }),
+            confidence: 0.88,
+            priority: "medium",
+            expectedImpact: "Prevent stockout sales loss",
+            status: "New",
+          },
+        }),
+      ];
+      return seeded.map((r) => ({
+        id: r.id,
+        category: r.type,
+        title: r.title,
+        evidence: r.summary,
+        impact: r.expectedImpact || "",
+        confidence: Number(r.confidence),
+        priority: r.priority,
+        status: r.status,
+        generated: "Just now",
+      }));
+    }
+
+    return recs.map((r) => ({
+      id: r.id,
+      category: r.type,
+      title: r.title,
+      evidence: r.summary,
+      impact: r.expectedImpact || "",
+      confidence: Number(r.confidence),
+      priority: r.priority,
+      status: r.status,
+      generated: r.generatedAt.toISOString().split("T")[0],
+    }));
   });
 
 export const getForecastingServer = createServerFn({ method: "POST" })
@@ -148,10 +246,10 @@ export const getForecastingServer = createServerFn({ method: "POST" })
       multiplier = 1.35;
       volatility = 0.25;
     } else if (scenario === "Promotion Campaign") {
-      multiplier = 1.20;
-      volatility = 0.10;
+      multiplier = 1.2;
+      volatility = 0.1;
     } else if (scenario === "Rainy Weekend") {
-      multiplier = 0.80;
+      multiplier = 0.8;
       volatility = 0.12;
     } else if (scenario === "Supplier Delay") {
       multiplier = 0.85;
@@ -164,7 +262,7 @@ export const getForecastingServer = createServerFn({ method: "POST" })
       const cycle = Math.sin(i / 1.1) * (avgRevenue * 0.2);
       const base = avgRevenue + cycle;
 
-      const actualVal = past ? Math.round(base + (Math.sin(i * 3) * (avgRevenue * 0.05))) : null;
+      const actualVal = past ? Math.round(base + Math.sin(i * 3) * (avgRevenue * 0.05)) : null;
 
       // Apply scenario multiplier to future values
       const forecastVal = !past ? Math.round(base * multiplier * 1.03) : null;

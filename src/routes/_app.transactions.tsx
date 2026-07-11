@@ -33,7 +33,7 @@ function Transactions() {
         data: {
           role: user?.role || "owner",
           email: user?.email || "",
-        }
+        },
       });
       setTransactions(res);
     } catch (e) {
@@ -48,21 +48,26 @@ function Transactions() {
   }, [user]);
 
   // Split into B2B (business customer), B2C (registered), and Walk-in (unregistered)
-  const b2bTransactions = transactions.filter(t => t.customerType === "B2B");
-  const b2cRegisteredTransactions = transactions.filter(t => t.customerId && t.customerType !== "B2B");
-  const b2cWalkinTransactions = transactions.filter(t => !t.customerId);
+  const b2bTransactions = transactions.filter((t) => t.customerType === "B2B");
+  const b2cRegisteredTransactions = transactions.filter(
+    (t) => t.customerId && t.customerType !== "B2B",
+  );
+  const b2cWalkinTransactions = transactions.filter((t) => !t.customerId);
 
   const b2bTotal = b2bTransactions.reduce((sum, t) => sum + t.total, 0);
-  const b2cTotal = b2cRegisteredTransactions.reduce((sum, t) => sum + t.total, 0) + 
-                   b2cWalkinTransactions.reduce((sum, t) => sum + t.total, 0);
+  const b2cTotal =
+    b2cRegisteredTransactions.reduce((sum, t) => sum + t.total, 0) +
+    b2cWalkinTransactions.reduce((sum, t) => sum + t.total, 0);
 
-  const TransactionTable = ({ data, emptyMsg }: { data: TransactionListItem[]; emptyMsg: string }) => {
+  const TransactionTable = ({
+    data,
+    emptyMsg,
+  }: {
+    data: TransactionListItem[];
+    emptyMsg: string;
+  }) => {
     if (data.length === 0) {
-      return (
-        <div className="py-12 text-center text-sm text-muted-foreground">
-          {emptyMsg}
-        </div>
-      );
+      return <div className="py-12 text-center text-sm text-muted-foreground">{emptyMsg}</div>;
     }
 
     return (
@@ -84,8 +89,12 @@ function Transactions() {
           <tbody className="divide-y divide-hairline">
             {data.map((t) => (
               <tr key={t.id} className="hover:bg-surface/50 transition-colors">
-                <td className="py-3 font-mono text-[11px] text-muted-foreground">{t.transactionNumber}</td>
-                <td className="py-3 text-muted-foreground">{t.date} {t.time}</td>
+                <td className="py-3 font-mono text-[11px] text-muted-foreground">
+                  {t.transactionNumber}
+                </td>
+                <td className="py-3 text-muted-foreground">
+                  {t.date} {t.time}
+                </td>
                 <td className="py-3">
                   {t.customerId ? (
                     t.customerId === "TREASURY-01" ? (
@@ -103,12 +112,16 @@ function Transactions() {
                   )}
                 </td>
                 <td className="py-3 text-muted-foreground">{t.dept}</td>
-                <td className="py-3 text-right">{t.items.reduce((acc, i) => acc + i.quantity, 0)}</td>
+                <td className="py-3 text-right">
+                  {t.items.reduce((acc, i) => acc + i.quantity, 0)}
+                </td>
                 <td className="py-3 text-right text-muted-foreground">{fmtINR(t.discount)}</td>
                 <td className="py-3 text-right font-semibold pr-4">{fmtINR(t.total)}</td>
                 <td className="py-3 pl-4 font-medium text-foreground">{t.payment}</td>
                 <td className="py-3">
-                  <StatusPill tone={t.status === "Completed" || t.status === "Paid" ? "success" : "warning"}>
+                  <StatusPill
+                    tone={t.status === "Completed" || t.status === "Paid" ? "success" : "warning"}
+                  >
                     {t.status}
                   </StatusPill>
                 </td>
@@ -162,9 +175,7 @@ function Transactions() {
       ) : (
         <>
           {/* B2B Section */}
-          <SectionCard
-            title={`B2B Transactions — Business Customers (${b2bTransactions.length})`}
-          >
+          <SectionCard title={`B2B Transactions — Business Customers (${b2bTransactions.length})`}>
             <TransactionTable data={b2bTransactions} emptyMsg="No B2B transactions recorded." />
           </SectionCard>
 
@@ -172,14 +183,20 @@ function Transactions() {
           <SectionCard
             title={`B2C Transactions — Registered Customers (${b2cRegisteredTransactions.length})`}
           >
-            <TransactionTable data={b2cRegisteredTransactions} emptyMsg="No registered B2C transactions recorded." />
+            <TransactionTable
+              data={b2cRegisteredTransactions}
+              emptyMsg="No registered B2C transactions recorded."
+            />
           </SectionCard>
 
           {/* B2C Walk-in Section */}
           <SectionCard
             title={`B2C Transactions — Walk-in Customers (${b2cWalkinTransactions.length})`}
           >
-            <TransactionTable data={b2cWalkinTransactions} emptyMsg="No walk-in transactions recorded." />
+            <TransactionTable
+              data={b2cWalkinTransactions}
+              emptyMsg="No walk-in transactions recorded."
+            />
           </SectionCard>
         </>
       )}

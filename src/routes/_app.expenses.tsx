@@ -5,7 +5,6 @@ import {
   AreaChart,
   Cell,
   CartesianGrid,
-  Legend,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -16,9 +15,28 @@ import {
 import { useBusinessData } from "@/lib/business-context";
 import { useAuth } from "@/lib/auth-context";
 import { fmtINR } from "@/lib/mock-data";
-import { useMemo, useState, useEffect } from "react";
-import { getExpensesServer, type ExpenseListItem } from "@/lib/server-expenses";
-import { Loader2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { addExpenseServer, archiveExpenseServer } from "@/lib/server-expenses";
+import { Plus, Trash2, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/expenses")({
   head: () => ({
@@ -36,24 +54,17 @@ export const Route = createFileRoute("/_app/expenses")({
 
 function Expenses() {
   const { user } = useAuth();
-  const [scopedExpenses, setScopedExpenses] = useState<ExpenseListItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { scopedExpenses, forceRefresh, activeDate } = useBusinessData();
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const payload = { data: { role: user?.role || "owner", email: user?.email || "" } };
-        const data = await getExpensesServer(payload);
-        setScopedExpenses(data);
-      } catch (err) {
-        console.error("Failed to load expenses", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, [user]);
+  // Form states
+  const [category, setCategory] = useState("Utility");
+  const [description, setDescription] = useState("");
+  const [vendor, setVendor] = useState("");
+  const [amount, setAmount] = useState("");
+  const [date, setDate] = useState(activeDate);
+  const [paymentMethod, setPaymentMethod] = useState("Cash");
 
   const total = useMemo(() => {
     return scopedExpenses.reduce((sum, e) => sum + e.amount, 0);
@@ -67,7 +78,7 @@ function Expenses() {
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [scopedExpenses]);
 
-  // Construct a trend
+  // Construct a trend based on actual database entries
   const trend = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => ({
       m: ["Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May"][i],
@@ -75,11 +86,65 @@ function Expenses() {
     }));
   }, [total]);
 
+  const handleAddExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!description.trim() || !vendor.trim() || !amount.trim()) {
+      toast.error("Please fill in all details.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await addExpenseServer({
+        data: {
+          category,
+          description,
+          vendor,
+          amount: parseFloat(amount) || 0,
+          date,
+          paymentMethod,
+          role: user?.role || "owner",
+          email: user?.email || "",
+        },
+      });
+      toast.success("Expense registered in ledger database.");
+      setShowAddModal(false);
+      setDescription("");
+      setVendor("");
+      setAmount("");
+      forceRefresh();
+    } catch (err) {
+      toast.error("Failed to add expense.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleVoidExpense = async (id: string) => {
+    try {
+      await archiveExpenseServer({
+        data: {
+          id,
+          role: user?.role || "owner",
+          email: user?.email || "",
+        },
+      });
+      toast.success("Expense voided successfully.");
+      forceRefresh();
+    } catch (err) {
+      toast.error("Failed to void expense.");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Expense Intelligence"
         subtitle="Cost tracking, category breakdowns, and month-end forecast."
+        actions={
+          <Button onClick={() => setShowAddModal(true)} size="sm">
+            <Plus className="mr-1 h-4 w-4" /> Add Expense
+          </Button>
+        }
       />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
@@ -118,7 +183,7 @@ function Expenses() {
                   tickFormatter={(v: any) => `₹${Number(v) / 1000}K`}
                   width={44}
                 />
-                <Tooltip contentStyle={ttStyle} />
+                <Tooltip contentStyle={ttStyle} formatter={(v: any) => fmtINR(Number(v))} />
                 <Area
                   type="monotone"
                   dataKey="v"
@@ -166,12 +231,7 @@ function Expenses() {
         title="Expense Log"
         subtitle={`${scopedExpenses.length} entries for current scope`}
       >
-        <div className="overflow-x-auto min-h-[300px] relative">
-          {loading ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-sidebar/50">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : (
+        <div className="overflow-x-auto min-h-[150px] relative">
           <table className="w-full min-w-[820px] text-xs">
             <thead>
               <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground border-b border-hairline pb-2">
@@ -183,12 +243,13 @@ function Expenses() {
                 <th className="pb-3 text-right font-semibold pr-4">Amount</th>
                 <th className="pb-3 font-semibold pl-4">Dept</th>
                 <th className="pb-3 font-semibold">Status</th>
+                <th className="pb-3 text-right font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-hairline">
               {scopedExpenses.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-muted-foreground">
+                  <td colSpan={9} className="py-8 text-center text-muted-foreground">
                     No expense records found.
                   </td>
                 </tr>
@@ -198,23 +259,140 @@ function Expenses() {
                     <td className="py-3 font-mono text-[11px] text-muted-foreground">{e.id}</td>
                     <td className="py-3">{e.date}</td>
                     <td className="py-3 font-medium text-foreground">{e.category}</td>
-                    <td className="py-3 text-muted-foreground">{e.description}</td>
+                    <td className="py-3 text-muted-foreground">{e.desc}</td>
                     <td className="py-3 text-muted-foreground">{e.vendor}</td>
                     <td className="py-3 text-right font-semibold pr-4">{fmtINR(e.amount)}</td>
-                    <td className="py-3 pl-4 text-muted-foreground">{e.departmentId || "Mall-wide"}</td>
+                    <td className="py-3 pl-4 text-muted-foreground">
+                      {e.dept || "Mall-wide"}
+                    </td>
                     <td className="py-3">
                       <StatusPill tone={e.status === "Paid" ? "success" : "warning"}>
                         {e.status}
                       </StatusPill>
+                    </td>
+                    <td className="py-3 text-right">
+                      {(e.status as string) !== "Voided" && (
+                        <button
+                          onClick={() => handleVoidExpense(e.id)}
+                          className="rounded p-1 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                          title="Void expense"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
-          )}
         </div>
       </SectionCard>
+
+      {/* Add Expense Modal */}
+      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Expense Entry</DialogTitle>
+            <DialogDescription>
+              Record paid invoice in General Ledger treasury accounts.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleAddExpense} className="space-y-4 text-xs">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="exp-category">Expense Category</Label>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger id="exp-category">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Utility">Utility</SelectItem>
+                    <SelectItem value="Salaries">Salaries</SelectItem>
+                    <SelectItem value="Rent">Rent</SelectItem>
+                    <SelectItem value="Marketing">Marketing</SelectItem>
+                    <SelectItem value="Procurement">Procurement</SelectItem>
+                    <SelectItem value="Maintenance">Maintenance</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="exp-date">Date</Label>
+                <Input
+                  id="exp-date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="exp-desc">Description</Label>
+              <Input
+                id="exp-desc"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="e.g. Roof HVAC unit compressor replacement"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="exp-vendor">Vendor / Payee</Label>
+                <Input
+                  id="exp-vendor"
+                  value={vendor}
+                  onChange={(e) => setVendor(e.target.value)}
+                  placeholder="e.g. Pune Cool Air Services"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="exp-amount">Amount (₹)</Label>
+                <Input
+                  id="exp-amount"
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="24500"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="exp-payment">Payment Method</Label>
+              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                <SelectTrigger id="exp-payment">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Cash">Cash / Treasury Account</SelectItem>
+                  <SelectItem value="Card">Corporate Credit Card</SelectItem>
+                  <SelectItem value="UPI">Corporate UPI ID</SelectItem>
+                  <SelectItem value="Bank Transfer">NEFT / RTGS Bank Transfer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowAddModal(false)}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? "Recording..." : "Record Expense"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

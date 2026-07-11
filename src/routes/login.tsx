@@ -132,10 +132,7 @@ function LoginPage() {
                 Welcome back. Access the intelligence layer.
               </p>
 
-              <form
-                className="mt-6 space-y-4"
-                onSubmit={handleFormLogin}
-              >
+              <form className="mt-6 space-y-4" onSubmit={handleFormLogin}>
                 <div className="space-y-1.5">
                   <Label htmlFor="email">Email</Label>
                   <Input
@@ -177,7 +174,11 @@ function LoginPage() {
                   </Label>
                 </div>
 
-                <Button type="submit" disabled={submitting} className="w-full gradient-primary text-primary-foreground">
+                <Button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full gradient-primary text-primary-foreground"
+                >
                   {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                   Sign in
                 </Button>

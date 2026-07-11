@@ -22,7 +22,8 @@ import { useBusinessData } from "@/lib/business-context";
 import { useAuth } from "@/lib/auth-context";
 import { fmtINR, fmtNum } from "@/lib/mock-data";
 import { toast } from "sonner";
-import { askOmniMindServer, AIResponseContract } from "@/lib/server-ai";
+import { askOmniMindServer } from "@/lib/server-ai";
+import type { AIResponseContract } from "@/lib/tool-types";
 import { initiateVapiCallServer } from "@/lib/server-vapi";
 import { buildAIContext, localQueryFallback } from "@/lib/ai-context-builder";
 
@@ -206,8 +207,12 @@ function AskOmniMind() {
     try {
       if (action.actionType === "CREATE_PO") {
         let details = {
-          productId: action.entityId === "rec-dairy-reorder-001" ? "prod-dairy-milk" : "prod-elec-sony",
-          productName: action.entityId === "rec-dairy-reorder-001" ? "Amul Taaza Milk 1L" : "Sony Premium Audio System",
+          productId:
+            action.entityId === "rec-dairy-reorder-001" ? "prod-dairy-milk" : "prod-elec-sony",
+          productName:
+            action.entityId === "rec-dairy-reorder-001"
+              ? "Amul Taaza Milk 1L"
+              : "Sony Premium Audio System",
           supplierId: action.entityId === "rec-dairy-reorder-001" ? "sup-amul" : "sup-sony",
           supplierName: action.entityId === "rec-dairy-reorder-001" ? "Amul Dairy" : "Sony India",
           quantity: action.entityId === "rec-dairy-reorder-001" ? 240 : 25,
@@ -234,7 +239,9 @@ function AskOmniMind() {
           status: "Draft",
           source: "AI Decision Center",
         });
-        toast.success(`Purchase Order Draft created for "${details.productName}"! Verify inside the Purchase Orders view.`);
+        toast.success(
+          `Purchase Order Draft created for "${details.productName}"! Verify inside the Purchase Orders view.`,
+        );
       } else if (action.actionType === "APPLY_MARKDOWN") {
         applyMarkdown("prod-packaged-yogurt", "batch-dairy-yogurt-01", 20); // Yogurt product id, batch id, markdown pct
         toast.success("Applied 20% markdown promotion on expiring batch!");
@@ -253,15 +260,17 @@ function AskOmniMind() {
         const isSupplier = action.actionType === "CALL_SUPPLIER";
         const entityName = action.entityName || (isSupplier ? "Supplier" : "Customer");
         const phoneNumber = action.phoneNumber || (isSupplier ? "+919876543210" : "+919876543211");
-        
+
         toast.promise(
           initiateVapiCallServer({
             data: {
               phoneNumber,
               recipientName: entityName,
               role: isSupplier ? "supplier" : "customer",
-              messageContext: action.description || `AI automated outreach to discuss current metrics, promotions, and operations for GrandSquare Mall.`,
-            }
+              messageContext:
+                action.description ||
+                `AI automated outreach to discuss current metrics, promotions, and operations for GrandSquare Mall.`,
+            },
           }),
           {
             loading: `Triggering AI Outbound Call to ${entityName}...`,
@@ -273,7 +282,7 @@ function AskOmniMind() {
               }
             },
             error: (err) => `Failed to call: ${err.message}`,
-          }
+          },
         );
       }
       setPendingAction(null);
@@ -380,7 +389,9 @@ function AskOmniMind() {
               <div className="flex items-center gap-2 text-xs font-semibold text-primary">
                 <Sparkles className="h-4 w-4" /> Direct Answer
               </div>
-              <p className="mt-2 text-sm leading-relaxed text-foreground whitespace-pre-wrap">{answerData.answer}</p>
+              <p className="mt-2 text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+                {answerData.answer}
+              </p>
             </div>
 
             {/* Evidence & Risks Grid */}
@@ -390,7 +401,7 @@ function AskOmniMind() {
                   <TrendingUp className="h-3.5 w-3.5" /> Key Evidence Resolved
                 </div>
                 <ul className="mt-2 space-y-2 text-xs text-foreground/90 font-medium">
-                  {answerData.evidence.map((item, index) => (
+                  {answerData.evidence.map((item: any, index: number) => (
                     <li
                       key={index}
                       className="flex items-start justify-between border-b border-hairline/30 pb-1.5 last:border-b-0 last:pb-0"
@@ -410,7 +421,7 @@ function AskOmniMind() {
                   {answerData.risks.length === 0 ? (
                     <li className="text-muted-foreground text-xs">No critical risks flagged.</li>
                   ) : (
-                    answerData.risks.map((risk, index) => (
+                    answerData.risks.map((risk: any, index: number) => (
                       <li key={index} className="flex items-center justify-between">
                         <span>{risk.title}</span>
                         <StatusPill
@@ -521,7 +532,7 @@ function AskOmniMind() {
                 <span className="text-muted-foreground">
                   Confidence Score:{" "}
                   <span className="font-semibold text-foreground">
-                    {Math.round(answerData.confidence * 100)}%
+                    {Math.round((answerData.confidence ?? 0.95) * 100)}%
                   </span>{" "}
                   · Reference Date:{" "}
                   <span className="font-semibold text-foreground">{metadata?.resolvedDate}</span>

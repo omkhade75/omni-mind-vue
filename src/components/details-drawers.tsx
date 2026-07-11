@@ -59,7 +59,7 @@ export const Product360Drawer: React.FC<DetailDrawerProps & { productId: string 
         id: productId,
         role: user?.role || "owner",
         email: user?.email || "",
-      }
+      },
     })
       .then((res) => {
         setProfile(res);
@@ -95,7 +95,9 @@ export const Product360Drawer: React.FC<DetailDrawerProps & { productId: string 
                   Product 360 Profile
                 </span>
               </div>
-              <SheetTitle className="text-xl font-bold mt-1 text-foreground">{profile.name}</SheetTitle>
+              <SheetTitle className="text-xl font-bold mt-1 text-foreground">
+                {profile.name}
+              </SheetTitle>
               <SheetDescription className="text-xs text-muted-foreground">
                 SKU: {profile.sku} | Barcode: {profile.barcode} | Dept: {profile.dept}
               </SheetDescription>
@@ -109,8 +111,8 @@ export const Product360Drawer: React.FC<DetailDrawerProps & { productId: string 
                   <div>
                     <h4 className="text-sm font-semibold text-warning">Stock Warning Alert</h4>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Current inventory level ({profile.currentStock} {profile.unit}) is below the reorder threshold (
-                      {profile.reorder} {profile.unit}).
+                      Current inventory level ({profile.currentStock} {profile.unit}) is below the
+                      reorder threshold ({profile.reorder} {profile.unit}).
                     </p>
                   </div>
                 </div>
@@ -157,9 +159,14 @@ export const Product360Drawer: React.FC<DetailDrawerProps & { productId: string 
                 </h3>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   {profile.stocksByLocation.map((item) => (
-                    <div key={item.locationId} className="rounded-lg border border-hairline bg-surface p-3 flex justify-between">
+                    <div
+                      key={item.locationId}
+                      className="rounded-lg border border-hairline bg-surface p-3 flex justify-between"
+                    >
                       <span className="text-muted-foreground">{item.locationName}</span>
-                      <span className="font-bold">{item.quantity} {profile.unit}</span>
+                      <span className="font-bold">
+                        {item.quantity} {profile.unit}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -182,18 +189,25 @@ export const Product360Drawer: React.FC<DetailDrawerProps & { productId: string 
                   {profile.supplier && (
                     <div className="flex justify-between p-3">
                       <span className="text-muted-foreground">Supplier Partner</span>
-                      <span className="font-medium text-primary">
-                        {profile.supplier.name}
-                      </span>
+                      <span className="font-medium text-primary">{profile.supplier.name}</span>
                     </div>
                   )}
                   <div className="flex justify-between p-3">
                     <span className="text-muted-foreground">Reorder Point</span>
-                    <span className="font-medium">{profile.reorder} {profile.unit}</span>
+                    <span className="font-medium">
+                      {profile.reorder} {profile.unit}
+                    </span>
                   </div>
                   <div className="flex justify-between p-3">
                     <span className="text-muted-foreground">Expiry Risk Status</span>
-                    <span className={cn("font-medium", profile.expiryRisk === "High" || profile.expiryRisk === "Expired" ? "text-destructive font-bold" : "text-success")}>
+                    <span
+                      className={cn(
+                        "font-medium",
+                        profile.expiryRisk === "High" || profile.expiryRisk === "Expired"
+                          ? "text-destructive font-bold"
+                          : "text-success",
+                      )}
+                    >
                       {profile.expiryRisk.toUpperCase()}
                     </span>
                   </div>
@@ -252,7 +266,9 @@ export const Product360Drawer: React.FC<DetailDrawerProps & { productId: string 
                       <span className="text-[10px] text-muted-foreground uppercase font-semibold">
                         Units Sold
                       </span>
-                      <p className="text-lg font-bold mt-0.5 text-foreground">{profile.unitsSold30d} {profile.unit}</p>
+                      <p className="text-lg font-bold mt-0.5 text-foreground">
+                        {profile.unitsSold30d} {profile.unit}
+                      </p>
                     </div>
                     <div>
                       <span className="text-[10px] text-muted-foreground uppercase font-semibold">
@@ -291,11 +307,18 @@ export const Product360Drawer: React.FC<DetailDrawerProps & { productId: string 
                   </h3>
                   <div className="space-y-1.5 text-xs max-h-40 overflow-y-auto border border-hairline rounded-lg p-2 bg-surface">
                     {profile.movements.map((m) => (
-                      <div key={m.id} className="flex justify-between py-1 border-b border-hairline last:border-0">
+                      <div
+                        key={m.id}
+                        className="flex justify-between py-1 border-b border-hairline last:border-0"
+                      >
                         <span className="text-muted-foreground">{m.occurredAt}</span>
                         <span className="font-semibold text-primary">{m.type}</span>
-                        <span className="font-medium text-foreground">{m.quantity} {profile.unit}</span>
-                        <span className="text-muted-foreground italic truncate max-w-[150px]">{m.reason || "N/A"}</span>
+                        <span className="font-medium text-foreground">
+                          {m.quantity} {profile.unit}
+                        </span>
+                        <span className="text-muted-foreground italic truncate max-w-[150px]">
+                          {m.reason || "N/A"}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -320,8 +343,6 @@ export const Product360Drawer: React.FC<DetailDrawerProps & { productId: string 
   );
 };
 
-
-
 export const Customer360Drawer: React.FC<DetailDrawerProps & { customerId: string | null }> = ({
   open,
   onOpenChange,
@@ -345,7 +366,7 @@ export const Customer360Drawer: React.FC<DetailDrawerProps & { customerId: strin
           recipientName: profile.name,
           role: "customer",
           messageContext: `Calling customer ${profile.name} to check on their recent shopping experience, offer loyalty discounts, and invite them back to GrandSquare Mall.`,
-        }
+        },
       });
       if (res.success) {
         toast.success(`AI voice call triggered! Reference ID: ${res.callId}`);
@@ -371,7 +392,7 @@ export const Customer360Drawer: React.FC<DetailDrawerProps & { customerId: strin
         id: customerId,
         role: user?.role || "owner",
         email: user?.email || "",
-      }
+      },
     })
       .then((res) => {
         setProfile(res);
@@ -411,7 +432,8 @@ export const Customer360Drawer: React.FC<DetailDrawerProps & { customerId: strin
                 {profile.name}
               </SheetTitle>
               <SheetDescription className="text-xs text-muted-foreground">
-                Customer Code: {profile.customerCode} | Joined: {profile.joined} | Status: <span className="font-semibold text-primary">{profile.status}</span>
+                Customer Code: {profile.customerCode} | Joined: {profile.joined} | Status:{" "}
+                <span className="font-semibold text-primary">{profile.status}</span>
               </SheetDescription>
             </SheetHeader>
 
@@ -459,10 +481,14 @@ export const Customer360Drawer: React.FC<DetailDrawerProps & { customerId: strin
                   <span className="text-[10px] text-muted-foreground uppercase font-semibold">
                     Total Spend
                   </span>
-                  <p className="text-base font-bold mt-1 text-foreground">{fmtINR(profile.spend)}</p>
+                  <p className="text-base font-bold mt-1 text-foreground">
+                    {fmtINR(profile.spend)}
+                  </p>
                 </div>
                 <div className="rounded-lg border border-hairline bg-surface p-3 text-center">
-                  <span className="text-[10px] text-muted-foreground uppercase font-semibold">AOV</span>
+                  <span className="text-[10px] text-muted-foreground uppercase font-semibold">
+                    AOV
+                  </span>
                   <p className="text-base font-bold mt-1 text-foreground">{fmtINR(profile.aov)}</p>
                 </div>
               </div>
@@ -497,14 +523,21 @@ export const Customer360Drawer: React.FC<DetailDrawerProps & { customerId: strin
                   </h3>
                   <div className="space-y-2">
                     {profile.recentProducts.map((p) => (
-                      <div key={p.id} className="rounded-lg border border-hairline bg-surface p-3 flex justify-between items-center text-xs">
+                      <div
+                        key={p.id}
+                        className="rounded-lg border border-hairline bg-surface p-3 flex justify-between items-center text-xs"
+                      >
                         <div>
                           <p className="font-semibold">{p.name}</p>
-                          <p className="text-[10px] text-muted-foreground mt-0.5">{p.brand} · ID: {p.id}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            {p.brand} · ID: {p.id}
+                          </p>
                         </div>
                         <div className="text-right">
                           <p className="font-bold">{p.qty} units</p>
-                          <p className="text-[10px] text-muted-foreground mt-0.5">Last: {p.lastPurchased}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            Last: {p.lastPurchased}
+                          </p>
                         </div>
                       </div>
                     ))}
@@ -520,9 +553,14 @@ export const Customer360Drawer: React.FC<DetailDrawerProps & { customerId: strin
                   </h3>
                   <div className="space-y-1.5 text-xs">
                     {profile.paymentPreferences.map((pref) => (
-                      <div key={pref.method} className="rounded-md border border-hairline bg-surface p-2 flex justify-between">
+                      <div
+                        key={pref.method}
+                        className="rounded-md border border-hairline bg-surface p-2 flex justify-between"
+                      >
                         <span className="text-muted-foreground">{pref.method}</span>
-                        <span className="font-semibold">{pref.count}x ({fmtINR(pref.amount, { compact: true })})</span>
+                        <span className="font-semibold">
+                          {pref.count}x ({fmtINR(pref.amount, { compact: true })})
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -534,7 +572,9 @@ export const Customer360Drawer: React.FC<DetailDrawerProps & { customerId: strin
                   <div className="rounded-md border border-hairline bg-surface p-3 text-xs flex flex-col justify-center h-full">
                     <span className="text-muted-foreground">Joined Store:</span>
                     <span className="font-bold text-sm text-primary mt-1">{profile.joined}</span>
-                    <span className="text-[10px] text-muted-foreground mt-1">Acquired during GrandSquare Spring Promo campaign.</span>
+                    <span className="text-[10px] text-muted-foreground mt-1">
+                      Acquired during GrandSquare Spring Promo campaign.
+                    </span>
                   </div>
                 </div>
               </div>
@@ -542,11 +582,11 @@ export const Customer360Drawer: React.FC<DetailDrawerProps & { customerId: strin
               {/* CRM Insight */}
               <div className="rounded-md border border-primary/30 bg-primary/5 p-4 text-xs">
                 <div className="flex items-center gap-2 text-primary font-bold">
-                  <span className="uppercase tracking-wider text-[10px]">AI CRITICAL CRM OUTREACH DETAILS</span>
+                  <span className="uppercase tracking-wider text-[10px]">
+                    AI CRITICAL CRM OUTREACH DETAILS
+                  </span>
                 </div>
-                <p className="mt-2 text-foreground/90 leading-relaxed">
-                  {profile.aiInsight}
-                </p>
+                <p className="mt-2 text-foreground/90 leading-relaxed">{profile.aiInsight}</p>
               </div>
 
               {/* Purchase History */}
@@ -574,7 +614,11 @@ export const Customer360Drawer: React.FC<DetailDrawerProps & { customerId: strin
                         <div className="text-right">
                           <p className="font-bold">{fmtINR(t.totalAmount)}</p>
                           <Badge
-                            variant={t.status === "Completed" || t.status === "Paid" ? "secondary" : "destructive"}
+                            variant={
+                              t.status === "Completed" || t.status === "Paid"
+                                ? "secondary"
+                                : "destructive"
+                            }
                             className="text-[8px] mt-1 py-0 px-1 font-semibold"
                           >
                             {t.status}
@@ -584,21 +628,25 @@ export const Customer360Drawer: React.FC<DetailDrawerProps & { customerId: strin
                     ))}
                   </div>
                 )}
-              {/* Outreach Actions */}
-              <div className="pt-4 border-t border-hairline mt-4">
-                <Button
-                  onClick={handleCall}
-                  disabled={calling}
-                  className="w-full bg-violet hover:bg-violet/90 text-white font-semibold flex items-center justify-center gap-2 animate-pulse-subtle"
-                >
-                  {calling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4" />}
-                  Call Customer with AI Voice Agent
-                </Button>
+                {/* Outreach Actions */}
+                <div className="pt-4 border-t border-hairline mt-4">
+                  <Button
+                    onClick={handleCall}
+                    disabled={calling}
+                    className="w-full bg-violet hover:bg-violet/90 text-white font-semibold flex items-center justify-center gap-2 animate-pulse-subtle"
+                  >
+                    {calling ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Phone className="h-4 w-4" />
+                    )}
+                    Call Customer with AI Voice Agent
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        </>
-      )}
+          </>
+        )}
       </SheetContent>
     </Sheet>
   );
@@ -626,7 +674,7 @@ export const Supplier360Drawer: React.FC<DetailDrawerProps & { supplierId: strin
           recipientName: supplier.name,
           role: "supplier",
           messageContext: `Calling supplier ${supplier.name} to discuss stock reordering status, fulfillment rates, and delivery logistics for GrandSquare Mall.`,
-        }
+        },
       });
       if (res.success) {
         toast.success(`AI voice call triggered! Reference ID: ${res.callId}`);
@@ -814,7 +862,11 @@ export const Supplier360Drawer: React.FC<DetailDrawerProps & { supplierId: strin
               disabled={calling}
               className="w-full bg-violet hover:bg-violet/90 text-white font-semibold flex items-center justify-center gap-2"
             >
-              {calling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4" />}
+              {calling ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Phone className="h-4 w-4" />
+              )}
               Call Supplier with AI Voice Agent
             </Button>
           </div>

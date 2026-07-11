@@ -4,16 +4,34 @@ import { useBusinessData } from "@/lib/business-context";
 import { useAuth } from "@/lib/auth-context";
 import { fmtINR } from "@/lib/mock-data";
 import { useState, useEffect } from "react";
-import { getPurchaseOrders, receivePurchaseOrderGoodsServer, updatePurchaseOrderStatusServer, createPurchaseOrder, getSuppliers } from "@/lib/server-suppliers";
+import {
+  getPurchaseOrders,
+  receivePurchaseOrderGoodsServer,
+  updatePurchaseOrderStatusServer,
+  createPurchaseOrder,
+  getSuppliers,
+} from "@/lib/server-suppliers";
 import { getProductsServer } from "@/lib/server-products";
 import { payPurchaseOrderServer } from "@/lib/server-accounts";
 import { toast } from "sonner";
 import { Loader2, Check, Plus, Trash2, Eye, Banknote } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/_app/purchase-orders")({
   validateSearch: (search: Record<string, unknown>): { supplier?: string } => {
@@ -24,7 +42,10 @@ export const Route = createFileRoute("/_app/purchase-orders")({
   head: () => ({
     meta: [
       { title: "Purchase Orders — OmniMind AI" },
-      { name: "description", content: "Open purchase orders, delivery status, and supplier commitments." },
+      {
+        name: "description",
+        content: "Open purchase orders, delivery status, and supplier commitments.",
+      },
     ],
   }),
   component: PurchaseOrders,
@@ -35,13 +56,15 @@ function PurchaseOrders() {
   const { user } = useAuth();
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // PO Creation State
   const [createOpen, setCreateOpen] = useState(false);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [selSupplier, setSelSupplier] = useState<string>("");
-  const [poItems, setPoItems] = useState<Array<{productId: string, quantity: number, unitCost: number}>>([]);
+  const [poItems, setPoItems] = useState<
+    Array<{ productId: string; quantity: number; unitCost: number }>
+  >([]);
   const [poNotes, setPoNotes] = useState("");
   const [savingPo, setSavingPo] = useState(false);
 
@@ -53,7 +76,7 @@ function PurchaseOrders() {
 
   // Pay state
   const [payingPoId, setPayingPoId] = useState<string | null>(null);
-  
+
   // Pay Password State
   const [payPasswordOpen, setPayPasswordOpen] = useState(false);
   const [payPassword, setPayPassword] = useState("");
@@ -92,7 +115,9 @@ function PurchaseOrders() {
   const handleUpdateStatus = async (dbId: string, status: string) => {
     if (!user) return;
     try {
-      await updatePurchaseOrderStatusServer({ data: { poId: dbId, status, role: user.role, emailUser: user.email } });
+      await updatePurchaseOrderStatusServer({
+        data: { poId: dbId, status, role: user.role, emailUser: user.email },
+      });
       toast.success(`PO status updated to ${status}`);
       loadData();
     } catch (e: any) {
@@ -112,7 +137,7 @@ function PurchaseOrders() {
     if (!user) return;
     if (!selSupplier) return toast.error("Select a supplier");
     if (poItems.length === 0) return toast.error("Add at least one item");
-    
+
     setSavingPo(true);
     try {
       await createPurchaseOrder({
@@ -122,7 +147,7 @@ function PurchaseOrders() {
           createdBy: user.email,
           status: "Draft",
           items: poItems,
-        }
+        },
       });
       toast.success("Purchase Order Draft Created");
       setCreateOpen(false);
@@ -135,14 +160,14 @@ function PurchaseOrders() {
   };
 
   const openReceiveModal = (po: any) => {
-    // Need full PO details with items. Since getPurchaseOrders returns summary, 
+    // Need full PO details with items. Since getPurchaseOrders returns summary,
     // we should fetch full details or use a server fn. For now, since the items are embedded in getPurchaseOrders
-    // Wait, getPurchaseOrders didn't return all item details, only summaries. 
+    // Wait, getPurchaseOrders didn't return all item details, only summaries.
     // We can fetch from server using getPurchaseOrderDetailsServer.
     setReceivingPo(po);
     // Fetch full details
-    import("@/lib/server-suppliers").then(m => {
-      m.getPurchaseOrderDetailsServer({ data: { poId: po.dbId } }).then(fullPo => {
+    import("@/lib/server-suppliers").then((m) => {
+      m.getPurchaseOrderDetailsServer({ data: { poId: po.dbId } }).then((fullPo) => {
         setReceivingPo(fullPo);
         const initialReceive: Record<string, number> = {};
         fullPo?.items.forEach((i: any) => {
@@ -157,16 +182,18 @@ function PurchaseOrders() {
   const handleReceiveGoods = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !receivingPo) return;
-    
-    const itemsToReceive = Object.keys(receiveItems).map(itemId => {
-      const qty = receiveItems[itemId];
-      const poItem = receivingPo.items.find((i: any) => i.id === itemId);
-      return {
-        itemId,
-        productId: poItem.productId,
-        quantity: qty
-      };
-    }).filter(i => i.quantity > 0);
+
+    const itemsToReceive = Object.keys(receiveItems)
+      .map((itemId) => {
+        const qty = receiveItems[itemId];
+        const poItem = receivingPo.items.find((i: any) => i.id === itemId);
+        return {
+          itemId,
+          productId: poItem.productId,
+          quantity: qty,
+        };
+      })
+      .filter((i) => i.quantity > 0);
 
     if (itemsToReceive.length === 0) return toast.error("No items to receive");
 
@@ -177,8 +204,8 @@ function PurchaseOrders() {
           poId: receivingPo.id,
           receivedByEmail: user.email,
           role: user.role,
-          itemsToReceive
-        }
+          itemsToReceive,
+        },
       });
       toast.success("Goods received successfully");
       setReceiveOpen(false);
@@ -210,7 +237,7 @@ function PurchaseOrders() {
           poId: targetPayPoId,
           role: user.role,
           emailUser: user.email,
-        }
+        },
       });
       toast.success("Supplier invoice paid! Cash balance updated.");
       setPayPasswordOpen(false);
@@ -285,10 +312,19 @@ function PurchaseOrders() {
                       </button>
                     </td>
                     <td className="py-3 text-right font-semibold">
-                      <span className={po.receivedQuantity >= po.quantity ? "text-success" : po.receivedQuantity > 0 ? "text-warning" : "text-muted-foreground"}>
+                      <span
+                        className={
+                          po.receivedQuantity >= po.quantity
+                            ? "text-success"
+                            : po.receivedQuantity > 0
+                              ? "text-warning"
+                              : "text-muted-foreground"
+                        }
+                      >
                         {po.receivedQuantity}
                       </span>
-                      {" / "}{po.quantity}
+                      {" / "}
+                      {po.quantity}
                     </td>
                     <td className="py-3 text-right font-bold text-foreground">
                       {fmtINR(po.totalCost)}
@@ -296,10 +332,13 @@ function PurchaseOrders() {
                     <td className="py-3 pl-4">
                       <StatusPill
                         tone={
-                          po.status === "Received" ? "success"
-                          : po.status === "Partially_Received" ? "info"
-                          : po.status === "Ordered" || po.status === "Sent" ? "warning"
-                          : "default"
+                          po.status === "Received"
+                            ? "success"
+                            : po.status === "Partially_Received"
+                              ? "info"
+                              : po.status === "Ordered" || po.status === "Sent"
+                                ? "warning"
+                                : "default"
                         }
                       >
                         {po.status}
@@ -307,12 +346,28 @@ function PurchaseOrders() {
                     </td>
                     <td className="py-3 text-right space-x-2">
                       {po.status === "Draft" && (
-                        <Button size="sm" variant="outline" onClick={() => handleUpdateStatus(po.dbId, "Submitted")} className="h-7 text-[10px] px-2">Submit</Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleUpdateStatus(po.dbId, "Submitted")}
+                          className="h-7 text-[10px] px-2"
+                        >
+                          Submit
+                        </Button>
                       )}
                       {po.status === "Submitted" && (
-                        <Button size="sm" variant="outline" onClick={() => handleUpdateStatus(po.dbId, "Ordered")} className="h-7 text-[10px] px-2 bg-primary/10 text-primary">Order</Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleUpdateStatus(po.dbId, "Ordered")}
+                          className="h-7 text-[10px] px-2 bg-primary/10 text-primary"
+                        >
+                          Order
+                        </Button>
                       )}
-                      {(po.status === "Ordered" || po.status === "Partially_Received" || po.status === "Sent") && (
+                      {(po.status === "Ordered" ||
+                        po.status === "Partially_Received" ||
+                        po.status === "Sent") && (
                         <>
                           {po.isPaid ? (
                             <span className="text-[10px] text-amber-500 font-semibold inline-flex items-center gap-0.5 mr-2">
@@ -326,10 +381,22 @@ function PurchaseOrders() {
                               disabled={payingPoId === po.dbId}
                               className="h-7 text-[10px] px-2 bg-amber-500/10 text-amber-600 border-amber-500/30 hover:bg-amber-500/20"
                             >
-                              {payingPoId === po.dbId ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Banknote className="h-3 w-3 mr-1" />Pay Now</>}
+                              {payingPoId === po.dbId ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <>
+                                  <Banknote className="h-3 w-3 mr-1" />
+                                  Pay Now
+                                </>
+                              )}
                             </Button>
                           )}
-                          <Button size="sm" variant="outline" onClick={() => openReceiveModal(po)} className="h-7 text-[10px] px-2 bg-success/10 text-success border-success/30 hover:bg-success/20">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openReceiveModal(po)}
+                            className="h-7 text-[10px] px-2 bg-success/10 text-success border-success/30 hover:bg-success/20"
+                          >
                             Receive Goods
                           </Button>
                         </>
@@ -337,7 +404,8 @@ function PurchaseOrders() {
                       {po.status === "Received" && (
                         <div className="flex items-center justify-end gap-2">
                           <span className="text-[10px] text-emerald-500 font-semibold flex items-center gap-1">
-                            <Check className="h-3 w-3" /> {po.isPaid ? "Paid & Received" : "Received (Unpaid)"}
+                            <Check className="h-3 w-3" />{" "}
+                            {po.isPaid ? "Paid & Received" : "Received (Unpaid)"}
                           </span>
                           {!po.isPaid && (
                             <Button
@@ -347,7 +415,14 @@ function PurchaseOrders() {
                               disabled={payingPoId === po.dbId}
                               className="h-7 text-[10px] px-2 bg-amber-500/10 text-amber-600 border-amber-500/30 hover:bg-amber-500/20"
                             >
-                              {payingPoId === po.dbId ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Banknote className="h-3 w-3 mr-1" />Pay Now</>}
+                              {payingPoId === po.dbId ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <>
+                                  <Banknote className="h-3 w-3 mr-1" />
+                                  Pay Now
+                                </>
+                              )}
                             </Button>
                           )}
                         </div>
@@ -375,22 +450,26 @@ function PurchaseOrders() {
                   <SelectValue placeholder="Select Supplier" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-hairline max-h-48">
-                  {suppliers.map(s => <SelectItem key={s.id} value={s.id}>{s.name} ({s.supplierCode})</SelectItem>)}
+                  {suppliers.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name} ({s.supplierCode})
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="space-y-2">
               <Label>Line Items *</Label>
               <div className="border border-hairline rounded-md p-2 space-y-2 bg-surface/30">
                 {poItems.map((item, idx) => (
                   <div key={idx} className="flex items-center gap-2">
-                    <Select 
-                      value={item.productId || undefined} 
+                    <Select
+                      value={item.productId || undefined}
                       onValueChange={(val) => {
                         const newItems = [...poItems];
                         newItems[idx].productId = val;
-                        const prod = products.find(p => p.id === val);
+                        const prod = products.find((p) => p.id === val);
                         if (prod) newItems[idx].unitCost = Number(prod.cost) || 0;
                         setPoItems(newItems);
                       }}
@@ -399,37 +478,55 @@ function PurchaseOrders() {
                         <SelectValue placeholder="Select Product" />
                       </SelectTrigger>
                       <SelectContent className="bg-popover border-hairline max-h-48">
-                        {products.map(p => <SelectItem key={p.id} value={p.id}>{p.name} - {fmtINR(p.cost)}</SelectItem>)}
+                        {products.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name} - {fmtINR(p.cost)}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
-                    <Input 
-                      type="number" 
-                      placeholder="Qty" 
-                      className="w-20 h-8 text-xs bg-surface border-hairline" 
-                      value={item.quantity} 
-                      onChange={e => {
+                    <Input
+                      type="number"
+                      placeholder="Qty"
+                      className="w-20 h-8 text-xs bg-surface border-hairline"
+                      value={item.quantity}
+                      onChange={(e) => {
                         const newItems = [...poItems];
                         newItems[idx].quantity = Number(e.target.value);
                         setPoItems(newItems);
                       }}
                     />
-                    <Input 
-                      type="number" 
-                      placeholder="Cost" 
-                      className="w-24 h-8 text-xs bg-surface border-hairline" 
-                      value={item.unitCost} 
-                      onChange={e => {
+                    <Input
+                      type="number"
+                      placeholder="Cost"
+                      className="w-24 h-8 text-xs bg-surface border-hairline"
+                      value={item.unitCost}
+                      onChange={(e) => {
                         const newItems = [...poItems];
                         newItems[idx].unitCost = Number(e.target.value);
                         setPoItems(newItems);
                       }}
                     />
-                    <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" onClick={() => setPoItems(poItems.filter((_, i) => i !== idx))}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-destructive"
+                      onClick={() => setPoItems(poItems.filter((_, i) => i !== idx))}
+                    >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 ))}
-                <Button type="button" variant="outline" size="sm" className="h-8 text-xs w-full border-dashed border-hairline" onClick={() => setPoItems([...poItems, { productId: "", quantity: 1, unitCost: 0 }])}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs w-full border-dashed border-hairline"
+                  onClick={() =>
+                    setPoItems([...poItems, { productId: "", quantity: 1, unitCost: 0 }])
+                  }
+                >
                   <Plus className="h-3 w-3 mr-1" /> Add Product
                 </Button>
               </div>
@@ -446,12 +543,19 @@ function PurchaseOrders() {
             </div>
 
             <div className="text-right text-sm font-semibold">
-              Subtotal: {fmtINR(poItems.reduce((acc, curr) => acc + (curr.quantity * curr.unitCost), 0))}
+              Subtotal:{" "}
+              {fmtINR(poItems.reduce((acc, curr) => acc + curr.quantity * curr.unitCost, 0))}
             </div>
 
             <DialogFooter className="pt-2">
-              <Button type="button" variant="ghost" onClick={() => setCreateOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={savingPo} className="bg-primary text-primary-foreground font-semibold">
+              <Button type="button" variant="ghost" onClick={() => setCreateOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={savingPo}
+                className="bg-primary text-primary-foreground font-semibold"
+              >
                 {savingPo && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Create Draft PO
               </Button>
             </DialogFooter>
@@ -479,17 +583,23 @@ function PurchaseOrders() {
                 <tbody className="divide-y divide-hairline">
                   {receivingPo?.items?.map((item: any) => (
                     <tr key={item.id}>
-                      <td className="py-2 pr-2 font-medium truncate max-w-[200px]">{item.product.name}</td>
+                      <td className="py-2 pr-2 font-medium truncate max-w-[200px]">
+                        {item.product.name}
+                      </td>
                       <td className="py-2 text-right">{item.quantity}</td>
-                      <td className="py-2 text-right text-success font-semibold">{item.receivedQuantity}</td>
+                      <td className="py-2 text-right text-success font-semibold">
+                        {item.receivedQuantity}
+                      </td>
                       <td className="py-2 text-right">
-                        <Input 
-                          type="number" 
-                          max={item.quantity - item.receivedQuantity} 
+                        <Input
+                          type="number"
+                          max={item.quantity - item.receivedQuantity}
                           min={0}
-                          className="w-20 h-7 text-xs bg-surface border-hairline ml-auto text-right" 
+                          className="w-20 h-7 text-xs bg-surface border-hairline ml-auto text-right"
                           value={receiveItems[item.id] ?? 0}
-                          onChange={(e) => setReceiveItems({...receiveItems, [item.id]: Number(e.target.value)})}
+                          onChange={(e) =>
+                            setReceiveItems({ ...receiveItems, [item.id]: Number(e.target.value) })
+                          }
                         />
                       </td>
                     </tr>
@@ -499,8 +609,14 @@ function PurchaseOrders() {
             </div>
 
             <DialogFooter className="pt-2">
-              <Button type="button" variant="ghost" onClick={() => setReceiveOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={receiving} className="bg-success hover:bg-success/90 text-success-foreground font-semibold">
+              <Button type="button" variant="ghost" onClick={() => setReceiveOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={receiving}
+                className="bg-success hover:bg-success/90 text-success-foreground font-semibold"
+              >
                 {receiving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Confirm Receipt
               </Button>
             </DialogFooter>
@@ -528,9 +644,16 @@ function PurchaseOrders() {
               />
             </div>
             <DialogFooter className="pt-2">
-              <Button type="button" variant="ghost" onClick={() => setPayPasswordOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={payingPoId !== null} className="bg-primary text-primary-foreground font-semibold">
-                {payingPoId !== null && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Authorize Payment
+              <Button type="button" variant="ghost" onClick={() => setPayPasswordOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={payingPoId !== null}
+                className="bg-primary text-primary-foreground font-semibold"
+              >
+                {payingPoId !== null && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Authorize
+                Payment
               </Button>
             </DialogFooter>
           </form>

@@ -82,16 +82,18 @@ export function getDepartmentScope(role: string, email?: string): string | null 
 
 // 1. Get Customers List
 export const getCustomersServer = createServerFn({ method: "POST" })
-  .validator((data: {
-    search?: string;
-    loyaltyTier?: string;
-    segment?: string;
-    status?: string;
-    sortBy?: string;
-    sortOrder?: "asc" | "desc";
-    role: string;
-    email: string;
-  }) => data)
+  .validator(
+    (data: {
+      search?: string;
+      loyaltyTier?: string;
+      segment?: string;
+      status?: string;
+      sortBy?: string;
+      sortOrder?: "asc" | "desc";
+      role: string;
+      email: string;
+    }) => data,
+  )
   .handler(async ({ data }) => {
     const secureUser = await getSecureSessionUser();
     const role = secureUser?.role || data.role;
@@ -112,7 +114,7 @@ export const getCustomersServer = createServerFn({ method: "POST" })
     if (deptScope) {
       where.OR = [
         { preferredDepartmentId: deptScope },
-        { transactions: { some: { departmentId: deptScope } } }
+        { transactions: { some: { departmentId: deptScope } } },
       ];
     }
 
@@ -147,9 +149,9 @@ export const getCustomersServer = createServerFn({ method: "POST" })
             { lastName: { contains: s, mode: "insensitive" } },
             { email: { contains: s, mode: "insensitive" } },
             { phone: { contains: s, mode: "insensitive" } },
-            { customerCode: { contains: s, mode: "insensitive" } }
-          ]
-        }
+            { customerCode: { contains: s, mode: "insensitive" } },
+          ],
+        },
       ];
     }
 
@@ -161,19 +163,21 @@ export const getCustomersServer = createServerFn({ method: "POST" })
           include: {
             items: true,
             payments: true,
-          }
-        }
-      }
+          },
+        },
+      },
     });
 
     // Map to the legacy list shape required by the UI adapter
     const mappedList: CustomerListItem[] = customers.map((c) => {
       // Calculate spend and visits
-      const completedTx = c.transactions.filter(t => t.status === "Completed" || t.status === "Paid");
+      const completedTx = c.transactions.filter(
+        (t) => t.status === "Completed" || t.status === "Paid",
+      );
       const visits = completedTx.length;
       const spend = completedTx.reduce((sum, t) => sum + Number(t.totalAmount), 0);
       const aov = visits > 0 ? Math.round(spend / visits) : 0;
-      
+
       // Determine favored department
       // Let's count departments in transaction history or use preferred department
       let favDeptName = "Fashion"; // fallback default
@@ -184,7 +188,7 @@ export const getCustomersServer = createServerFn({ method: "POST" })
         else if (c.preferredDepartmentId === "dept-beauty") favDeptName = "Beauty";
       } else if (completedTx.length > 0) {
         const deptCounts: Record<string, number> = {};
-        completedTx.forEach(t => {
+        completedTx.forEach((t) => {
           deptCounts[t.departmentId] = (deptCounts[t.departmentId] || 0) + 1;
         });
         const topDeptId = Object.keys(deptCounts).sort((a, b) => deptCounts[b] - deptCounts[a])[0];
@@ -199,8 +203,12 @@ export const getCustomersServer = createServerFn({ method: "POST" })
       if (c.churnRisk === "High") churnPercent = 78;
       else if (c.churnRisk === "Medium") churnPercent = 42;
 
-      const sortedTx = [...completedTx].sort((txA, txB) => txB.transactionDate.getTime() - txA.transactionDate.getTime());
-      const lastVisitDate = sortedTx[0] ? sortedTx[0].transactionDate.toISOString().split("T")[0] : c.joinDate.toISOString().split("T")[0];
+      const sortedTx = [...completedTx].sort(
+        (txA, txB) => txB.transactionDate.getTime() - txA.transactionDate.getTime(),
+      );
+      const lastVisitDate = sortedTx[0]
+        ? sortedTx[0].transactionDate.toISOString().split("T")[0]
+        : c.joinDate.toISOString().split("T")[0];
 
       return {
         id: c.id,
@@ -242,22 +250,24 @@ export const getCustomersServer = createServerFn({ method: "POST" })
 
 // 2. Add Customer
 export const addCustomerServer = createServerFn({ method: "POST" })
-  .validator((data: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone: string;
-    loyaltyTier: string;
-    customerType?: string;
-    preferredDepartmentId?: string | null;
-    notes?: string;
-    role: string;
-    emailUser: string;
-  }) => data)
+  .validator(
+    (data: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      phone: string;
+      loyaltyTier: string;
+      customerType?: string;
+      preferredDepartmentId?: string | null;
+      notes?: string;
+      role: string;
+      emailUser: string;
+    }) => data,
+  )
   .handler(async ({ data }) => {
     // Validate email uniqueness
     const existingEmail = await prisma.customer.findUnique({
-      where: { email: data.email }
+      where: { email: data.email },
     });
     if (existingEmail) {
       throw new Error(`A customer with email ${data.email} already exists.`);
@@ -265,7 +275,7 @@ export const addCustomerServer = createServerFn({ method: "POST" })
 
     // Validate phone uniqueness
     const existingPhone = await prisma.customer.findUnique({
-      where: { phone: data.phone }
+      where: { phone: data.phone },
     });
     if (existingPhone) {
       throw new Error(`A customer with phone number ${data.phone} already exists.`);
@@ -288,18 +298,23 @@ export const addCustomerServer = createServerFn({ method: "POST" })
           status: "Active",
           churnRisk: "Low",
           loyaltyPoints: 0,
-        }
+        },
       });
 
       // Write AuditLog
       await tx.auditLog.create({
         data: {
-          userId: data.role === "manager" ? "rohan-kulkarni" : data.role === "admin" ? "priya-nair" : "aarav-mehra",
+          userId:
+            data.role === "manager"
+              ? "rohan-kulkarni"
+              : data.role === "admin"
+                ? "priya-nair"
+                : "aarav-mehra",
           action: "CUSTOMER_CREATED",
           entityType: "Customer",
           entityId: c.id,
           afterData: JSON.stringify(c),
-        }
+        },
       });
 
       // Write BusinessEvent
@@ -311,7 +326,7 @@ export const addCustomerServer = createServerFn({ method: "POST" })
           title: `New Customer Registered: ${c.firstName} ${c.lastName}`,
           description: `Customer acquired under loyalty tier: ${c.loyaltyTier}. Registered globally.`,
           metadata: JSON.stringify({ code: c.customerCode, tier: c.loyaltyTier }),
-        }
+        },
       });
 
       return c;
@@ -322,30 +337,32 @@ export const addCustomerServer = createServerFn({ method: "POST" })
 
 // 3. Edit Customer
 export const editCustomerServer = createServerFn({ method: "POST" })
-  .validator((data: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone: string;
-    loyaltyTier: string;
-    customerType?: string;
-    preferredDepartmentId?: string | null;
-    notes?: string;
-    role: string;
-    emailUser: string;
-  }) => data)
+  .validator(
+    (data: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      phone: string;
+      loyaltyTier: string;
+      customerType?: string;
+      preferredDepartmentId?: string | null;
+      notes?: string;
+      role: string;
+      emailUser: string;
+    }) => data,
+  )
   .handler(async ({ data }) => {
     // Validate uniqueness except for current customer
     const existingEmail = await prisma.customer.findUnique({
-      where: { email: data.email }
+      where: { email: data.email },
     });
     if (existingEmail && existingEmail.id !== data.id) {
       throw new Error(`Email ${data.email} is already in use by another customer.`);
     }
 
     const existingPhone = await prisma.customer.findUnique({
-      where: { phone: data.phone }
+      where: { phone: data.phone },
     });
     if (existingPhone && existingPhone.id !== data.id) {
       throw new Error(`Phone number ${data.phone} is already in use by another customer.`);
@@ -365,19 +382,24 @@ export const editCustomerServer = createServerFn({ method: "POST" })
           customerType: data.customerType || "B2C",
           preferredDepartmentId: data.preferredDepartmentId || null,
           notes: data.notes || null,
-        }
+        },
       });
 
       // Write AuditLog
       await tx.auditLog.create({
         data: {
-          userId: data.role === "manager" ? "rohan-kulkarni" : data.role === "admin" ? "priya-nair" : "aarav-mehra",
+          userId:
+            data.role === "manager"
+              ? "rohan-kulkarni"
+              : data.role === "admin"
+                ? "priya-nair"
+                : "aarav-mehra",
           action: "CUSTOMER_UPDATED",
           entityType: "Customer",
           entityId: c.id,
           beforeData: JSON.stringify(beforeData),
           afterData: JSON.stringify(c),
-        }
+        },
       });
 
       return c;
@@ -388,30 +410,31 @@ export const editCustomerServer = createServerFn({ method: "POST" })
 
 // 4. Archive Customer (Soft delete)
 export const archiveCustomerServer = createServerFn({ method: "POST" })
-  .validator((data: {
-    id: string;
-    role: string;
-    emailUser: string;
-  }) => data)
+  .validator((data: { id: string; role: string; emailUser: string }) => data)
   .handler(async ({ data }) => {
     const beforeData = await prisma.customer.findUnique({ where: { id: data.id } });
 
     const archived = await prisma.$transaction(async (tx) => {
       const c = await tx.customer.update({
         where: { id: data.id },
-        data: { status: "Archived" }
+        data: { status: "Archived" },
       });
 
       // Write Audit Log
       await tx.auditLog.create({
         data: {
-          userId: data.role === "manager" ? "rohan-kulkarni" : data.role === "admin" ? "priya-nair" : "aarav-mehra",
+          userId:
+            data.role === "manager"
+              ? "rohan-kulkarni"
+              : data.role === "admin"
+                ? "priya-nair"
+                : "aarav-mehra",
           action: "CUSTOMER_ARCHIVED",
           entityType: "Customer",
           entityId: c.id,
           beforeData: JSON.stringify(beforeData),
           afterData: JSON.stringify(c),
-        }
+        },
       });
 
       // Write BusinessEvent
@@ -422,7 +445,7 @@ export const archiveCustomerServer = createServerFn({ method: "POST" })
           entityId: c.id,
           title: `Customer Archived: ${c.firstName} ${c.lastName}`,
           description: `Customer account was set to Archived. Historical transaction logs preserved.`,
-        }
+        },
       });
 
       return c;
@@ -448,14 +471,14 @@ export const getCustomer360Server = createServerFn({ method: "POST" })
           include: {
             items: {
               include: {
-                product: true
-              }
+                product: true,
+              },
             },
-            payments: true
+            payments: true,
           },
-          orderBy: { transactionDate: "desc" }
-        }
-      }
+          orderBy: { transactionDate: "desc" },
+        },
+      },
     });
 
     if (!customer) {
@@ -463,65 +486,73 @@ export const getCustomer360Server = createServerFn({ method: "POST" })
     }
 
     // Calculations
-    const completedTx = customer.transactions.filter(t => t.status === "Completed" || t.status === "Paid");
+    const completedTx = customer.transactions.filter(
+      (t) => t.status === "Completed" || t.status === "Paid",
+    );
     const visits = completedTx.length;
     const spend = completedTx.reduce((sum, t) => sum + Number(t.totalAmount), 0);
     const aov = visits > 0 ? Math.round(spend / visits) : 0;
     const lastVisit = completedTx[0];
 
     // Transactions list
-    const transactionsList = customer.transactions.map(t => ({
+    const transactionsList = customer.transactions.map((t) => ({
       id: t.id,
       transactionNumber: t.transactionNumber,
       date: t.transactionDate.toISOString().split("T")[0],
       totalAmount: Number(t.totalAmount),
       paymentMethod: t.payments[0]?.method || "UPI",
       status: t.status,
-      itemCount: t.items.reduce((sum, item) => sum + item.quantity, 0)
+      itemCount: t.items.reduce((sum, item) => sum + item.quantity, 0),
     }));
 
     // Recent products purchased
-    const productCounts: Record<string, { name: string; brand: string; qty: number; lastDate: string }> = {};
-    customer.transactions.forEach(t => {
-      t.items.forEach(item => {
+    const productCounts: Record<
+      string,
+      { name: string; brand: string; qty: number; lastDate: string }
+    > = {};
+    customer.transactions.forEach((t) => {
+      t.items.forEach((item) => {
         const prod = item.product;
         if (!productCounts[prod.id]) {
           productCounts[prod.id] = {
             name: prod.name,
             brand: prod.brand,
             qty: 0,
-            lastDate: t.transactionDate.toISOString().split("T")[0]
+            lastDate: t.transactionDate.toISOString().split("T")[0],
           };
         }
         productCounts[prod.id].qty += item.quantity;
       });
     });
 
-    const recentProducts = Object.keys(productCounts).map(id => ({
-      id,
-      name: productCounts[id].name,
-      brand: productCounts[id].brand,
-      qty: productCounts[id].qty,
-      lastPurchased: productCounts[id].lastDate
-    })).sort((a, b) => b.qty - a.qty).slice(0, 5);
+    const recentProducts = Object.keys(productCounts)
+      .map((id) => ({
+        id,
+        name: productCounts[id].name,
+        brand: productCounts[id].brand,
+        qty: productCounts[id].qty,
+        lastPurchased: productCounts[id].lastDate,
+      }))
+      .sort((a, b) => b.qty - a.qty)
+      .slice(0, 5);
 
     // Spending Trend (by month in mock period)
     const monthSpends: Record<string, number> = {};
-    completedTx.forEach(t => {
+    completedTx.forEach((t) => {
       const month = t.transactionDate.toLocaleString("en-US", { month: "short", year: "2-digit" });
       monthSpends[month] = (monthSpends[month] || 0) + Number(t.totalAmount);
     });
-    
+
     // Sort chronologically (Mar, Apr, May 26)
     const monthsOrder = ["Mar 26", "Apr 26", "May 26"];
-    const spendingTrend = monthsOrder.map(month => ({
+    const spendingTrend = monthsOrder.map((month) => ({
       month,
-      spend: Math.round(monthSpends[month] || 0)
+      spend: Math.round(monthSpends[month] || 0),
     }));
 
     // Payment Preferences
     const payMethods: Record<string, { count: number; amount: number }> = {};
-    completedTx.forEach(t => {
+    completedTx.forEach((t) => {
       const method = t.payments[0]?.method || "UPI";
       if (!payMethods[method]) {
         payMethods[method] = { count: 0, amount: 0 };
@@ -530,16 +561,20 @@ export const getCustomer360Server = createServerFn({ method: "POST" })
       payMethods[method].amount += Number(t.totalAmount);
     });
 
-    const paymentPreferences = Object.keys(payMethods).map(method => ({
-      method,
-      count: payMethods[method].count,
-      amount: Math.round(payMethods[method].amount)
-    })).sort((a, b) => b.count - a.count);
+    const paymentPreferences = Object.keys(payMethods)
+      .map((method) => ({
+        method,
+        count: payMethods[method].count,
+        amount: Math.round(payMethods[method].amount),
+      }))
+      .sort((a, b) => b.count - a.count);
 
     // Preferred Department
     let preferredDept = "Fashion";
     if (customer.preferredDepartmentId) {
-      const pDept = await prisma.department.findUnique({ where: { id: customer.preferredDepartmentId } });
+      const pDept = await prisma.department.findUnique({
+        where: { id: customer.preferredDepartmentId },
+      });
       if (pDept) preferredDept = pDept.name;
     }
 
@@ -585,6 +620,6 @@ export const getCustomer360Server = createServerFn({ method: "POST" })
       recentProducts,
       spendingTrend,
       paymentPreferences,
-      aiInsight
+      aiInsight,
     } as Customer360Profile;
   });

@@ -15,7 +15,7 @@ let memoryConfigCache: VapiConfig = {
   vapiPhoneId: "e0cfb9a5-a9d8-4422-a09c-b87ef3a50c95",
   vapiAgentId: "294c5d56-74a9-472d-a0ba-5c626aca4747",
   vapiPublicKey: "4a80f4e1-29e2-4236-afd3-0d41c54d3793",
-  vapiPrivateKey: "6ab6eb8f-0c48-4d51-9cdd-38caf3977158"
+  vapiPrivateKey: "6ab6eb8f-0c48-4d51-9cdd-38caf3977158",
 };
 
 const getConfigPath = () => {
@@ -67,10 +67,9 @@ function writeConfig(config: VapiConfig) {
 /**
  * Fetch Vapi AI configurations.
  */
-export const getVapiConfigServer = createServerFn({ method: "GET" })
-  .handler(async () => {
-    return readConfig();
-  });
+export const getVapiConfigServer = createServerFn({ method: "GET" }).handler(async () => {
+  return readConfig();
+});
 
 /**
  * Update Vapi AI configurations.
@@ -136,7 +135,7 @@ export const initiateVapiCallServer = createServerFn({ method: "POST" })
       const response = await fetch("https://api.vapi.ai/call/phone", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${config.vapiPrivateKey}`,
+          Authorization: `Bearer ${config.vapiPrivateKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -144,12 +143,13 @@ export const initiateVapiCallServer = createServerFn({ method: "POST" })
           assistantId: config.vapiAgentId,
           customer: {
             number: phone,
-            name: data.recipientName
+            name: data.recipientName,
           },
           assistantOverrides: {
-            firstMessage: data.role === "supplier" 
-              ? `Hello, this is the automated procurement agent calling from GrandSquare Mall. May I speak with the representative of ${data.recipientName}?`
-              : `Hello ${data.recipientName}, this is the AI assistant calling from GrandSquare Mall. I hope you're having a wonderful day!`,
+            firstMessage:
+              data.role === "supplier"
+                ? `Hello, this is the automated procurement agent calling from GrandSquare Mall. May I speak with the representative of ${data.recipientName}?`
+                : `Hello ${data.recipientName}, this is the AI assistant calling from GrandSquare Mall. I hope you're having a wonderful day!`,
             systemPrompt: `You are the official AI Voice Agent of GrandSquare Mall, a premium retail shopping center.
 You speak in a polite, natural, professional, and friendly tone. Keep your responses concise (1-2 sentences max) to minimize latency and maintain natural conversation flow.
 
@@ -162,20 +162,20 @@ Your primary objective is:
             transcriber: {
               provider: "deepgram",
               model: "nova-2",
-              language: "en"
+              language: "en",
             },
             model: {
               provider: "openai",
               model: "gpt-4o-mini",
               temperature: 0.7,
-              maxTokens: 150
+              maxTokens: 150,
             },
             voice: {
               provider: "cartesia",
               voiceId: "ba2b95aa-2add-4c12-9c17-48f57242e20b",
-              model: "sonic-english"
-            }
-          }
+              model: "sonic-english",
+            },
+          },
         }),
       });
 
@@ -209,7 +209,7 @@ Your primary objective is:
         success: true,
         callId: resData.id,
         status: resData.status,
-        data: resData
+        data: resData,
       };
     } catch (err: any) {
       console.error("❌ Outbound Vapi Call trigger crash:", err);

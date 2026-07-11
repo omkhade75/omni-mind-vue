@@ -22,7 +22,7 @@ async function main() {
   {
     const phaseStart = Date.now();
     console.log("[SEED 1/12] Seeding Core entities...");
-    
+
     // Mall
     const mallCount = await prisma.mall.count();
     if (mallCount === 0) {
@@ -33,7 +33,7 @@ async function main() {
           location: "Pune, Maharashtra",
           timezone: "Asia/Kolkata",
           currency: "INR",
-        }
+        },
       });
       console.log("Seeded Mall: GrandSquare Mall");
     } else {
@@ -44,9 +44,28 @@ async function main() {
     const userCount = await prisma.user.count();
     if (userCount === 0) {
       const usersToSeed = [
-        { id: "user-owner", name: "Aarav Mehra", email: "aarav@grandsquare.com", role: "OWNER", status: "Active" },
-        { id: "user-admin", name: "Priya Nair", email: "priya@grandsquare.com", role: "ADMIN", status: "Active" },
-        { id: "user-manager", name: "Rohan Kulkarni", email: "rohan@grandsquare.com", role: "MANAGER", departmentId: "dept-fashion", status: "Active" },
+        {
+          id: "user-owner",
+          name: "Aarav Mehra",
+          email: "aarav@grandsquare.com",
+          role: "OWNER",
+          status: "Active",
+        },
+        {
+          id: "user-admin",
+          name: "Priya Nair",
+          email: "priya@grandsquare.com",
+          role: "ADMIN",
+          status: "Active",
+        },
+        {
+          id: "user-manager",
+          name: "Rohan Kulkarni",
+          email: "rohan@grandsquare.com",
+          role: "MANAGER",
+          departmentId: "dept-fashion",
+          status: "Active",
+        },
       ];
       await prisma.user.createMany({ data: usersToSeed });
       console.log(`Seeded ${usersToSeed.length} Users.`);
@@ -57,12 +76,54 @@ async function main() {
     // Departments
     const deptCount = await prisma.department.count();
     const deptsToSeed = [
-      { id: "dept-fashion", name: "Fashion", code: "FASHION", floor: "1st Floor", targetRevenue: 5000000, status: "Active" },
-      { id: "dept-electronics", name: "Electronics", code: "ELECTRONICS", floor: "2nd Floor", targetRevenue: 8000000, status: "Active" },
-      { id: "dept-grocery", name: "Grocery", code: "GROCERY", floor: "Ground Floor", targetRevenue: 4000000, status: "Active" },
-      { id: "dept-sports", name: "Sports & Outdoors", code: "SPORTS", floor: "3rd Floor", targetRevenue: 3000000, status: "Active" },
-      { id: "dept-beauty", name: "Beauty & Cosmetics", code: "BEAUTY", floor: "1st Floor", targetRevenue: 2000000, status: "Active" },
-      { id: "dept-others", name: "Others", code: "OTHERS", floor: "Various", targetRevenue: 1000000, status: "Active" },
+      {
+        id: "dept-fashion",
+        name: "Fashion",
+        code: "FASHION",
+        floor: "1st Floor",
+        targetRevenue: 5000000,
+        status: "Active",
+      },
+      {
+        id: "dept-electronics",
+        name: "Electronics",
+        code: "ELECTRONICS",
+        floor: "2nd Floor",
+        targetRevenue: 8000000,
+        status: "Active",
+      },
+      {
+        id: "dept-grocery",
+        name: "Grocery",
+        code: "GROCERY",
+        floor: "Ground Floor",
+        targetRevenue: 4000000,
+        status: "Active",
+      },
+      {
+        id: "dept-sports",
+        name: "Sports & Outdoors",
+        code: "SPORTS",
+        floor: "3rd Floor",
+        targetRevenue: 3000000,
+        status: "Active",
+      },
+      {
+        id: "dept-beauty",
+        name: "Beauty & Cosmetics",
+        code: "BEAUTY",
+        floor: "1st Floor",
+        targetRevenue: 2000000,
+        status: "Active",
+      },
+      {
+        id: "dept-others",
+        name: "Others",
+        code: "OTHERS",
+        floor: "Various",
+        targetRevenue: 1000000,
+        status: "Active",
+      },
     ];
     if (deptCount === 0) {
       await prisma.department.createMany({ data: deptsToSeed });
@@ -86,8 +147,10 @@ async function main() {
       const matchedProduct = rawSeed.products.find((p) => p.category === catName)!;
       const deptCode = matchedProduct.dept.toUpperCase();
       const depts = await prisma.department.findMany();
-      const dept = depts.find((d) => d.code === deptCode || d.name === matchedProduct.dept) || depts[depts.length - 1];
-      
+      const dept =
+        depts.find((d) => d.code === deptCode || d.name === matchedProduct.dept) ||
+        depts[depts.length - 1];
+
       const catId = `cat-${catName.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
       await prisma.category.upsert({
         where: { id: catId },
@@ -96,7 +159,7 @@ async function main() {
           id: catId,
           name: catName,
           departmentId: dept.id,
-        }
+        },
       });
       categoriesMap.set(catName, catId);
     }
@@ -106,7 +169,8 @@ async function main() {
     const depts = await prisma.department.findMany();
     for (const p of rawSeed.products) {
       const deptCode = p.dept.toUpperCase();
-      const dept = depts.find((d) => d.code === deptCode || d.name === p.dept) || depts[depts.length - 1];
+      const dept =
+        depts.find((d) => d.code === deptCode || d.name === p.dept) || depts[depts.length - 1];
       const catId = categoriesMap.get(p.category) || "cat-others";
 
       await prisma.product.upsert({
@@ -135,7 +199,7 @@ async function main() {
           reorderLevel: p.reorder,
           reorderQuantity: p.reorder * 2,
           status: "Active",
-        }
+        },
       });
     }
     console.log(`Synced ${rawSeed.products.length} Products.`);
@@ -144,10 +208,20 @@ async function main() {
     const locCount = await prisma.inventoryLocation.count();
     if (locCount === 0) {
       await prisma.inventoryLocation.create({
-        data: { id: "loc-warehouse", name: "Central Warehouse", type: "WAREHOUSE", floor: "Basement 1" }
+        data: {
+          id: "loc-warehouse",
+          name: "Central Warehouse",
+          type: "WAREHOUSE",
+          floor: "Basement 1",
+        },
       });
       await prisma.inventoryLocation.create({
-        data: { id: "loc-retail", name: "Retail Floor", type: "RETAIL_FLOOR", floor: "Ground Floor" }
+        data: {
+          id: "loc-retail",
+          name: "Retail Floor",
+          type: "RETAIL_FLOOR",
+          floor: "Ground Floor",
+        },
       });
       console.log("Seeded Central Warehouse & Retail Floor locations.");
     } else {
@@ -157,20 +231,30 @@ async function main() {
     // Inventory Stocks
     for (const p of rawSeed.products) {
       const whStock = await prisma.inventoryStock.findFirst({
-        where: { productId: p.id, locationId: "loc-warehouse" }
+        where: { productId: p.id, locationId: "loc-warehouse" },
       });
       if (!whStock) {
         await prisma.inventoryStock.create({
-          data: { productId: p.id, locationId: "loc-warehouse", quantityOnHand: p.stock, availableQty: p.stock }
+          data: {
+            productId: p.id,
+            locationId: "loc-warehouse",
+            quantityOnHand: p.stock,
+            availableQty: p.stock,
+          },
         });
       }
 
       const retStock = await prisma.inventoryStock.findFirst({
-        where: { productId: p.id, locationId: "loc-retail" }
+        where: { productId: p.id, locationId: "loc-retail" },
       });
       if (!retStock) {
         await prisma.inventoryStock.create({
-          data: { productId: p.id, locationId: "loc-retail", quantityOnHand: Math.floor(p.stock * 0.2), availableQty: Math.floor(p.stock * 0.2) }
+          data: {
+            productId: p.id,
+            locationId: "loc-retail",
+            quantityOnHand: Math.floor(p.stock * 0.2),
+            availableQty: Math.floor(p.stock * 0.2),
+          },
         });
       }
     }
@@ -182,7 +266,7 @@ async function main() {
       if (supplier) {
         const relationId = `sp-${supplier.id}-${p.id}`;
         const relationExists = await prisma.supplierProduct.findUnique({
-          where: { id: relationId }
+          where: { id: relationId },
         });
         if (!relationExists) {
           await prisma.supplierProduct.create({
@@ -194,7 +278,7 @@ async function main() {
               minimumOrderQuantity: p.reorder,
               leadTimeDays: Math.round(supplier.lead),
               preferred: true,
-            }
+            },
           });
         }
       }
@@ -214,8 +298,10 @@ async function main() {
       for (const cust of rawSeed.customers) {
         const email = `${cust.name.toLowerCase().replace(/[^a-z0-9]/g, "")}@grandsquare.com`;
         const phone = `+91 99900 ${cust.id.split("-")[1] || Math.floor(10000 + Math.random() * 90000)}`;
-        const dept = depts.find(d => d.name === cust.favDept || d.code === cust.favDept.toUpperCase());
-        
+        const dept = depts.find(
+          (d) => d.name === cust.favDept || d.code === cust.favDept.toUpperCase(),
+        );
+
         await prisma.customer.create({
           data: {
             id: cust.id,
@@ -224,13 +310,19 @@ async function main() {
             lastName: cust.name.split(" ").slice(1).join(" ") || "",
             email,
             phone,
-            loyaltyTier: cust.segment === "VIP" ? "VIP" : cust.segment === "Loyal" ? "Loyal" : "Regular",
+            loyaltyTier:
+              cust.segment === "VIP" ? "VIP" : cust.segment === "Loyal" ? "Loyal" : "Regular",
             loyaltyPoints: Math.floor((cust.spend || 0) * 0.01),
             joinDate: new Date(cust.joined),
             status: "Active",
-            churnRisk: cust.churn && cust.churn > 20 ? "High" : cust.churn && cust.churn > 10 ? "Medium" : "Low",
+            churnRisk:
+              cust.churn && cust.churn > 20
+                ? "High"
+                : cust.churn && cust.churn > 10
+                  ? "Medium"
+                  : "Low",
             preferredDepartmentId: dept ? dept.id : null,
-          }
+          },
         });
       }
       console.log(`Seeded ${rawSeed.customers.length} Customers.`);
@@ -255,7 +347,9 @@ async function main() {
       const mainItem = tx.items[0];
       const product = rawSeed.products.find((p) => p.id === mainItem.productId)!;
       const deptCode = product.dept.toUpperCase();
-      const dept = depts.find((d) => d.code === deptCode || d.name === product.dept) || depts[depts.length - 1];
+      const dept =
+        depts.find((d) => d.code === deptCode || d.name === product.dept) ||
+        depts[depts.length - 1];
       const customer = rawSeed.customers.find((c) => c.id === tx.customerId);
       const occurredAt = new Date(`${tx.date}T${tx.time}:00`);
 
@@ -282,7 +376,7 @@ async function main() {
           quantity: item.quantity,
           unitPrice: item.price,
           costPriceSnapshot: item.cost,
-          discountAmount: 0.00,
+          discountAmount: 0.0,
           taxAmount: item.price * item.quantity * 0.18,
           lineTotal: item.price * item.quantity * 1.18,
         });
@@ -354,7 +448,7 @@ async function main() {
   {
     const phaseStart = Date.now();
     console.log("[SEED 7/12] Seeding Inventory movements & product batches...");
-    
+
     // Inventory movements
     const movementCount = await prisma.inventoryMovement.count();
     if (movementCount === 0 && movementsData.length > 0) {
@@ -367,7 +461,7 @@ async function main() {
     // Product batches
     for (const b of rawSeed.batches) {
       const batchExists = await prisma.productBatch.findUnique({
-        where: { id: b.id }
+        where: { id: b.id },
       });
       if (!batchExists) {
         const p = rawSeed.products.find((prod) => prod.id === b.productId);
@@ -388,7 +482,7 @@ async function main() {
             supplierId: supplierId,
             receivedAt: b.receivedDate ? new Date(b.receivedDate) : new Date(),
             status: b.status === "expired" ? "Expired" : "Safe",
-          }
+          },
         });
       }
     }
@@ -414,7 +508,9 @@ async function main() {
         expCatsMap.set(exp.category, categoryId);
 
         const deptCode = exp.department ? exp.department.toUpperCase() : "OTHERS";
-        const dept = depts.find((d) => d.code === deptCode || d.name === exp.department) || depts[depts.length - 1];
+        const dept =
+          depts.find((d) => d.code === deptCode || d.name === exp.department) ||
+          depts[depts.length - 1];
 
         await prisma.expense.create({
           data: {
@@ -429,7 +525,7 @@ async function main() {
             status: exp.status || "Paid",
             paymentMethod: "Bank Transfer",
             createdBy: "aarav-mehra",
-          }
+          },
         });
       }
       console.log(`Seeded ${rawSeed.expenses.length} Expenses.`);
@@ -503,7 +599,7 @@ async function main() {
             targetEntityType: (rec as any).category || null,
             targetEntityId: (rec as any).relatedEntityId || null,
             generatedAt: new Date("2026-05-05T08:00:00"),
-          }
+          },
         });
       }
       console.log(`Seeded ${rawSeed.recommendations.length} Recommendations.`);
@@ -532,11 +628,13 @@ async function main() {
               actual: (anom as any).actual,
               deviation: (anom as any).deviation,
               when: (anom as any).when,
-              action: (anom as any).action
+              action: (anom as any).action,
             }),
-            detectedAt: (anom as any).date ? new Date((anom as any).date) : new Date("2026-05-05T10:00:00"),
+            detectedAt: (anom as any).date
+              ? new Date((anom as any).date)
+              : new Date("2026-05-05T10:00:00"),
             status: anom.status || "Active",
-          }
+          },
         });
       }
       console.log(`Seeded ${rawSeed.anomalies.length} Anomalies.`);
@@ -553,7 +651,9 @@ async function main() {
     const poCount = await prisma.purchaseOrder.count();
     if (poCount === 0) {
       for (const po of rawSeed.purchaseOrders) {
-        const supplier = await prisma.supplier.findFirst({ where: { id: po.supplierId } }) || await prisma.supplier.findFirst();
+        const supplier =
+          (await prisma.supplier.findFirst({ where: { id: po.supplierId } })) ||
+          (await prisma.supplier.findFirst());
         const supplierId = supplier ? supplier.id : "SUP-001";
         await prisma.purchaseOrder.create({
           data: {
@@ -567,7 +667,7 @@ async function main() {
             totalAmount: po.totalCost * 1.18,
             createdBy: "aarav-mehra",
             notes: po.source,
-          }
+          },
         });
       }
       console.log(`Seeded ${rawSeed.purchaseOrders.length} Purchase orders.`);
@@ -577,7 +677,9 @@ async function main() {
     console.log(`[SEED 12/12] Completed in ${((Date.now() - phaseStart) / 1000).toFixed(2)}s`);
   }
 
-  console.log(`Database seed diagnostics completed successfully! Total execution time: ${((Date.now() - startTime) / 1000).toFixed(2)}s`);
+  console.log(
+    `Database seed diagnostics completed successfully! Total execution time: ${((Date.now() - startTime) / 1000).toFixed(2)}s`,
+  );
 }
 
 main()

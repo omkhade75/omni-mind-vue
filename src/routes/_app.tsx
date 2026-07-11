@@ -68,8 +68,8 @@ export const Route = createFileRoute("/_app")({
     const res = await getCurrentSessionServer();
     if (!res.user) {
       throw redirect({
-        to: '/login',
-      })
+        to: "/login",
+      });
     }
   },
   component: AppShell,
@@ -167,6 +167,11 @@ function AppShell() {
     customers,
     suppliers,
     activeDate,
+    transactions,
+    purchaseOrders,
+    expenses,
+    investments,
+    logistics,
   } = useBusinessData();
 
   const isEndOfMonth = useMemo(() => {
@@ -179,7 +184,8 @@ function AppShell() {
 
   const endOfMonthNotifId = `eom-bills-${activeDate?.slice(0, 7)}`;
   const hasEomNotif = isEndOfMonth && !readNotifs.has(endOfMonthNotifId);
-  const totalUnreadNotifs = ANOMALIES.length + LIVE_FEED.length - readNotifs.size + (hasEomNotif ? 1 : 0);
+  const totalUnreadNotifs =
+    ANOMALIES.length + LIVE_FEED.length - readNotifs.size + (hasEomNotif ? 1 : 0);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -226,7 +232,18 @@ function AppShell() {
   }, [notifOpen]);
 
   const searchResults = useMemo(() => {
-    if (!searchQuery.trim()) return { products: [], customers: [], suppliers: [] };
+    if (!searchQuery.trim()) {
+      return {
+        products: [],
+        customers: [],
+        suppliers: [],
+        transactions: [],
+        purchaseOrders: [],
+        expenses: [],
+        investments: [],
+        logistics: [],
+      };
+    }
     const q = searchQuery.toLowerCase();
     return {
       products: products
@@ -238,8 +255,55 @@ function AppShell() {
       suppliers: suppliers
         .filter((s) => s.name.toLowerCase().includes(q) || s.id.toLowerCase().includes(q))
         .slice(0, 3),
+      transactions: transactions
+        .filter(
+          (t) =>
+            t.id.toLowerCase().includes(q) ||
+            (t.customerName && t.customerName.toLowerCase().includes(q)) ||
+            t.total.toString().includes(q),
+        )
+        .slice(0, 3),
+      purchaseOrders: purchaseOrders
+        .filter(
+          (po) =>
+            po.id.toLowerCase().includes(q) ||
+            po.productName.toLowerCase().includes(q) ||
+            po.supplierName.toLowerCase().includes(q),
+        )
+        .slice(0, 3),
+      expenses: expenses
+        .filter(
+          (e) =>
+            e.id.toLowerCase().includes(q) ||
+            e.desc.toLowerCase().includes(q) ||
+            e.vendor.toLowerCase().includes(q) ||
+            e.category.toLowerCase().includes(q),
+        )
+        .slice(0, 3),
+      investments: investments
+        .filter((i) => i.assetName.toLowerCase().includes(q) || i.symbol.toLowerCase().includes(q))
+        .slice(0, 3),
+      logistics: logistics
+        .filter(
+          (l) =>
+            l.orderNumber.toLowerCase().includes(q) ||
+            l.customerName.toLowerCase().includes(q) ||
+            l.driverName.toLowerCase().includes(q) ||
+            l.destination.toLowerCase().includes(q),
+        )
+        .slice(0, 3),
     };
-  }, [searchQuery, products, customers, suppliers]);
+  }, [
+    searchQuery,
+    products,
+    customers,
+    suppliers,
+    transactions,
+    purchaseOrders,
+    expenses,
+    investments,
+    logistics,
+  ]);
 
   useEffect(() => {
     // If auth is still loading, don't redirect yet
@@ -306,7 +370,9 @@ function AppShell() {
           "lg:sticky lg:translate-x-0",
           collapsed ? "lg:w-[68px]" : "lg:w-[260px]",
           // Mobile
-          mobileOpen ? "w-[280px] translate-x-0 shadow-2xl shadow-primary/10" : "-translate-x-full lg:translate-x-0",
+          mobileOpen
+            ? "w-[280px] translate-x-0 shadow-2xl shadow-primary/10"
+            : "-translate-x-full lg:translate-x-0",
         )}
       >
         {/* Subtle gradient overlay on sidebar for premium feel */}
@@ -462,7 +528,12 @@ function AppShell() {
 
                   {searchResults.products.length === 0 &&
                   searchResults.customers.length === 0 &&
-                  searchResults.suppliers.length === 0 ? (
+                  searchResults.suppliers.length === 0 &&
+                  searchResults.transactions.length === 0 &&
+                  searchResults.purchaseOrders.length === 0 &&
+                  searchResults.expenses.length === 0 &&
+                  searchResults.investments.length === 0 &&
+                  searchResults.logistics.length === 0 ? (
                     <div className="py-4 text-center text-muted-foreground">
                       No matches found for "{searchQuery}"
                     </div>
@@ -540,6 +611,151 @@ function AppShell() {
                                 <span className="font-medium text-foreground">{s.name}</span>
                                 <span className="text-[10px] text-muted-foreground">
                                   {s.category}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Transactions Group */}
+                      {searchResults.transactions.length > 0 && (
+                        <div>
+                          <p className="px-2 py-0.5 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">
+                            Transactions
+                          </p>
+                          <div className="space-y-0.5 mt-1">
+                            {searchResults.transactions.map((t) => (
+                              <button
+                                key={t.id}
+                                onClick={() => {
+                                  navigate({ to: "/transactions" });
+                                  setSearchQuery("");
+                                  setSearchOpen(false);
+                                }}
+                                className="w-full text-left px-2 py-1.5 rounded hover:bg-surface flex justify-between items-center"
+                              >
+                                <span className="font-medium text-foreground">
+                                  Receipt {t.id} ({t.customerName || "Walk-in"})
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  ₹{t.total}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Purchase Orders Group */}
+                      {searchResults.purchaseOrders.length > 0 && (
+                        <div>
+                          <p className="px-2 py-0.5 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">
+                            Purchase Orders
+                          </p>
+                          <div className="space-y-0.5 mt-1">
+                            {searchResults.purchaseOrders.map((po) => (
+                              <button
+                                key={po.id}
+                                onClick={() => {
+                                  navigate({ to: "/purchase-orders" });
+                                  setSearchQuery("");
+                                  setSearchOpen(false);
+                                }}
+                                className="w-full text-left px-2 py-1.5 rounded hover:bg-surface flex justify-between items-center"
+                              >
+                                <span className="font-medium text-foreground">
+                                  PO {po.id} ({po.productName})
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {po.status}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Expenses Group */}
+                      {searchResults.expenses.length > 0 && (
+                        <div>
+                          <p className="px-2 py-0.5 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">
+                            Expenses
+                          </p>
+                          <div className="space-y-0.5 mt-1">
+                            {searchResults.expenses.map((e) => (
+                              <button
+                                key={e.id}
+                                onClick={() => {
+                                  navigate({ to: "/expenses" });
+                                  setSearchQuery("");
+                                  setSearchOpen(false);
+                                }}
+                                className="w-full text-left px-2 py-1.5 rounded hover:bg-surface flex justify-between items-center"
+                              >
+                                <span className="font-medium text-foreground">
+                                  {e.desc}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground font-semibold">
+                                  ₹{e.amount}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Investments Group */}
+                      {searchResults.investments.length > 0 && (
+                        <div>
+                          <p className="px-2 py-0.5 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">
+                            Investments
+                          </p>
+                          <div className="space-y-0.5 mt-1">
+                            {searchResults.investments.map((inv) => (
+                              <button
+                                key={inv.id}
+                                onClick={() => {
+                                  navigate({ to: "/market-intelligence" });
+                                  setSearchQuery("");
+                                  setSearchOpen(false);
+                                }}
+                                className="w-full text-left px-2 py-1.5 rounded hover:bg-surface flex justify-between items-center"
+                              >
+                                <span className="font-medium text-foreground">
+                                  {inv.assetName} ({inv.symbol})
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  ₹{inv.currentValue.toLocaleString("en-IN")}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Logistics Group */}
+                      {searchResults.logistics.length > 0 && (
+                        <div>
+                          <p className="px-2 py-0.5 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">
+                            Logistics & Dispatches
+                          </p>
+                          <div className="space-y-0.5 mt-1">
+                            {searchResults.logistics.map((l) => (
+                              <button
+                                key={l.id}
+                                onClick={() => {
+                                  navigate({ to: "/logistics" });
+                                  setSearchQuery("");
+                                  setSearchOpen(false);
+                                }}
+                                className="w-full text-left px-2 py-1.5 rounded hover:bg-surface flex justify-between items-center"
+                              >
+                                <span className="font-medium text-foreground">
+                                  Order {l.orderNumber} ({l.customerName})
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {l.status}
                                 </span>
                               </button>
                             ))}
@@ -627,15 +843,20 @@ function AppShell() {
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-semibold truncate">Utility Bills Due</span>
+                              <span className="text-xs font-semibold truncate">
+                                Utility Bills Due
+                              </span>
                               <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold bg-warning/15 text-warning">
                                 Action Required
                               </span>
                             </div>
                             <p className="mt-0.5 text-[11px] text-muted-foreground">
-                              End of month approaching. Please review and pay all outstanding utility bills (Electricity, Water, Internet, etc).
+                              End of month approaching. Please review and pay all outstanding
+                              utility bills (Electricity, Water, Internet, etc).
                             </p>
-                            <p className="mt-0.5 text-[10px] text-muted-foreground">System Reminder</p>
+                            <p className="mt-0.5 text-[10px] text-muted-foreground">
+                              System Reminder
+                            </p>
                           </div>
                           {!readNotifs.has(endOfMonthNotifId) && (
                             <div className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
@@ -673,7 +894,12 @@ function AppShell() {
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2">
                                 <span className="text-xs font-semibold truncate">{a.metric}</span>
-                                <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold", severityColor)}>
+                                <span
+                                  className={cn(
+                                    "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold",
+                                    severityColor,
+                                  )}
+                                >
                                   {a.severity}
                                 </span>
                               </div>
@@ -724,7 +950,12 @@ function AppShell() {
                               !isRead && "bg-primary/5",
                             )}
                           >
-                            <div className={cn("mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg", colorMap[f.type] || "bg-muted")}>
+                            <div
+                              className={cn(
+                                "mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg",
+                                colorMap[f.type] || "bg-muted",
+                              )}
+                            >
                               <FeedIcon className="h-4 w-4" />
                             </div>
                             <div className="min-w-0 flex-1">

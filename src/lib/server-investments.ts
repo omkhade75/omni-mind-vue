@@ -50,7 +50,7 @@ export const investCorporateCashServer = createServerFn({ method: "POST" })
       totalCost: number;
       role: string;
       emailUser: string;
-    }) => data
+    }) => data,
   )
   .handler(async ({ data }) => {
     const result = await prisma.$transaction(async (tx) => {
@@ -64,12 +64,15 @@ export const investCorporateCashServer = createServerFn({ method: "POST" })
       });
 
       const cashBalance = cashAccount
-        ? cashAccount.entries.reduce((sum, e) => sum + Number(e.debitAmount) - Number(e.creditAmount), 0)
+        ? cashAccount.entries.reduce(
+            (sum, e) => sum + Number(e.debitAmount) - Number(e.creditAmount),
+            0,
+          )
         : 0;
 
       if (cashBalance < data.totalCost) {
         throw new Error(
-          `Insufficient corporate cash balance in General Ledger. Available: ₹${cashBalance.toFixed(0)}, Required: ₹${data.totalCost.toFixed(0)}`
+          `Insufficient corporate cash balance in General Ledger. Available: ₹${cashBalance.toFixed(0)}, Required: ₹${data.totalCost.toFixed(0)}`,
         );
       }
 
@@ -106,14 +109,23 @@ export const investCorporateCashServer = createServerFn({ method: "POST" })
           entityId: investment.id,
           title: `Asset Purchased: ${data.assetName}`,
           description: `Acquired ${data.quantity} units of ${data.symbol} for a total of ₹${data.totalCost.toFixed(0)}.`,
-          metadata: JSON.stringify({ asset: data.assetName, cost: data.totalCost, qty: data.quantity }),
+          metadata: JSON.stringify({
+            asset: data.assetName,
+            cost: data.totalCost,
+            qty: data.quantity,
+          }),
         },
       });
 
       // 6. Audit log
       await tx.auditLog.create({
         data: {
-          userId: data.role === "admin" ? "priya-nair" : data.role === "manager" ? "rohan-kulkarni" : "aarav-mehra",
+          userId:
+            data.role === "admin"
+              ? "priya-nair"
+              : data.role === "manager"
+                ? "rohan-kulkarni"
+                : "aarav-mehra",
           action: "INVESTMENT_CREATE",
           entityType: "Investment",
           entityId: investment.id,
@@ -129,12 +141,8 @@ export const investCorporateCashServer = createServerFn({ method: "POST" })
 
 export const liquidateInvestmentServer = createServerFn({ method: "POST" })
   .validator(
-    (data: {
-      investmentId: string;
-      liquidatedPrice: number;
-      role: string;
-      emailUser: string;
-    }) => data
+    (data: { investmentId: string; liquidatedPrice: number; role: string; emailUser: string }) =>
+      data,
   )
   .handler(async ({ data }) => {
     const result = await prisma.$transaction(async (tx) => {
@@ -201,14 +209,23 @@ export const liquidateInvestmentServer = createServerFn({ method: "POST" })
           entityId: investment.id,
           title: `Asset Liquidated: ${investment.assetName}`,
           description: `Sold ${quantity} units of ${investment.symbol} for ₹${liquidatedAmount.toFixed(0)}, resulting in a ${gainLoss >= 0 ? "gain" : "loss"} of ₹${Math.abs(gainLoss).toFixed(0)}.`,
-          metadata: JSON.stringify({ asset: investment.assetName, amount: liquidatedAmount, gainLoss }),
+          metadata: JSON.stringify({
+            asset: investment.assetName,
+            amount: liquidatedAmount,
+            gainLoss,
+          }),
         },
       });
 
       // 5. Audit log
       await tx.auditLog.create({
         data: {
-          userId: data.role === "admin" ? "priya-nair" : data.role === "manager" ? "rohan-kulkarni" : "aarav-mehra",
+          userId:
+            data.role === "admin"
+              ? "priya-nair"
+              : data.role === "manager"
+                ? "rohan-kulkarni"
+                : "aarav-mehra",
           action: "INVESTMENT_LIQUIDATE",
           entityType: "Investment",
           entityId: investment.id,

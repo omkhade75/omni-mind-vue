@@ -51,9 +51,12 @@ export default {
       const url = new URL(request.url);
       if (url.pathname === "/api/vapi-webhook") {
         if (request.method === "GET") {
-          return new Response(JSON.stringify({ status: "active", channel: "Vapi Webhook Adapter" }), {
-            headers: { "Content-Type": "application/json" },
-          });
+          return new Response(
+            JSON.stringify({ status: "active", channel: "Vapi Webhook Adapter" }),
+            {
+              headers: { "Content-Type": "application/json" },
+            },
+          );
         }
         if (request.method === "POST") {
           try {
@@ -70,7 +73,9 @@ export default {
               const duration = callData.duration || 0;
               const endedReason = callData.endedReason || "unknown";
 
-              console.log(`📞 Vapi Call Ended. ID: ${callId}, Duration: ${duration}s, Reason: ${endedReason}`);
+              console.log(
+                `📞 Vapi Call Ended. ID: ${callId}, Duration: ${duration}s, Reason: ${endedReason}`,
+              );
 
               const { prisma } = await import("./lib/server/prisma");
               const existingLog = await prisma.messageLog.findFirst({
@@ -79,13 +84,16 @@ export default {
 
               if (existingLog) {
                 const updatedBody = `${existingLog.body}\n\n--- AI CALL TRANSCRIPT (${duration}s, Reason: ${endedReason}) ---\nSummary: ${summary}\n\nTranscript: ${transcript}`;
-                
+
                 await prisma.messageLog.update({
                   where: { id: existingLog.id },
                   data: {
-                    status: endedReason === "customer-hung-up" || endedReason === "assistant-completed-recording" || endedReason === "normal"
-                      ? "DELIVERED"
-                      : "FAILED",
+                    status:
+                      endedReason === "customer-hung-up" ||
+                      endedReason === "assistant-completed-recording" ||
+                      endedReason === "normal"
+                        ? "DELIVERED"
+                        : "FAILED",
                     body: updatedBody,
                     error: endedReason !== "normal" ? `Ended: ${endedReason}` : null,
                   },
@@ -101,10 +109,13 @@ export default {
             });
           } catch (err: any) {
             console.error("❌ Error processing Vapi Webhook:", err);
-            return new Response(JSON.stringify({ error: err.message || "Failed to process webhook" }), {
-              status: 500,
-              headers: { "Content-Type": "application/json" },
-            });
+            return new Response(
+              JSON.stringify({ error: err.message || "Failed to process webhook" }),
+              {
+                status: 500,
+                headers: { "Content-Type": "application/json" },
+              },
+            );
           }
         }
       }

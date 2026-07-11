@@ -65,8 +65,6 @@ export const getLogisticsDispatchesServer = createServerFn({ method: "POST" })
       orderBy: { dispatchedAt: "desc" },
     });
 
-
-
     return dispatches.map((d) => ({
       id: d.id,
       orderNumber: d.orderNumber,
@@ -91,7 +89,7 @@ export const createLogisticsDispatchServer = createServerFn({ method: "POST" })
       driverName: string;
       vehicleNumber: string;
       itemsCount: number;
-    }) => data
+    }) => data,
   )
   .handler(async ({ data }) => {
     const result = await prisma.deliveryDispatch.create({
@@ -122,13 +120,7 @@ export const createLogisticsDispatchServer = createServerFn({ method: "POST" })
   });
 
 export const updateLogisticsStatusServer = createServerFn({ method: "POST" })
-  .validator(
-    (data: {
-      dispatchId: string;
-      status: string;
-      delayReason?: string | null;
-    }) => data
-  )
+  .validator((data: { dispatchId: string; status: string; delayReason?: string | null }) => data)
   .handler(async ({ data }) => {
     const deliveredDate = data.status === "Delivered" ? new Date() : null;
 

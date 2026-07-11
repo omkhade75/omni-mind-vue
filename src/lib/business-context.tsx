@@ -21,6 +21,11 @@ import { getTransactionsServer } from "./server-transactions";
 import { getCustomersServer } from "./server-customers";
 import { getSuppliers, getPurchaseOrders } from "./server-suppliers";
 import { getExpensesServer } from "./server-expenses";
+import { getAnomaliesServer, getRecommendationsServer } from "./server-analytics";
+import { getUtilitiesServer } from "./server-utilities";
+import { getInvestmentsServer, type InvestmentItem } from "./server-investments";
+import { getLogisticsDispatchesServer, type DeliveryItem } from "./server-logistics";
+import { getStaffServer, type StaffListItem } from "./server-staff";
 
 export type TimeRange = "today" | "yesterday" | "7d" | "30d" | "custom";
 
@@ -69,6 +74,10 @@ interface BusinessDataCtx {
   anomalies: Anomaly[];
   purchaseOrders: PurchaseOrder[];
   dailySnapshot: DailySnapshot;
+  investments: InvestmentItem[];
+  logistics: DeliveryItem[];
+  staff: StaffListItem[];
+  forceRefresh: () => void;
 
   // Scoped lists based on Active Date / Time Range / Role
   scopedProducts: Product[];
@@ -125,7 +134,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const getLocalTodayStr = () => {
       const now = new Date();
       const offset = now.getTimezoneOffset();
-      const localNow = new Date(now.getTime() - (offset * 60 * 1000));
+      const localNow = new Date(now.getTime() - offset * 60 * 1000);
       return localNow.toISOString().split("T")[0];
     };
     return getLocalTodayStr();
@@ -154,30 +163,41 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const forceRefresh = () => setDbRev((prev) => prev + 1);
   const [syncRev, setSyncRev] = useState(0);
+  const [investments, setInvestments] = useState<InvestmentItem[]>([]);
+  const [logistics, setLogistics] = useState<DeliveryItem[]>([]);
+  const [staff, setStaff] = useState<StaffListItem[]>([]);
 
   useEffect(() => {
     let intervalId: any;
-    
+
     async function syncData() {
       try {
         const payload = {
           data: {
             role: user?.role || "owner",
             email: user?.email || "",
-          }
+          },
         };
 
-        const [prods, txns, custs, supps, exps, pos] = await Promise.all([
+        const [prods, txns, custs, supps, exps, pos, anoms, recs, utils, invs, logs, stf] = await Promise.all([
           getProductsServer(payload),
           getTransactionsServer(payload),
-          getCustomersServer({ data: { role: user?.role || "owner", email: user?.email || "", status: "Active" } }),
+          getCustomersServer({
+            data: { role: user?.role || "owner", email: user?.email || "", status: "Active" },
+          }),
           getSuppliers(),
           getExpensesServer(payload),
           getPurchaseOrders(),
+          getAnomaliesServer(payload),
+          getRecommendationsServer(payload),
+          getUtilitiesServer(payload),
+          getInvestmentsServer({}),
+          getLogisticsDispatchesServer({}),
+          getStaffServer(payload),
         ]);
 
         // Map the PostgreSQL products to mock Products
-        const mappedProducts = prods.map(p => ({
+        const mappedProducts = prods.map((p) => ({
           id: p.id,
           name: p.name,
           category: p.category,
@@ -192,17 +212,22 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
           sold: p.sold,
           revenue: p.revenue,
           margin: p.margin,
-          status: (p.stock <= p.reorder ? (p.stock <= p.reorder / 4 ? "critical" : "low") : "ok") as "ok" | "low" | "critical" | "expiring",
+          status: (p.stock <= p.reorder
+            ? p.stock <= p.reorder / 4
+              ? "critical"
+              : "low"
+            : "ok") as "ok" | "low" | "critical" | "expiring",
         }));
 
         // Map the PostgreSQL transactions to mock Transactions
-        const mappedTransactions = txns.map(t => ({
+        const mappedTransactions = txns.map((t) => ({
           id: t.id,
           date: t.date,
           time: t.time,
           customerName: t.customerName || "Walk-in Customer",
           customerId: t.customerId || "walkin",
-          items: t.items.map(it => ({
+          dept: t.dept as any,
+          items: t.items.map((it) => ({
             productId: it.productId,
             name: it.productName,
             quantity: it.quantity,
@@ -215,25 +240,24 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
           total: t.total,
           payment: t.payment as any,
           status: t.status as any,
-          dept: t.dept,
         }));
 
         // Map the PostgreSQL customers to mock Customers
-        const mappedCustomers = custs.map(c => ({
+        const mappedCustomers = custs.map((c) => ({
           id: c.id,
           name: c.name,
           joined: c.joined,
           visits: c.visits,
           spend: c.spend,
-          aov: c.aov,
-          favDept: c.favDept,
+          aov: c.spend / (c.visits || 1),
+          favDept: c.favDept as any,
           lastVisit: c.lastVisit,
           segment: c.segment as any,
           churn: c.churn,
         }));
 
         // Map the PostgreSQL suppliers to mock Suppliers
-        const mappedSuppliers = supps.map(s => ({
+        const mappedSuppliers = supps.map((s) => ({
           id: s.id,
           name: s.name,
           category: s.category,
@@ -249,7 +273,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }));
 
         // Map the PostgreSQL expenses to mock Expenses
-        const mappedExpenses = exps.map(e => ({
+        const mappedExpenses = exps.map((e) => ({
           id: e.id,
           date: e.date,
           category: e.category,
@@ -261,7 +285,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }));
 
         // Map the PostgreSQL purchase orders to mock PurchaseOrders
-        const mappedPurchaseOrders = pos.map(po => ({
+        const mappedPurchaseOrders = pos.map((po) => ({
           id: po.id,
           productId: po.productId,
           productName: po.productName,
@@ -275,6 +299,50 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
           source: po.source,
         }));
 
+        // Map recommendations
+        const mappedRecommendations = recs.map((r: any) => ({
+          id: r.id,
+          category: r.category,
+          title: r.title,
+          evidence: r.evidence,
+          impact: r.impact,
+          confidence: r.confidence,
+          priority: r.priority as any,
+          status: r.status as any,
+          generated: r.generated,
+          dept: r.category === "MARKDOWN" ? "Fashion" : "All",
+          severity: r.priority as any,
+          explanation: r.evidence,
+          suggestedAction: r.impact,
+        }));
+
+        // Map anomalies
+        const mappedAnomalies = anoms.map((a: any) => ({
+          id: a.id,
+          severity: a.severity,
+          metric: a.metric,
+          expected: a.expected,
+          actual: a.actual,
+          deviation: a.deviation,
+          when: a.when,
+          cause: a.cause,
+          action: a.action,
+          status: a.status,
+          date: a.when === "Just now" ? new Date().toISOString().split("T")[0] : a.when,
+        }));
+
+        // Map utility readings
+        const mappedUtilities = utils.readings.map((u: any) => ({
+          id: u.id,
+          date: u.date,
+          type: (u.type === "ELECTRICITY" ? "Electricity" : "Water") as "Electricity" | "Water",
+          zone: u.zone,
+          consumption: u.value,
+          cost: u.cost,
+          baseline: 100,
+          anomalyScore: 0.05,
+        }));
+
         const currentSchema = db.schema;
         db.save({
           ...currentSchema,
@@ -284,11 +352,16 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
           suppliers: mappedSuppliers,
           expenses: mappedExpenses,
           purchaseOrders: mappedPurchaseOrders,
-          recommendations: currentSchema.recommendations,
-          anomalies: currentSchema.anomalies,
+          recommendations: mappedRecommendations,
+          anomalies: mappedAnomalies,
+          utilities: mappedUtilities,
         });
 
-        setSyncRev(prev => prev + 1);
+        setInvestments(invs);
+        setLogistics(logs);
+        setStaff(stf);
+
+        setSyncRev((prev) => prev + 1);
       } catch (err) {
         console.error("Failed to sync client database with server:", err);
       }
@@ -587,6 +660,10 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
         anomalies,
         purchaseOrders,
         dailySnapshot,
+        investments,
+        logistics,
+        staff,
+        forceRefresh,
 
         scopedProducts,
         scopedTransactions,

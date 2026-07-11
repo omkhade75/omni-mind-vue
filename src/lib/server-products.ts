@@ -128,13 +128,16 @@ export const getProductsServer = createServerFn({ method: "POST" })
       const stock = p.stockItems.reduce((sum, item) => sum + item.quantityOnHand, 0);
       const sellingPrice = Number(p.sellingPrice);
       const costPrice = Number(p.costPrice);
-      const margin = sellingPrice > 0 ? Math.round(((sellingPrice - costPrice) / sellingPrice) * 100) : 0;
+      const margin =
+        sellingPrice > 0 ? Math.round(((sellingPrice - costPrice) / sellingPrice) * 100) : 0;
       const deptObj = depts.find((d) => d.id === p.departmentId);
 
       const supplierInfo = supplierProducts.find((sp) => sp.productId === p.id);
       const supplierName = supplierInfo ? supplierInfo.supplier.name : "Default Supplier";
 
-      const expiry = p.batches[0]?.expiryDate ? p.batches[0].expiryDate.toISOString().split("T")[0] : null;
+      const expiry = p.batches[0]?.expiryDate
+        ? p.batches[0].expiryDate.toISOString().split("T")[0]
+        : null;
 
       const sold = p.transactionItems.reduce((sum, item) => sum + item.quantity, 0);
       const revenue = p.transactionItems.reduce((sum, item) => sum + Number(item.lineTotal), 0);
@@ -293,7 +296,12 @@ export const addProductServer = createServerFn({ method: "POST" })
       // 6. AuditLog
       await tx.auditLog.create({
         data: {
-          userId: data.role === "manager" ? "rohan-kulkarni" : data.role === "admin" ? "priya-nair" : "aarav-mehra",
+          userId:
+            data.role === "manager"
+              ? "rohan-kulkarni"
+              : data.role === "admin"
+                ? "priya-nair"
+                : "aarav-mehra",
           action: "PRODUCT_CREATED",
           entityType: "Product",
           entityId: product.id,
@@ -361,7 +369,12 @@ export const editProductServer = createServerFn({ method: "POST" })
 
       await tx.auditLog.create({
         data: {
-          userId: data.role === "manager" ? "rohan-kulkarni" : data.role === "admin" ? "priya-nair" : "aarav-mehra",
+          userId:
+            data.role === "manager"
+              ? "rohan-kulkarni"
+              : data.role === "admin"
+                ? "priya-nair"
+                : "aarav-mehra",
           action: "PRODUCT_UPDATED",
           entityType: "Product",
           entityId: product.id,
@@ -392,7 +405,8 @@ export const archiveProductServer = createServerFn({ method: "POST" })
 
       await tx.auditLog.create({
         data: {
-          userId: role === "manager" ? "rohan-kulkarni" : role === "admin" ? "priya-nair" : "aarav-mehra",
+          userId:
+            role === "manager" ? "rohan-kulkarni" : role === "admin" ? "priya-nair" : "aarav-mehra",
           action: "PRODUCT_ARCHIVED",
           entityType: "Product",
           entityId: product.id,
@@ -478,7 +492,8 @@ export const getProduct360Server = createServerFn({ method: "POST" })
     const currentStock = product.stockItems.reduce((sum, item) => sum + item.quantityOnHand, 0);
     const sellingPrice = Number(product.sellingPrice);
     const costPrice = Number(product.costPrice);
-    const margin = sellingPrice > 0 ? Math.round(((sellingPrice - costPrice) / sellingPrice) * 100) : 0;
+    const margin =
+      sellingPrice > 0 ? Math.round(((sellingPrice - costPrice) / sellingPrice) * 100) : 0;
 
     // Get Supplier info
     const supplierProd = await prisma.supplierProduct.findFirst({
@@ -505,7 +520,9 @@ export const getProduct360Server = createServerFn({ method: "POST" })
     const nearExpiryBatches = product.batches.filter(
       (b) => b.expiryDate && b.expiryDate <= thirtyDaysFromNow && b.quantityRemaining > 0,
     );
-    const expiredBatches = product.batches.filter((b) => b.expiryDate && b.expiryDate < new Date() && b.quantityRemaining > 0);
+    const expiredBatches = product.batches.filter(
+      (b) => b.expiryDate && b.expiryDate < new Date() && b.quantityRemaining > 0,
+    );
 
     let expiryRisk = "Low";
     if (expiredBatches.length > 0) {
@@ -592,32 +609,180 @@ export const autoCategorizeProductServer = createServerFn({ method: "POST" })
 
     // 1. Keyword mapping rules
     const rules = [
-      { keywords: ["milk", "cheese", "butter", "paneer", "curd", "yogurt", "taaza", "amul", "dairy"], categoryId: "cat-dairy", departmentId: "dept-grocery", categoryName: "Dairy" },
-      { keywords: ["cola", "juice", "beverage", "soda", "pepsi", "water", "drink", "fanta", "limca", "sprite", "tea", "coffee"], categoryId: "cat-beverages", departmentId: "dept-grocery", categoryName: "Beverages" },
-      { keywords: ["bread", "bun", "cookie", "cake", "pastry", "croissant", "bakery", "biscuit", "toast"], categoryId: "cat-bakery", departmentId: "dept-grocery", categoryName: "Bakery" },
-      { keywords: ["noodle", "chips", "pasta", "sauce", "ketchup", "maggi", "kurkure", "snack"], categoryId: "cat-packagedfoods", departmentId: "dept-grocery", categoryName: "Packaged Foods" },
-      { keywords: ["soap", "toothpaste", "brush", "surf", "detergent", "shampoo", "wash", "fmcg"], categoryId: "cat-fmcg", departmentId: "dept-grocery", categoryName: "FMCG" },
-      { keywords: ["shirt", "t-shirt", "jeans", "trousers", "dress", "jacket", "suit", "clothing", "apparel"], categoryId: "cat-apparel", departmentId: "dept-fashion", categoryName: "Apparel" },
-      { keywords: ["saree", "kurta", "ethnic", "sherwani", "kurti"], categoryId: "cat-ethnic", departmentId: "dept-fashion", categoryName: "Ethnic" },
-      { keywords: ["denim", "levis", "wrangler"], categoryId: "cat-denim", departmentId: "dept-fashion", categoryName: "Denim" },
-      { keywords: ["shoe", "sneaker", "slipper", "sandal", "heel", "nike", "adidas", "puma", "footwear"], categoryId: "cat-footwear", departmentId: "dept-fashion", categoryName: "Footwear" },
-      { keywords: ["lipstick", "kajal", "makeup", "nail", "eyeliner", "cosmetics"], categoryId: "cat-cosmetics", departmentId: "dept-beauty", categoryName: "Cosmetics" },
-      { keywords: ["cream", "lotion", "moisturizer", "serum", "skincare", "sunscreen", "face"], categoryId: "cat-skincare", departmentId: "dept-beauty", categoryName: "Skincare" },
-      { keywords: ["phone", "smartphone", "laptop", "samsung", "apple", "charger", "cable", "electronics", "mobile"], categoryId: "cat-electronics", departmentId: "dept-electronics", categoryName: "Electronics" },
-      { keywords: ["tv", "television", "screen", "display", "monitor", "sony", "lg"], categoryId: "cat-television", departmentId: "dept-electronics", categoryName: "Television" },
-      { keywords: ["speaker", "headphone", "earphone", "audio", "soundbar", "boat", "jbl"], categoryId: "cat-audio", departmentId: "dept-electronics", categoryName: "Audio" },
-      { keywords: ["bat", "ball", "racket", "tent", "sports", "gym", "dumbell", "cricket", "football"], categoryId: "cat-sports", departmentId: "dept-sports", categoryName: "Sports & Outdoors" }
+      {
+        keywords: [
+          "milk",
+          "cheese",
+          "butter",
+          "paneer",
+          "curd",
+          "yogurt",
+          "taaza",
+          "amul",
+          "dairy",
+        ],
+        categoryId: "cat-dairy",
+        departmentId: "dept-grocery",
+        categoryName: "Dairy",
+      },
+      {
+        keywords: [
+          "cola",
+          "juice",
+          "beverage",
+          "soda",
+          "pepsi",
+          "water",
+          "drink",
+          "fanta",
+          "limca",
+          "sprite",
+          "tea",
+          "coffee",
+        ],
+        categoryId: "cat-beverages",
+        departmentId: "dept-grocery",
+        categoryName: "Beverages",
+      },
+      {
+        keywords: [
+          "bread",
+          "bun",
+          "cookie",
+          "cake",
+          "pastry",
+          "croissant",
+          "bakery",
+          "biscuit",
+          "toast",
+        ],
+        categoryId: "cat-bakery",
+        departmentId: "dept-grocery",
+        categoryName: "Bakery",
+      },
+      {
+        keywords: ["noodle", "chips", "pasta", "sauce", "ketchup", "maggi", "kurkure", "snack"],
+        categoryId: "cat-packagedfoods",
+        departmentId: "dept-grocery",
+        categoryName: "Packaged Foods",
+      },
+      {
+        keywords: ["soap", "toothpaste", "brush", "surf", "detergent", "shampoo", "wash", "fmcg"],
+        categoryId: "cat-fmcg",
+        departmentId: "dept-grocery",
+        categoryName: "FMCG",
+      },
+      {
+        keywords: [
+          "shirt",
+          "t-shirt",
+          "jeans",
+          "trousers",
+          "dress",
+          "jacket",
+          "suit",
+          "clothing",
+          "apparel",
+        ],
+        categoryId: "cat-apparel",
+        departmentId: "dept-fashion",
+        categoryName: "Apparel",
+      },
+      {
+        keywords: ["saree", "kurta", "ethnic", "sherwani", "kurti"],
+        categoryId: "cat-ethnic",
+        departmentId: "dept-fashion",
+        categoryName: "Ethnic",
+      },
+      {
+        keywords: ["denim", "levis", "wrangler"],
+        categoryId: "cat-denim",
+        departmentId: "dept-fashion",
+        categoryName: "Denim",
+      },
+      {
+        keywords: [
+          "shoe",
+          "sneaker",
+          "slipper",
+          "sandal",
+          "heel",
+          "nike",
+          "adidas",
+          "puma",
+          "footwear",
+        ],
+        categoryId: "cat-footwear",
+        departmentId: "dept-fashion",
+        categoryName: "Footwear",
+      },
+      {
+        keywords: ["lipstick", "kajal", "makeup", "nail", "eyeliner", "cosmetics"],
+        categoryId: "cat-cosmetics",
+        departmentId: "dept-beauty",
+        categoryName: "Cosmetics",
+      },
+      {
+        keywords: ["cream", "lotion", "moisturizer", "serum", "skincare", "sunscreen", "face"],
+        categoryId: "cat-skincare",
+        departmentId: "dept-beauty",
+        categoryName: "Skincare",
+      },
+      {
+        keywords: [
+          "phone",
+          "smartphone",
+          "laptop",
+          "samsung",
+          "apple",
+          "charger",
+          "cable",
+          "electronics",
+          "mobile",
+        ],
+        categoryId: "cat-electronics",
+        departmentId: "dept-electronics",
+        categoryName: "Electronics",
+      },
+      {
+        keywords: ["tv", "television", "screen", "display", "monitor", "sony", "lg"],
+        categoryId: "cat-television",
+        departmentId: "dept-electronics",
+        categoryName: "Television",
+      },
+      {
+        keywords: ["speaker", "headphone", "earphone", "audio", "soundbar", "boat", "jbl"],
+        categoryId: "cat-audio",
+        departmentId: "dept-electronics",
+        categoryName: "Audio",
+      },
+      {
+        keywords: [
+          "bat",
+          "ball",
+          "racket",
+          "tent",
+          "sports",
+          "gym",
+          "dumbell",
+          "cricket",
+          "football",
+        ],
+        categoryId: "cat-sports",
+        departmentId: "dept-sports",
+        categoryName: "Sports & Outdoors",
+      },
     ];
 
     for (const rule of rules) {
-      const match = rule.keywords.some(kw => name.includes(kw) || brand.includes(kw));
+      const match = rule.keywords.some((kw) => name.includes(kw) || brand.includes(kw));
       if (match) {
         return {
           categoryId: rule.categoryId,
           departmentId: rule.departmentId,
           categoryName: rule.categoryName,
           confidence: 0.99,
-          method: "Rule/Keyword mapping"
+          method: "Rule/Keyword mapping",
         };
       }
     }
@@ -634,23 +799,29 @@ dept-grocery, dept-electronics, dept-fashion, dept-beauty, dept-sports, dept-oth
 
 Respond with a raw, valid JSON object containing exactly these fields: { "categoryId": "...", "departmentId": "...", "categoryName": "...", "confidence": 0.8 }. No markdown formatting or extra text.`;
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+          },
+        );
 
         if (response.ok) {
           const resJson = await response.json();
           const text = resJson.candidates?.[0]?.content?.parts?.[0]?.text || "";
-          const cleanedText = text.replace(/```json/g, "").replace(/```/g, "").trim();
+          const cleanedText = text
+            .replace(/```json/g, "")
+            .replace(/```/g, "")
+            .trim();
           const parsed = JSON.parse(cleanedText);
           return {
             categoryId: parsed.categoryId || "cat-packagedfoods",
             departmentId: parsed.departmentId || "dept-grocery",
             categoryName: parsed.categoryName || "Packaged Foods",
             confidence: parsed.confidence || 0.85,
-            method: "Gemini AI Classification"
+            method: "Gemini AI Classification",
           };
         }
       } catch (err) {
@@ -663,8 +834,7 @@ Respond with a raw, valid JSON object containing exactly these fields: { "catego
       categoryId: "cat-packagedfoods",
       departmentId: "dept-grocery",
       categoryName: "Packaged Foods",
-      confidence: 0.50,
-      method: "Default classification fallback"
+      confidence: 0.5,
+      method: "Default classification fallback",
     };
   });
-
