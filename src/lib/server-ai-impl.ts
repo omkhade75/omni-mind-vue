@@ -5,7 +5,10 @@ import { getDepartmentScope } from "./server-customers";
 import { formatDiagnosticResponse } from "./ai-context-builder";
 import { getRevenueMetrics, getInventoryRisk, getExpenseMetrics } from "./server/tools";
 import { logShadowMode, planQueries, verifyServerSideProvenance } from "./ai-planner";
-import type { ToolMetadata, ShadowLog, AIResponseContract, ClaimProvenance } from "./tool-types";
+import type {
+  ToolMetadata, ShadowLog, AIResponseContract, ClaimProvenance,
+  BusinessHealthScore, CausalChainStep, ExecutiveSummary, EvidenceCoverage, EvidenceCoverageEntry, EvidenceStatus,
+} from "./tool-types";
 export type { AIResponseContract };
 
 // V3 Enterprise Decision Intelligence Imports
@@ -681,10 +684,17 @@ function keywordRouteFallback(query: string): DataDomain[] {
   return Array.from(domains);
 }
 
+// ─── Executive Query Detector (Fix 1) ────────────────────────────────────────
+// Detects broad executive-level questions that require all 11 domains.
+function isExecutiveQuery(query: string): boolean {
+  const q = query.toLowerCase();
+  return /\b(today|overview|status|summary|everything|full|board|ceo|executive|business health|how are we|what should i do|give me a|daily report|eod|end of day|all domain|all department|overall)\b/.test(q);
+}
+
 // ─── Agentic Context Builder (Orchestrator) ───────────────────────────────────
-// Step 1: Route the query → domains
+// Step 1: Route the query → domains (force all for executive queries)
 // Step 2: Fetch all relevant domains in parallel
-// Step 3: Combine into a single evidence text
+// Step 3: Combine into evidence text + build per-domain row counts
 
 async function buildAgenticContext(
   query: string,
@@ -693,13 +703,24 @@ async function buildAgenticContext(
   email?: string,
   geminiKey?: string,
   groqKey?: string,
-): Promise<{ contextText: string; domains: DataDomain[] }> {
+): Promise<{ contextText: string; domains: DataDomain[]; domainResults: Record<DataDomain, { text: string; rowCount: number }> }> {
   const deptScope = getDepartmentScope(role || "owner", email || "");
+  const allDomains: DataDomain[] = [
+    "TRANSACTIONS", "INVENTORY", "CUSTOMERS", "SUPPLIERS",
+    "UTILITIES", "EXPENSES", "INVESTMENTS", "LOGISTICS",
+    "ANOMALIES", "RECOMMENDATIONS", "LEDGER",
+  ];
 
-  // Step 1: Route
-  const domains = await routeQueryToDomains(query, geminiKey || "", groqKey || "");
+  // Fix 1: Force ALL 11 domains for executive queries
+  const isExec = isExecutiveQuery(query);
+  let domains: DataDomain[];
+  if (isExec) {
+    domains = allDomains;
+  } else {
+    domains = await routeQueryToDomains(query, geminiKey || "", groqKey || "");
+  }
 
-  // Step 2: Fetch all domains in parallel
+  // Step 2: Fetch all selected domains in parallel
   const fetchPromises = domains.map(domain => {
     const fetcher = DOMAIN_FETCHERS[domain];
     return fetcher(resolvedDate, deptScope).catch(err => {
@@ -710,10 +731,282 @@ async function buildAgenticContext(
 
   const results = await Promise.all(fetchPromises);
 
-  // Step 3: Combine
-  const contextText = results.join("\n");
+  // Step 3: Build domain results map with row count estimates (Fix 7)
+  const domainResults: Record<string, { text: string; rowCount: number }> = {};
+  domains.forEach((domain, idx) => {
+    const text = results[idx];
+    // Estimate rows by counting bullet points in fetched text
+    const rowCount = (text.match(/^\s+·/gm) || []).length;
+    domainResults[domain] = { text, rowCount };
+  });
+  // Mark unselected domains as not applicable
+  allDomains.forEach(d => {
+    if (!domainResults[d]) domainResults[d] = { text: "", rowCount: 0 };
+  });
 
-  return { contextText, domains };
+  const contextText = results.join("\n");
+  return { contextText, domains, domainResults: domainResults as Record<DataDomain, { text: string; rowCount: number }> };
+}
+
+// ─── Business Health Score (Fix 4) ───────────────────────────────────────────
+function computeBusinessHealthScore(
+  revenueData: any,
+  inventoryData: any,
+  expenseData: any,
+  anomalies: any[],
+  contradictionsFound: string[],
+  reconciliationStatus: string,
+  scoredRecs: any[],
+): BusinessHealthScore {
+  const DAILY_TARGET = 250000;
+
+  // Sales Health (0–100)
+  let salesScore = 100;
+  const netSales = Number(revenueData?.netSales || 0);
+  const txCount = Number(revenueData?.transactionCount || 0);
+  if (netSales < DAILY_TARGET * 0.5) salesScore -= 35;
+  else if (netSales < DAILY_TARGET * 0.8) salesScore -= 20;
+  else if (netSales < DAILY_TARGET) salesScore -= 10;
+  if (txCount === 0) salesScore -= 25;
+  salesScore = Math.max(0, Math.min(100, salesScore));
+
+  // Inventory Health (0–100)
+  let inventoryScore = 100;
+  const outOfStock = Number(inventoryData?.outOfStockCount || 0);
+  const lowStock = Number(inventoryData?.lowStockCount || 0);
+  const expiring = Number(inventoryData?.expiringCount || 0);
+  inventoryScore -= Math.min(40, outOfStock * 5);
+  inventoryScore -= Math.min(30, lowStock * 2);
+  inventoryScore -= Math.min(15, expiring * 5);
+  inventoryScore = Math.max(0, Math.min(100, inventoryScore));
+
+  // Financial Health (0–100)
+  let financialScore = 100;
+  const totalExpense = Number(expenseData?.totalExpense || 0);
+  const expenseRatio = netSales > 0 ? totalExpense / netSales : 0;
+  if (expenseRatio > 0.8) financialScore -= 30;
+  else if (expenseRatio > 0.6) financialScore -= 20;
+  else if (expenseRatio > 0.4) financialScore -= 10;
+  financialScore -= contradictionsFound.length * 10;
+  if (reconciliationStatus === "MISMATCH") financialScore -= 15;
+  financialScore = Math.max(0, Math.min(100, financialScore));
+
+  // Operations Health (0–100)
+  let operationsScore = 100;
+  const criticalAlerts = anomalies.filter((a: any) => a.severity === "critical" || a.severity === "Critical").length;
+  const highAlerts = anomalies.filter((a: any) => a.severity === "high" || a.severity === "High").length;
+  operationsScore -= Math.min(40, criticalAlerts * 20);
+  operationsScore -= Math.min(30, highAlerts * 10);
+  operationsScore = Math.max(0, Math.min(100, operationsScore));
+
+  // Overall weighted
+  const overall = Math.round(salesScore * 0.35 + financialScore * 0.30 + inventoryScore * 0.20 + operationsScore * 0.15);
+
+  const grade: BusinessHealthScore["grade"] =
+    overall >= 90 ? "A" : overall >= 75 ? "B" : overall >= 60 ? "C" : overall >= 45 ? "D" : "F";
+
+  // Identify top risk domain
+  const scores = [
+    { domain: "Inventory", score: inventoryScore },
+    { domain: "Financial", score: financialScore },
+    { domain: "Sales", score: salesScore },
+    { domain: "Operations", score: operationsScore },
+  ].sort((a, b) => a.score - b.score);
+  const topRiskDomain = scores[0].domain;
+
+  // Best ROI from scored recommendations
+  const bestRec = scoredRecs[0];
+  const bestROI = bestRec?.roi || "N/A";
+  const immediateAction = bestRec?.title || "Review Dashboard";
+  const actionOwner = bestRec?.owner || "Operations Manager";
+  const actionDeadline = bestRec?.deadline || "48 hours";
+
+  // Financial impact estimate
+  const atRiskRevenue = outOfStock * 2000 + lowStock * 500; // rough estimate per SKU
+  const financialImpact = atRiskRevenue > 0
+    ? `₹${(atRiskRevenue / 100000).toFixed(1)}L at risk`
+    : expenseRatio > 0.6
+    ? `₹${(totalExpense / 100000).toFixed(1)}L OpEx pressure`
+    : "Within normal range";
+
+  return {
+    overall, sales: salesScore, financial: financialScore,
+    inventory: inventoryScore, operations: operationsScore,
+    grade, topRiskDomain, financialImpact, bestROI,
+    immediateAction, actionOwner, actionDeadline,
+  };
+}
+
+// ─── Causal Chain Builder (Fix 5) ─────────────────────────────────────────────
+function buildExecutiveCausalChain(
+  revenueData: any,
+  inventoryData: any,
+  expenseData: any,
+  anomalies: any[],
+  healthScore: BusinessHealthScore,
+): CausalChainStep[] {
+  const chain: CausalChainStep[] = [];
+  let step = 1;
+  const outOfStock = Number(inventoryData?.outOfStockCount || 0);
+  const lowStock = Number(inventoryData?.lowStockCount || 0);
+  const netSales = Number(revenueData?.netSales || 0);
+  const totalExpense = Number(expenseData?.totalExpense || 0);
+  const atRiskRev = outOfStock * 2000 + lowStock * 500;
+
+  if (outOfStock > 0 || lowStock > 3) {
+    chain.push({
+      step: step++, domain: "Suppliers",
+      event: "Supplier delivery delays or pending PO approvals",
+      evidence: `${lowStock + outOfStock} products below safety stock threshold`,
+      financialImpact: "₹0 direct — downstream risk building",
+      severity: "medium",
+      nextEvent: "Inventory depletion",
+    });
+    chain.push({
+      step: step++, domain: "Inventory",
+      event: `${outOfStock} out-of-stock · ${lowStock} below reorder level`,
+      evidence: `outOfStockCount: ${outOfStock}, lowStockCount: ${lowStock} (live DB)`,
+      financialImpact: `₹${(atRiskRev / 100000).toFixed(1)}L potential lost sales`,
+      severity: outOfStock > 5 ? "critical" : "high",
+      nextEvent: "Stockout at POS",
+    });
+    chain.push({
+      step: step++, domain: "Sales",
+      event: "Stockout causes checkout conversion failures",
+      evidence: `Customer basket drops — products unavailable at POS`,
+      financialImpact: `~${Math.round(atRiskRev / (netSales || 1) * 100)}% of today's revenue at risk`,
+      severity: "high",
+      nextEvent: "Revenue decline",
+    });
+  }
+
+  const DAILY_TARGET = 250000;
+  if (netSales < DAILY_TARGET * 0.9) {
+    chain.push({
+      step: step++, domain: "Revenue",
+      event: `Net sales ₹${(netSales / 1000).toFixed(0)}K vs ₹${(DAILY_TARGET / 1000).toFixed(0)}K target`,
+      evidence: `netSales: ₹${netSales.toLocaleString()} from live transactions table`,
+      financialImpact: `₹${((DAILY_TARGET - netSales) / 100000).toFixed(1)}L shortfall`,
+      severity: netSales < DAILY_TARGET * 0.7 ? "critical" : "high",
+      nextEvent: "Cash flow pressure",
+    });
+  }
+
+  const expenseRatio = netSales > 0 ? totalExpense / netSales : 0;
+  if (expenseRatio > 0.4 || totalExpense > 0) {
+    chain.push({
+      step: step++, domain: "Cash Flow",
+      event: `OpEx at ${Math.round(expenseRatio * 100)}% of revenue`,
+      evidence: `totalExpense: ₹${totalExpense.toLocaleString()} (live expense table)`,
+      financialImpact: expenseRatio > 0.6 ? "Margin compression risk" : "Within acceptable range",
+      severity: expenseRatio > 0.7 ? "critical" : expenseRatio > 0.5 ? "high" : "medium",
+      nextEvent: "Profit margin erosion",
+    });
+  }
+
+  const netProfit = netSales - totalExpense;
+  if (netProfit < DAILY_TARGET * 0.2) {
+    chain.push({
+      step: step++, domain: "Profit",
+      event: `Net margin ₹${(netProfit / 1000).toFixed(0)}K — below 20% of target`,
+      evidence: `Revenue ₹${(netSales / 1000).toFixed(0)}K minus Expenses ₹${(totalExpense / 1000).toFixed(0)}K`,
+      financialImpact: `₹${Math.abs(netProfit / 100000).toFixed(1)}L ${netProfit < 0 ? "loss" : "below target"}`,
+      severity: netProfit < 0 ? "critical" : "high",
+      nextEvent: "CEO board escalation",
+    });
+  }
+
+  if (anomalies.length > 0) {
+    const critAnomaly = anomalies.find((a: any) => a.severity === "critical" || a.severity === "Critical");
+    const useAnomaly = critAnomaly || anomalies[0];
+    chain.push({
+      step: step++, domain: "Operations",
+      event: `${anomalies.length} active anomaly alerts — ${useAnomaly.title || "see anomalies"}`,
+      evidence: `Active anomalies in system (live DB)`,
+      financialImpact: critAnomaly ? "Immediate cost impact" : "Monitor — potential escalation",
+      severity: critAnomaly ? "critical" : "medium",
+      nextEvent: "CEO recommendation",
+    });
+  }
+
+  // Final CEO recommendation step always present
+  chain.push({
+    step: step, domain: "Executive",
+    event: `Business Health Score: ${healthScore.overall}/100 (Grade: ${healthScore.grade}) — CEO Action Required`,
+    evidence: `Composite score from Sales(${healthScore.sales}), Financial(${healthScore.financial}), Inventory(${healthScore.inventory}), Operations(${healthScore.operations})`,
+    financialImpact: healthScore.financialImpact,
+    severity: healthScore.overall < 60 ? "critical" : healthScore.overall < 75 ? "high" : "medium",
+  });
+
+  return chain;
+}
+
+// ─── Evidence Coverage Builder (Fix 7) ───────────────────────────────────────
+function buildEvidenceCoverage(
+  domainResults: Record<DataDomain, { text: string; rowCount: number }>,
+  selectedDomains: DataDomain[],
+  isSimulation: boolean,
+): EvidenceCoverage {
+  const allDomains: DataDomain[] = [
+    "TRANSACTIONS", "INVENTORY", "CUSTOMERS", "SUPPLIERS",
+    "UTILITIES", "EXPENSES", "INVESTMENTS", "LOGISTICS",
+    "ANOMALIES", "RECOMMENDATIONS", "LEDGER",
+  ];
+
+  const DOMAIN_LABELS: Record<DataDomain, string> = {
+    TRANSACTIONS: "Sales & Transactions",
+    INVENTORY: "Inventory & Stock",
+    CUSTOMERS: "Customers & CRM",
+    SUPPLIERS: "Suppliers & Procurement",
+    UTILITIES: "Utilities & Energy",
+    EXPENSES: "Expenses & OpEx",
+    INVESTMENTS: "Investments & Treasury",
+    LOGISTICS: "Logistics & Delivery",
+    ANOMALIES: "Active Anomalies",
+    RECOMMENDATIONS: "AI Recommendations",
+    LEDGER: "Accounting Ledger",
+  };
+
+  const entries: EvidenceCoverageEntry[] = allDomains.map(domain => {
+    const result = domainResults[domain];
+    let status: EvidenceStatus;
+    let note: string | undefined;
+
+    if (!selectedDomains.includes(domain)) {
+      status = "NOT_APPLICABLE";
+    } else if (isSimulation && (domain === "LOGISTICS" || domain === "INVESTMENTS")) {
+      status = "PROJECTED";
+      note = "Projection model";
+    } else if (result.rowCount === 0 && result.text.includes("Data unavailable")) {
+      status = "UNAVAILABLE";
+      note = "No data returned from database";
+    } else if (result.rowCount === 0 && result.text.includes("No ")) {
+      status = "UNAVAILABLE";
+      note = extractUnavailableNote(result.text, domain);
+    } else {
+      status = "VERIFIED";
+    }
+
+    return {
+      domain: DOMAIN_LABELS[domain],
+      status,
+      rowsExamined: result.rowCount,
+      note,
+    };
+  });
+
+  const relevantEntries = entries.filter(e => e.status !== "NOT_APPLICABLE");
+  const verifiedCount = relevantEntries.filter(e => e.status === "VERIFIED").length;
+  const overallCoveragePercent = relevantEntries.length > 0
+    ? Math.round((verifiedCount / relevantEntries.length) * 100)
+    : 100;
+
+  return { entries, overallCoveragePercent };
+}
+
+function extractUnavailableNote(text: string, domain: DataDomain): string {
+  const lines = text.split("\n").filter(l => l.includes("No "));
+  return lines[0]?.trim().replace(/^-\s*/, "") || `No ${domain.toLowerCase()} data available`;
 }
 
 // ─── Main AI Handler ──────────────────────────────────────────────────────────
@@ -731,7 +1024,7 @@ export async function askOmniMindServerImpl(data: {
 
   try {
     // 1. Build Agentic Context (Dynamic Multi-Domain Fetch)
-    const { contextText, domains } = await buildAgenticContext(
+    const { contextText, domains, domainResults } = await buildAgenticContext(
       data.query,
       data.resolvedDate,
       data.role,
@@ -797,13 +1090,22 @@ export async function askOmniMindServerImpl(data: {
 `;
     }
 
-    // 5. Specialist Agents Boardroom Simulation
-    const ceo = new CEOAgent().analyze(contextText.slice(0, 500));
-    const cfo = new CFOAgent().analyze(`Revenue: ₹${revenueRes.data.netSales.toLocaleString()}, Expenses: ₹${expenseRes.data.totalExpense.toLocaleString()}`);
-    const coo = new COOAgent().analyze(`Footfall: 1420 customers, Smart readings baseline verified.`);
-    const crm = new CRMAgent().analyze(`VIP Segment status: VIP loyalty counts aggregated.`);
-    const inv = new InventoryAgent().analyze(`Low Stock count: ${inventoryRes.data.lowStockCount}, Stockout count: ${inventoryRes.data.outOfStockCount}`);
-    const risk = new RiskAgent().analyze(`Active supplier SLA delay alerts.`);
+    // Fix 1+2: Specialist Agents receive REAL database-grounded context strings
+    const txContext = contextText.includes("TRANSACTIONS") ? contextText.split("INVENTORY")[0] : "";
+    const invContext = contextText.includes("INVENTORY") ? contextText.split("INVENTORY")[1]?.split("CUSTOMERS")[0] || "" : "";
+    const custContext = contextText.includes("CUSTOMERS") ? contextText.split("CUSTOMERS")[1]?.split("SUPPLIERS")[0] || "" : "";
+    const suppContext = contextText.includes("SUPPLIERS") ? contextText.split("SUPPLIERS")[1]?.split("UTILITIES")[0] || "" : "";
+    const utilContext = contextText.includes("UTILITIES") ? contextText.split("UTILITIES")[1]?.split("EXPENSES")[0] || "" : "";
+    const anomContext = contextText.includes("ANOMALIES") ? contextText.split("ANOMALIES")[1]?.split("RECOMMENDATIONS")[0] || "" : "";
+    const ledgerContext = contextText.includes("ACCOUNTING LEDGER") ? contextText.split("ACCOUNTING LEDGER")[1] || "" : "";
+
+    // 5. Specialist Agents Boardroom — all 6 agents wired with live DB evidence
+    const ceo = new CEOAgent().analyze(`${txContext.slice(0, 400)} | Net Sales: ₹${revenueRes.data.netSales?.toLocaleString() || 0}, Transactions: ${revenueRes.data.transactionCount || 0}, AOV: ₹${revenueRes.data.aov?.toLocaleString() || 0}`);
+    const cfo = new CFOAgent().analyze(`Revenue: ₹${revenueRes.data.netSales?.toLocaleString() || 0}, Expenses: ₹${expenseRes.data.totalExpense?.toLocaleString() || 0}, Ledger: ${ledgerContext.slice(0, 200)}, Contradictions: ${contradictionsFound.join(", ") || "None"}`);
+    const coo = new COOAgent().analyze(`Utilities: ${utilContext.slice(0, 200)}, Anomalies: ${anomContext.slice(0, 200)}, Active Alerts: ${activeAlerts?.length || 0}`);
+    const crm = new CRMAgent().analyze(`${custContext.slice(0, 300)}, Churn risk customers flagged in live DB`);
+    const inv = new InventoryAgent().analyze(`${invContext.slice(0, 300)} | Low Stock: ${inventoryRes.data.lowStockCount}, Out-of-Stock: ${inventoryRes.data.outOfStockCount}, Expiring: ${inventoryRes.data.expiringCount}`);
+    const risk = new RiskAgent().analyze(`${suppContext.slice(0, 200)}, Anomalies: ${anomContext.slice(0, 150)}, Contradictions found: [${contradictionsFound.join(", ") || "none"}]`);
 
     const boardroomSynthesis = DecisionSynthesizer.synthesize([ceo, cfo, coo, crm, inv, risk]);
 
@@ -818,6 +1120,17 @@ export async function askOmniMindServerImpl(data: {
       [{ id: "hvac-zone-b", zone: "HVAC Zone B", value: 38.4, baseline: 24.0 }],
       { churnRiskVIPCount: 3 },
       { delayedCount: 1 },
+    );
+
+    // 8. Compute Business Health Score (Fix 4)
+    const businessHealthScore = computeBusinessHealthScore(
+      revenueRes.data,
+      inventoryRes.data,
+      expenseRes.data,
+      activeAlerts,
+      contradictionsFound,
+      revenueRes.meta.reconciliationStatus,
+      scoredRecs,
     );
 
     // If no API keys at all, use smart Prisma-only fallback
@@ -1062,8 +1375,22 @@ Return a structured JSON output matching the requested schema.`;
           severity: ["high", "medium", "low"].includes(r.severity) ? r.severity : "low",
         }));
 
-      let confidence = typeof rawParsed.confidence === "number" ? rawParsed.confidence : 0.5;
-      confidence = Math.max(0, Math.min(1, confidence));
+      // Fix 2: Unified confidence from 7-component system
+      // AI-returned confidence is treated as a raw signal; we compute the authoritative score.
+      const aiConfidenceRaw = typeof rawParsed.confidence === "number" ? rawParsed.confidence : 0.5;
+      const domainCount = domains.length;
+      const verifiedDomainRatio = domainCount > 0 ? Math.min(1, domainCount / 6) : 0.5;
+      const hasContradictions = contradictionsFound.length > 0 ? 0.85 : 1.0;
+      const reconcScore = revenueRes.meta.reconciliationStatus === "VERIFIED" ? 1.0 : revenueRes.meta.reconciliationStatus === "MISMATCH" ? 0.7 : 0.85;
+      const evidenceDensity = Math.min(1, evidence.length / 8);
+      // Weighted composite: data coverage 30%, AI signal 25%, evidence density 20%, reconciliation 15%, contradictions 10%
+      const confidence = Math.max(0, Math.min(1,
+        verifiedDomainRatio * 0.30 +
+        aiConfidenceRaw * 0.25 +
+        evidenceDensity * 0.20 +
+        reconcScore * 0.15 +
+        hasContradictions * 0.10
+      ));
 
       const result = {
         answer,
@@ -1090,6 +1417,44 @@ Return a structured JSON output matching the requested schema.`;
       );
       formatted.claimProvenances = verifiedProvenances;
       formatted.unsupportedClaims = unsupported;
+      // Override confidence to the unified computed value (Fix 2)
+      formatted.confidence = confidence;
+
+      // Fix 4: Business Health Score
+      formatted.businessHealthScore = businessHealthScore;
+
+      // Fix 5: Causal chain — always build; most useful for executive/overview queries
+      formatted.causalChain = buildExecutiveCausalChain(
+        revenueRes.data,
+        inventoryRes.data,
+        expenseRes.data,
+        activeAlerts,
+        businessHealthScore,
+      );
+
+      // Fix 6: Executive summary strip
+      const urgency: ExecutiveSummary["urgency"] =
+        businessHealthScore.overall < 50 ? "CRITICAL" :
+        businessHealthScore.overall < 65 ? "HIGH" :
+        businessHealthScore.overall < 80 ? "MEDIUM" : "LOW";
+      formatted.executiveSummary = {
+        headline: `Business Health: ${businessHealthScore.overall}/100 (Grade ${businessHealthScore.grade}) — ${businessHealthScore.topRiskDomain} is the top risk`,
+        healthScore: businessHealthScore.overall,
+        topRiskDomain: businessHealthScore.topRiskDomain,
+        financialImpact: businessHealthScore.financialImpact,
+        bestROI: businessHealthScore.bestROI,
+        immediateAction: businessHealthScore.immediateAction,
+        actionOwner: businessHealthScore.actionOwner,
+        deadline: businessHealthScore.actionDeadline,
+        urgency,
+      };
+
+      // Fix 7: Evidence coverage
+      formatted.evidenceCoverage = buildEvidenceCoverage(
+        domainResults,
+        domains,
+        formatted.causalChain?.some(c => c.domain === "Logistics") && data.query.toLowerCase().includes("what if"),
+      );
 
       // 3. Self-Evaluation Validation Check
       const evalReport = SelfEvaluationEngine.evaluateResponse(

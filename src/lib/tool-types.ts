@@ -57,6 +57,61 @@ export interface ClaimProvenance {
   assumptionIds: string[];
 }
 
+// ─── NEW: Evidence Coverage (Fix 7) ──────────────────────────────────────────
+export type EvidenceStatus = "VERIFIED" | "PROJECTED" | "UNAVAILABLE" | "NOT_APPLICABLE";
+
+export interface EvidenceCoverageEntry {
+  domain: string;
+  status: EvidenceStatus;
+  rowsExamined: number;
+  note?: string;
+}
+
+export interface EvidenceCoverage {
+  entries: EvidenceCoverageEntry[];
+  overallCoveragePercent: number;
+}
+
+// ─── NEW: Business Health Score (Fix 4) ──────────────────────────────────────
+export interface BusinessHealthScore {
+  overall: number;        // 0–100
+  sales: number;          // 0–100
+  financial: number;      // 0–100
+  inventory: number;      // 0–100
+  operations: number;     // 0–100
+  grade: "A" | "B" | "C" | "D" | "F";
+  topRiskDomain: string;
+  financialImpact: string;
+  bestROI: string;
+  immediateAction: string;
+  actionOwner: string;
+  actionDeadline: string;
+}
+
+// ─── NEW: Causal Chain Step (Fix 5) ──────────────────────────────────────────
+export interface CausalChainStep {
+  step: number;
+  domain: string;
+  event: string;
+  evidence: string;
+  financialImpact?: string;
+  severity: "low" | "medium" | "high" | "critical";
+  nextEvent?: string;
+}
+
+// ─── NEW: Executive Summary (Fix 6) ──────────────────────────────────────────
+export interface ExecutiveSummary {
+  headline: string;
+  healthScore: number;
+  topRiskDomain: string;
+  financialImpact: string;
+  bestROI: string;
+  immediateAction: string;
+  actionOwner: string;
+  deadline: string;
+  urgency: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+}
+
 export interface AIResponseContract {
   answer: string;
   summary: string;
@@ -65,6 +120,7 @@ export interface AIResponseContract {
     value: string;
     sourceType?: string;
     sourceId?: string;
+    evidenceStatus?: EvidenceStatus;
   }>;
   reasoning: string[];
   recommendedActions: Array<{
@@ -97,6 +153,10 @@ export interface AIResponseContract {
     dataAgeSeconds: number;
   };
   confidence?: number;
+  businessHealthScore?: BusinessHealthScore;
+  causalChain?: CausalChainStep[];
+  executiveSummary?: ExecutiveSummary;
+  evidenceCoverage?: EvidenceCoverage;
 }
 
 export interface ShadowLog {
