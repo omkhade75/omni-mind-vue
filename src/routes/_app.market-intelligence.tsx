@@ -33,6 +33,8 @@ import {
   Coins,
   Globe,
   Landmark,
+  Zap,
+  Database,
 } from "lucide-react";
 import { fmtINR } from "@/lib/mock-data";
 import {
@@ -228,118 +230,176 @@ function MarketIntelligencePage() {
         subtitle="Monitor macro-economic commodities and deploy mall treasury reserves in high-yield assets."
       />
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <KpiCard
-          label="Corporate Cash Reserves (GL Code 1000)"
-          value={cashBalance}
-          format="inr"
-          icon={<Wallet className="h-5 w-5 text-emerald-500" />}
-        />
-        <KpiCard
-          label="Active Investment Assets (GL Code 1400)"
-          value={portfolioValue}
-          format="inr"
-          icon={<Landmark className="h-5 w-5 text-indigo-500" />}
-        />
-        <KpiCard
-          label="Total Corporate Capital Assets"
-          value={cashBalance + portfolioValue}
-          format="inr"
-          icon={<Coins className="h-5 w-5 text-yellow-500" />}
-        />
+      {/* Premium KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Cash Reserves */}
+        <div className="relative group overflow-hidden rounded-2xl bg-gradient-to-br from-surface to-black border border-white/5 p-6 shadow-2xl transition-all duration-300 hover:shadow-emerald-500/10 hover:border-emerald-500/20">
+          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-emerald-500/10 blur-2xl group-hover:bg-emerald-500/20 transition-all duration-500" />
+          <div className="flex items-center justify-between relative z-10">
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground tracking-wider uppercase mb-1">
+                Corporate Cash Reserves
+              </p>
+              <h3 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-white to-zinc-400">
+                {fmtINR(cashBalance)}
+              </h3>
+              <p className="text-[10px] text-emerald-400/80 mt-1 font-mono">GL CODE: 1000</p>
+            </div>
+            <div className="grid h-12 w-12 place-items-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.15)] group-hover:shadow-[0_0_25px_rgba(16,185,129,0.3)] transition-all duration-300">
+              <Wallet className="h-6 w-6" />
+            </div>
+          </div>
+        </div>
+
+        {/* Investment Assets */}
+        <div className="relative group overflow-hidden rounded-2xl bg-gradient-to-br from-surface to-black border border-white/5 p-6 shadow-2xl transition-all duration-300 hover:shadow-indigo-500/10 hover:border-indigo-500/20">
+          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-indigo-500/10 blur-2xl group-hover:bg-indigo-500/20 transition-all duration-500" />
+          <div className="flex items-center justify-between relative z-10">
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground tracking-wider uppercase mb-1">
+                Active Investment Assets
+              </p>
+              <h3 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-white to-zinc-400">
+                {fmtINR(portfolioValue)}
+              </h3>
+              <p className="text-[10px] text-indigo-400/80 mt-1 font-mono">GL CODE: 1400</p>
+            </div>
+            <div className="grid h-12 w-12 place-items-center rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.15)] group-hover:shadow-[0_0_25px_rgba(99,102,241,0.3)] transition-all duration-300">
+              <Landmark className="h-6 w-6" />
+            </div>
+          </div>
+        </div>
+
+        {/* Total Assets */}
+        <div className="relative group overflow-hidden rounded-2xl bg-gradient-to-br from-surface to-black border border-white/5 p-6 shadow-2xl transition-all duration-300 hover:shadow-amber-500/10 hover:border-amber-500/20">
+          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-amber-500/10 blur-2xl group-hover:bg-amber-500/20 transition-all duration-500" />
+          <div className="flex items-center justify-between relative z-10">
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground tracking-wider uppercase mb-1">
+                Total Capital Assets
+              </p>
+              <h3 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-white to-amber-100">
+                {fmtINR(cashBalance + portfolioValue)}
+              </h3>
+              <p className="text-[10px] text-amber-400/80 mt-1 font-mono">CASH + INVESTMENTS</p>
+            </div>
+            <div className="grid h-12 w-12 place-items-center rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.15)] group-hover:shadow-[0_0_25px_rgba(245,158,11,0.3)] transition-all duration-300">
+              <Coins className="h-6 w-6" />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Live Commodity Board */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <SectionCard title="Macro Market Tickers">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+          <div className="rounded-2xl border border-white/5 bg-gradient-to-b from-surface/50 to-black/50 backdrop-blur-xl p-6 shadow-2xl">
+            <h3 className="text-sm font-semibold text-foreground mb-6 flex items-center gap-2">
+              <Globe className="h-4 w-4 text-primary" /> Macro Market Tickers
+            </h3>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8">
               {commodities.map((c) => (
                 <div
                   key={c.symbol}
                   onClick={() => setSelectedAsset(c.symbol)}
-                  className={`p-4 border rounded-xl cursor-pointer transition-all duration-200 hover:shadow-md ${
+                  className={`relative overflow-hidden p-5 rounded-xl cursor-pointer transition-all duration-300 ${
                     selectedAsset === c.symbol
-                      ? "border-indigo-600 bg-indigo-50/20 shadow-sm"
-                      : "border-border/60 bg-card"
-                  }`}
+                      ? "bg-primary/10 border-primary/40 shadow-[0_0_20px_rgba(var(--primary),0.15)] scale-[1.02]"
+                      : "bg-surface border-white/5 hover:border-white/20 hover:bg-surface/80 hover:scale-[1.01]"
+                  } border`}
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold text-muted-foreground">{c.symbol}</span>
+                  {selectedAsset === c.symbol && (
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent pointer-events-none" />
+                  )}
+                  <div className="flex items-center justify-between mb-3 relative z-10">
+                    <span className="text-[11px] font-bold text-muted-foreground tracking-widest">{c.symbol}</span>
                     <span
-                      className={`flex items-center text-xs font-bold ${
-                        c.trend >= 0 ? "text-emerald-600" : "text-rose-600"
+                      className={`flex items-center text-xs font-bold px-1.5 py-0.5 rounded-md ${
+                        c.trend >= 0 ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
                       }`}
                     >
                       {c.trend >= 0 ? "+" : ""}
                       {c.trend}%
                       {c.trend >= 0 ? (
-                        <ArrowUpRight className="h-3.5 w-3.5 ml-0.5" />
+                        <ArrowUpRight className="h-3 w-3 ml-0.5" />
                       ) : (
-                        <ArrowDownRight className="h-3.5 w-3.5 ml-0.5" />
+                        <ArrowDownRight className="h-3 w-3 ml-0.5" />
                       )}
                     </span>
                   </div>
-                  <h4 className="font-bold text-base text-zinc-900 truncate">
+                  <h4 className="font-bold text-lg text-foreground truncate relative z-10">
                     {c.name.split(" (")[0]}
                   </h4>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Price: <span className="font-semibold text-zinc-800">{fmtINR(c.price)}</span> /{" "}
-                    {c.unit}
-                  </p>
+                  <div className="text-sm mt-1 flex items-end gap-1.5 relative z-10">
+                    <span className="font-bold text-zinc-100">{fmtINR(c.price)}</span>
+                    <span className="text-xs text-muted-foreground pb-0.5">/ {c.unit}</span>
+                  </div>
                 </div>
               ))}
             </div>
 
             {/* Historical charts */}
-            <div className="h-72 w-full pt-4">
-              <h4 className="text-sm font-semibold mb-4 text-zinc-700 flex items-center gap-1.5">
-                <Activity className="h-4 w-4 text-indigo-600" />
+            <div className="h-72 w-full pt-6 border-t border-white/5 relative">
+              <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent pointer-events-none opacity-50" />
+              <h4 className="text-sm font-semibold mb-6 text-zinc-300 flex items-center gap-2 relative z-10">
+                <Activity className="h-4 w-4 text-primary" />
                 Historical Price Index trend — {activeAsset.name}
               </h4>
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={HISTORICAL_CHART_DATA}>
-                  <defs>
-                    <linearGradient id="assetColor" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={activeAsset.color} stopOpacity={0.4} />
-                      <stop offset="95%" stopColor={activeAsset.color} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-100" />
-                  <XAxis dataKey="day" className="text-xs text-muted-foreground" />
-                  <YAxis className="text-xs text-muted-foreground" domain={["auto", "auto"]} />
-                  <Tooltip
-                    formatter={(value: any) => [fmtINR(Number(value)), activeAsset.symbol]}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey={activeAsset.symbol}
-                    stroke={activeAsset.color}
-                    strokeWidth={2.5}
-                    fillOpacity={1}
-                    fill="url(#assetColor)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              <div className="relative z-10 h-full w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={HISTORICAL_CHART_DATA}>
+                    <defs>
+                      <linearGradient id="assetColor" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={activeAsset.color} stopOpacity={0.6} />
+                        <stop offset="95%" stopColor={activeAsset.color} stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                    <XAxis dataKey="day" className="text-xs font-medium" stroke="rgba(255,255,255,0.4)" tick={{fill: "rgba(255,255,255,0.5)"}} axisLine={false} tickLine={false} />
+                    <YAxis className="text-xs font-medium" stroke="rgba(255,255,255,0.4)" tick={{fill: "rgba(255,255,255,0.5)"}} domain={["auto", "auto"]} axisLine={false} tickLine={false} tickFormatter={(val: number) => `₹${(val/1000).toFixed(0)}k`} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: "#18181b", borderColor: "rgba(255,255,255,0.1)", borderRadius: "8px", color: "#fff", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.5)" }}
+                      itemStyle={{ color: activeAsset.color, fontWeight: "bold" }}
+                      formatter={(value: any) => [fmtINR(Number(value)), activeAsset.symbol]}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey={activeAsset.symbol}
+                      stroke={activeAsset.color}
+                      strokeWidth={3}
+                      fillOpacity={1}
+                      fill="url(#assetColor)"
+                      activeDot={{ r: 6, strokeWidth: 0, fill: activeAsset.color, style: { filter: `drop-shadow(0px 0px 5px ${activeAsset.color})` } }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-          </SectionCard>
+          </div>
         </div>
 
         {/* Investment Action Form */}
-        <div>
-          <SectionCard title="Deploy Treasury Reserves">
-            <form onSubmit={handleInvest} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>Select Asset</Label>
+        <div className="relative h-full">
+          <div className="absolute inset-0 bg-gradient-to-b from-primary/20 to-transparent blur-3xl opacity-20 pointer-events-none" />
+          <div className="rounded-2xl border border-white/10 bg-black/60 backdrop-blur-xl p-6 shadow-2xl h-full flex flex-col relative z-10">
+            <h3 className="text-sm font-semibold text-foreground mb-6 flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" /> Deploy Treasury Reserves
+            </h3>
+            <form onSubmit={handleInvest} className="space-y-5 flex-1 flex flex-col">
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Select Asset</Label>
                 <Select value={selectedAsset} onValueChange={setSelectedAsset}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-surface/50 border-white/10 h-12">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {commodities.map((c) => (
                       <SelectItem key={c.symbol} value={c.symbol}>
-                        {c.name}
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: c.color }} />
+                          {c.name}
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -347,40 +407,41 @@ function MarketIntelligencePage() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label>Asset Price</Label>
-                  <div className="h-10 px-3 py-2 rounded-md border border-input bg-zinc-50 text-zinc-900 font-semibold flex items-center dark:bg-zinc-900 dark:text-zinc-100">
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Asset Price</Label>
+                  <div className="h-12 px-4 rounded-lg border border-white/5 bg-surface/30 text-zinc-100 font-bold flex items-center text-lg">
                     {fmtINR(activeAsset.price)}
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Quantity ({activeAsset.unit})</Label>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Quantity ({activeAsset.unit})</Label>
                   <Input
                     type="number"
                     min="1"
                     step="1"
                     value={investQty}
                     onChange={(e) => setInvestQty(e.target.value)}
+                    className="h-12 bg-surface/50 border-white/10 text-lg font-bold"
                   />
                 </div>
               </div>
 
-              <div className="p-3 bg-zinc-50/60 rounded-xl border border-zinc-100 space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-zinc-500">GL Cash Reserves:</span>
-                  <span className="font-semibold text-zinc-900">{fmtINR(cashBalance)}</span>
+              <div className="p-5 mt-auto rounded-xl bg-surface/40 border border-white/5 space-y-3 shadow-inner">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">GL Cash Reserves</span>
+                  <span className="font-bold text-zinc-300">{fmtINR(cashBalance)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-zinc-500">Total Purchase Cost:</span>
-                  <span className="font-semibold text-zinc-900 text-indigo-600">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total Purchase</span>
+                  <span className="font-bold text-lg text-primary drop-shadow-[0_0_8px_rgba(var(--primary),0.5)]">
                     {fmtINR(totalCost)}
                   </span>
                 </div>
-                <div className="flex justify-between pt-1 border-t text-xs">
-                  <span className="text-zinc-500">Resulting Cash Balance:</span>
+                <div className="flex justify-between items-center pt-3 border-t border-white/10">
+                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Resulting Cash</span>
                   <span
-                    className={`font-semibold ${
-                      cashBalance - totalCost < 0 ? "text-rose-600" : "text-zinc-700"
+                    className={`font-bold ${
+                      cashBalance - totalCost < 0 ? "text-rose-400 drop-shadow-[0_0_5px_rgba(244,63,94,0.5)]" : "text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.5)]"
                     }`}
                   >
                     {fmtINR(cashBalance - totalCost)}
@@ -390,85 +451,91 @@ function MarketIntelligencePage() {
 
               <Button
                 type="submit"
-                className="w-full py-6 text-base bg-indigo-600 hover:bg-indigo-700 text-white font-semibold flex items-center justify-center gap-2"
+                className="w-full h-14 mt-6 text-base font-bold tracking-wide rounded-xl shadow-[0_0_20px_rgba(var(--primary),0.3)] hover:shadow-[0_0_30px_rgba(var(--primary),0.5)] transition-all bg-gradient-to-r from-primary to-violet-500 hover:from-primary/90 hover:to-violet-400 text-white"
                 disabled={investing || totalCost > cashBalance}
               >
                 {investing ? (
                   <>
-                    <Loader2 className="h-5 w-5 animate-spin" /> Processing Order...
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" /> Processing Order...
                   </>
                 ) : (
                   <>
-                    <TrendingUp className="h-5 w-5" /> Buy Investment Assets
+                    <Zap className="h-5 w-5 mr-2 fill-current" /> Execute Investment
                   </>
                 )}
               </Button>
             </form>
-          </SectionCard>
+          </div>
         </div>
       </div>
 
       {/* Holdings Portfolio Table */}
-      <SectionCard title="Corporate Investment Ledger (Ledger code 1400)">
+      <div className="rounded-2xl border border-white/5 bg-gradient-to-b from-surface/50 to-black/50 backdrop-blur-xl shadow-2xl overflow-hidden">
+        <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Database className="h-4 w-4 text-primary" /> Corporate Investment Ledger (GL Code: 1400)
+          </h3>
+        </div>
+        
         {holdings.length === 0 ? (
-          <div className="text-center py-12 text-zinc-500">
-            No active or liquidated investments on file. Deploy treasury reserves above to populate
-            the ledger.
+          <div className="text-center py-16 text-muted-foreground">
+            <Database className="h-12 w-12 mx-auto mb-4 opacity-20" />
+            No active or liquidated investments on file.<br/>Deploy treasury reserves above to populate the ledger.
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left border-collapse">
+            <table className="w-full text-sm text-left">
               <thead>
-                <tr className="bg-zinc-50 text-zinc-500 font-semibold border-b">
-                  <th className="px-4 py-3">Asset</th>
-                  <th className="px-4 py-3 text-right">Purchase Price</th>
-                  <th className="px-4 py-3 text-right">Quantity</th>
-                  <th className="px-4 py-3 text-right">Total Cost</th>
-                  <th className="px-4 py-3 text-right">Current Value</th>
-                  <th className="px-4 py-3 text-right">Gain / Loss</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-right">Action</th>
+                <tr className="bg-black/40 text-muted-foreground text-[11px] uppercase tracking-wider font-semibold">
+                  <th className="px-6 py-4">Asset</th>
+                  <th className="px-6 py-4 text-right">Purchase Price</th>
+                  <th className="px-6 py-4 text-right">Quantity</th>
+                  <th className="px-6 py-4 text-right">Total Cost</th>
+                  <th className="px-6 py-4 text-right">Current Value</th>
+                  <th className="px-6 py-4 text-right">Gain / Loss</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-white/5">
                 {holdings.map((h) => {
                   const gainLoss = h.currentValue - h.totalCost;
                   const pct = ((gainLoss / h.totalCost) * 100).toFixed(1);
                   return (
-                    <tr key={h.id} className="border-b hover:bg-zinc-50/50">
-                      <td className="px-4 py-4">
-                        <div className="font-semibold text-zinc-950">{h.assetName}</div>
-                        <div className="text-xs text-zinc-500 font-mono">ID: {h.id.slice(-6)}</div>
+                    <tr key={h.id} className="hover:bg-white/[0.02] transition-colors group">
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-zinc-100">{h.assetName}</div>
+                        <div className="text-[10px] text-muted-foreground font-mono mt-0.5 uppercase">ID: {h.id.slice(-8)}</div>
                       </td>
-                      <td className="px-4 py-4 text-right">{fmtINR(h.purchasePrice)}</td>
-                      <td className="px-4 py-4 text-right font-mono">{h.quantity}</td>
-                      <td className="px-4 py-4 text-right font-semibold">{fmtINR(h.totalCost)}</td>
-                      <td className="px-4 py-4 text-right font-semibold text-zinc-900">
+                      <td className="px-6 py-4 text-right text-zinc-300 font-medium">{fmtINR(h.purchasePrice)}</td>
+                      <td className="px-6 py-4 text-right font-mono text-zinc-400">{h.quantity}</td>
+                      <td className="px-6 py-4 text-right font-bold text-zinc-200">{fmtINR(h.totalCost)}</td>
+                      <td className="px-6 py-4 text-right font-bold text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]">
                         {fmtINR(h.currentValue)}
                       </td>
                       <td
-                        className={`px-4 py-4 text-right font-bold ${gainLoss >= 0 ? "text-emerald-600" : "text-rose-600"}`}
+                        className={`px-6 py-4 text-right font-bold ${gainLoss >= 0 ? "text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.3)]" : "text-rose-400 drop-shadow-[0_0_5px_rgba(244,63,94,0.3)]"}`}
                       >
                         {gainLoss >= 0 ? "+" : ""}
-                        {fmtINR(gainLoss)} ({pct}%)
+                        {fmtINR(gainLoss)} <span className="text-[10px] ml-1 opacity-80">({pct}%)</span>
                       </td>
-                      <td className="px-4 py-4">
+                      <td className="px-6 py-4">
                         <span
-                          className={`px-2 py-0.5 text-xs rounded-full font-semibold ${
+                          className={`px-2.5 py-1 text-[10px] rounded-md font-bold uppercase tracking-wider ${
                             h.status === "Active"
-                              ? "bg-indigo-50 text-indigo-700 border border-indigo-100"
-                              : "bg-zinc-100 text-zinc-600 border border-zinc-200"
+                              ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-[0_0_10px_rgba(99,102,241,0.2)]"
+                              : "bg-surface text-muted-foreground border border-white/10"
                           }`}
                         >
                           {h.status}
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-right">
+                      <td className="px-6 py-4 text-right">
                         {h.status === "Active" ? (
                           <Button
                             size="sm"
                             variant="outline"
-                            className="text-emerald-700 border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800"
+                            className="text-emerald-400 border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/20 hover:text-emerald-300 transition-all shadow-[0_0_10px_rgba(16,185,129,0.1)] hover:shadow-[0_0_15px_rgba(16,185,129,0.3)]"
                             onClick={() =>
                               handleLiquidate(
                                 h.id,
@@ -482,12 +549,12 @@ function MarketIntelligencePage() {
                             disabled={liquidatingId === h.id}
                           >
                             {liquidatingId === h.id ? (
-                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                            ) : null}
+                              <Loader2 className="h-3 w-3 animate-spin mr-1.5" />
+                            ) : <DollarSign className="h-3.5 w-3.5 mr-1.5" />}
                             Sell Asset
                           </Button>
                         ) : (
-                          <span className="text-xs text-zinc-400">Sold</span>
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Liquidated</span>
                         )}
                       </td>
                     </tr>
@@ -497,7 +564,7 @@ function MarketIntelligencePage() {
             </table>
           </div>
         )}
-      </SectionCard>
+      </div>
     </div>
   );
 }
