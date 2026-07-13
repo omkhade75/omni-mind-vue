@@ -63,11 +63,11 @@ const TABS = [
 ] as const;
 
 const SUGGESTIONS = [
-  "What happened on 5 May?",
-  "What should I do today?",
-  "Which products should I reorder?",
-  "Why is electricity usage high?",
-  "Compare 5 May with 4 May",
+  "Give me a full business health overview for today",
+  "Why is revenue dropping and what is the root cause?",
+  "Which products should I reorder immediately and why?",
+  "What are the biggest financial risks right now?",
+  "How do I reduce customer churn this week?",
 ];
 
 export function AIDecisions() {
