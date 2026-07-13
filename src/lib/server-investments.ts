@@ -238,3 +238,45 @@ export const liquidateInvestmentServer = createServerFn({ method: "POST" })
 
     return { success: true, investment: result };
   });
+
+export const getLiveMarketDataServer = createServerFn({ method: "POST" })
+  .validator((data: {}) => data)
+  .handler(async () => {
+    // Base fallback mock data
+    const commodities = [
+      { name: "Gold (XAU)", symbol: "XAU", price: 74200, unit: "10g", trend: 1.2, color: "#eab308" },
+      { name: "Silver (XAG)", symbol: "XAG", price: 89000, unit: "kg", trend: -0.4, color: "#94a3b8" },
+      { name: "Bitcoin (BTC)", symbol: "BTC", price: 5500000, unit: "coin", trend: 2.1, color: "#f7931a" },
+      { name: "Retail Industry Index (RTL)", symbol: "RTL", price: 12800, unit: "share", trend: 0.8, color: "#10b981" },
+      { name: "Crude Oil (WTI)", symbol: "WTI", price: 6450, unit: "barrel", trend: -1.5, color: "#f97316" },
+    ];
+
+    try {
+      // 1. Fetch live gold & silver rates for India
+      const res = await fetch("https://goldratetodaylive.in/api/v1/rates/today.json");
+      if (res.ok) {
+        const data = await res.json();
+        const gold999 = data.rates?.gold?.["999"];
+        if (gold999) commodities[0].price = Math.round(Number(gold999));
+        
+        const silver999 = data.rates?.silver?.["999"];
+        if (silver999) commodities[1].price = Math.round(Number(silver999));
+      }
+    } catch (e) {
+      console.error("Failed to fetch live gold rates", e);
+    }
+
+    try {
+      // 2. Fetch live Bitcoin rate (Coindesk public API)
+      const btcRes = await fetch("https://api.coindesk.com/v1/bpi/currentprice/INR.json");
+      if (btcRes.ok) {
+        const data = await btcRes.json();
+        const btcInr = data.bpi?.INR?.rate_float;
+        if (btcInr) commodities[2].price = Math.round(btcInr);
+      }
+    } catch (e) {
+       console.error("Failed to fetch live BTC rate", e);
+    }
+
+    return commodities;
+  });

@@ -19,6 +19,7 @@ import {
   getInvestmentsServer,
   investCorporateCashServer,
   liquidateInvestmentServer,
+  getLiveMarketDataServer,
   type InvestmentItem,
 } from "@/lib/server-investments";
 import {
@@ -54,16 +55,16 @@ export const Route = createFileRoute("/_app/market-intelligence")({
   component: MarketIntelligencePage,
 });
 
-const COMMODITIES = [
+const DEFAULT_COMMODITIES = [
   { name: "Gold (XAU)", symbol: "XAU", price: 62450, unit: "10g", trend: 1.2, color: "#eab308" },
   { name: "Silver (XAG)", symbol: "XAG", price: 74200, unit: "kg", trend: -0.4, color: "#94a3b8" },
   {
-    name: "Tech Stock Index (TCH)",
-    symbol: "TCH",
-    price: 18450,
-    unit: "share",
+    name: "Bitcoin (BTC)",
+    symbol: "BTC",
+    price: 5500000,
+    unit: "coin",
     trend: 2.1,
-    color: "#3b82f6",
+    color: "#f7931a",
   },
   {
     name: "Retail Industry Index (RTL)",
@@ -84,12 +85,13 @@ const COMMODITIES = [
 ];
 
 const HISTORICAL_CHART_DATA = [
-  { day: "Mon", XAU: 61800, XAG: 74500, TCH: 18100, RTL: 12700, WTI: 6600 },
-  { day: "Tue", XAU: 62100, XAG: 74100, TCH: 18250, RTL: 12750, WTI: 6520 },
-  { day: "Wed", XAU: 62300, XAG: 74300, TCH: 18300, RTL: 12720, WTI: 6480 },
-  { day: "Thu", XAU: 62200, XAG: 73900, TCH: 18200, RTL: 12780, WTI: 6510 },
-  { day: "Fri", XAU: 62450, XAG: 74200, TCH: 18450, RTL: 12800, WTI: 6450 },
+  { day: "Mon", XAU: 61800, XAG: 74500, BTC: 5400000, RTL: 12700, WTI: 6600 },
+  { day: "Tue", XAU: 62100, XAG: 74100, BTC: 5450000, RTL: 12750, WTI: 6520 },
+  { day: "Wed", XAU: 62300, XAG: 74300, BTC: 5300000, RTL: 12720, WTI: 6480 },
+  { day: "Thu", XAU: 62200, XAG: 73900, BTC: 5480000, RTL: 12780, WTI: 6510 },
+  { day: "Fri", XAU: 62450, XAG: 74200, BTC: 5500000, RTL: 12800, WTI: 6450 },
 ];
+
 
 function MarketIntelligencePage() {
   const { user } = useAuth();
@@ -98,6 +100,7 @@ function MarketIntelligencePage() {
   const [cashBalance, setCashBalance] = useState(0);
   const [portfolioValue, setPortfolioValue] = useState(0);
   const [holdings, setHoldings] = useState<InvestmentItem[]>([]);
+  const [commodities, setCommodities] = useState(DEFAULT_COMMODITIES);
   const [loading, setLoading] = useState(true);
 
   // Form states
@@ -106,7 +109,7 @@ function MarketIntelligencePage() {
   const [investing, setInvesting] = useState(false);
   const [liquidatingId, setLiquidatingId] = useState<string | null>(null);
 
-  const activeAsset = COMMODITIES.find((c) => c.symbol === selectedAsset) || COMMODITIES[0];
+  const activeAsset = commodities.find((c) => c.symbol === selectedAsset) || commodities[0];
   const totalCost = activeAsset.price * (Number(investQty) || 0);
 
   const loadData = async () => {
@@ -120,6 +123,14 @@ function MarketIntelligencePage() {
       // 2. Load investment holdings
       const invs = await getInvestmentsServer({});
       setHoldings(invs);
+
+      // 3. Load live market data
+      try {
+        const liveData = (await getLiveMarketDataServer({})) as typeof DEFAULT_COMMODITIES;
+        setCommodities(liveData);
+      } catch (err) {
+        console.error("Failed to load live market data, falling back to mock data", err);
+      }
 
       // Calculate portfolio total value (only active ones)
       const activeVal = invs
@@ -244,7 +255,7 @@ function MarketIntelligencePage() {
         <div className="lg:col-span-2 space-y-6">
           <SectionCard title="Macro Market Tickers">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-              {COMMODITIES.map((c) => (
+              {commodities.map((c) => (
                 <div
                   key={c.symbol}
                   onClick={() => setSelectedAsset(c.symbol)}
@@ -326,7 +337,7 @@ function MarketIntelligencePage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {COMMODITIES.map((c) => (
+                    {commodities.map((c) => (
                       <SelectItem key={c.symbol} value={c.symbol}>
                         {c.name}
                       </SelectItem>
@@ -463,7 +474,7 @@ function MarketIntelligencePage() {
                                 h.id,
                                 h.purchasePrice *
                                   (1 +
-                                    (COMMODITIES.find((c) => c.symbol === h.symbol)?.trend || 0) /
+                                    (commodities.find((c) => c.symbol === h.symbol)?.trend || 0) /
                                       100),
                                 h.assetName,
                               )
