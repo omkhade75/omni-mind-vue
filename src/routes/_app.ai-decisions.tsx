@@ -336,7 +336,7 @@ function AskOmniMind() {
             </div>
           </div>
 
-          <div className="mt-4 rounded-lg border border-hairline bg-surface/70 p-3">
+          <div className="mt-4 rounded-lg border border-hairline bg-surface p-3">
             <div className="flex items-start gap-2">
               <textarea
                 value={q}
@@ -566,7 +566,7 @@ function AskOmniMind() {
                       <span className="text-[11px] text-muted-foreground w-28 shrink-0">
                         {label}
                       </span>
-                      <div className="flex-1 h-1.5 rounded-full bg-surface-2/60 overflow-hidden">
+                      <div className="flex-1 h-1.5 rounded-full bg-surface-2 overflow-hidden">
                         <div
                           className={cn("h-full rounded-full transition-all duration-700", color)}
                           style={{ width: `${value}%` }}
@@ -617,11 +617,11 @@ function AskOmniMind() {
                 <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary">
                   <TrendingUp className="h-3.5 w-3.5" /> Key Evidence Resolved
                 </div>
-                <ul className="mt-2 space-y-2 text-xs text-foreground/90 font-medium">
+                <ul className="mt-2 space-y-2 text-xs text-foreground font-medium">
                   {answerData.evidence.map((item: any, index: number) => (
                     <li
                       key={index}
-                      className="flex items-start justify-between border-b border-hairline/30 pb-1.5 last:border-b-0 last:pb-0"
+                      className="flex items-start justify-between border-b border-hairline/50 pb-1.5 last:border-b-0 last:pb-0"
                     >
                       <span>{item.label}</span>
                       <span className="font-semibold text-muted-foreground">{item.value}</span>
@@ -634,7 +634,7 @@ function AskOmniMind() {
                 <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-destructive">
                   <AlertTriangle className="h-3.5 w-3.5" /> Risk Factors
                 </div>
-                <ul className="mt-2 space-y-1.5 text-xs text-foreground/90 font-medium">
+                <ul className="mt-2 space-y-1.5 text-xs text-foreground font-medium">
                   {answerData.risks.length === 0 ? (
                     <li className="text-muted-foreground text-xs">No critical risks flagged.</li>
                   ) : (
@@ -684,7 +684,7 @@ function AskOmniMind() {
                   {answerData.recommendedActions.map((action, i) => (
                     <div
                       key={i}
-                      className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 rounded border border-hairline bg-surface-2/40"
+                      className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 rounded border border-hairline bg-surface-2"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
@@ -799,7 +799,7 @@ function AskOmniMind() {
                       {i < answerData.causalChain!.length - 1 && (
                         <div className="flex items-center gap-2.5 my-0.5">
                           <div className="w-5 flex justify-center">
-                            <ArrowDown className="h-3 w-3 text-muted-foreground/40" />
+                            <ArrowDown className="h-3 w-3 text-muted-foreground/60" />
                           </div>
                           {step.nextEvent && (
                             <span className="text-[9px] text-muted-foreground italic">
@@ -845,7 +845,7 @@ function AskOmniMind() {
                         key={entry.domain}
                         className={cn(
                           "flex items-center gap-2 px-2 py-1 rounded text-[11px]",
-                          isNA ? "opacity-40" : "",
+                          isNA ? "opacity-60" : "",
                         )}
                       >
                         {isVerified && (
@@ -1080,7 +1080,7 @@ function AnswerBlock({
       >
         {icon} {title}
       </div>
-      <ul className="mt-2 space-y-1.5 text-xs text-foreground/90 font-medium">
+      <ul className="mt-2 space-y-1.5 text-xs text-foreground font-medium">
         {items.map((i) => (
           <li key={i} className="flex items-start gap-2">
             <CheckCircle2 className={`mt-0.5 h-3 w-3 shrink-0 ${tones[tone]}`} />
