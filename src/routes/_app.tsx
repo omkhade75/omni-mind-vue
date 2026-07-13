@@ -375,8 +375,7 @@ function AppShell() {
             : "-translate-x-full lg:translate-x-0",
         )}
       >
-        {/* Subtle gradient overlay on sidebar for premium feel */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-violet/5" />
+
 
         <div className="relative hairline-b flex items-center gap-3 px-4 py-5">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg gradient-primary shadow-md shadow-primary/20">
@@ -998,7 +997,7 @@ function AppShell() {
         </header>
 
         <main className="min-w-0 flex-1">
-          <div className="mx-auto w-full max-w-7xl p-4 sm:p-6 lg:p-8">
+          <div className="w-full p-4 sm:p-6 lg:p-8">
             <Outlet />
           </div>
         </main>
