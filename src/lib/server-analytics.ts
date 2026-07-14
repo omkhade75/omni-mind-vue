@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { prisma } from "./server/prisma";
+import { getTenantPrisma } from "./server/prisma";
+import { requireAuth } from "./server-auth";
 import { sendEodReportWhatsApp } from "./server-whatsapp";
 import { readWhatsAppConfig } from "./server-whatsapp-config";
 
@@ -8,6 +9,8 @@ export const getCommandCenterServer = createServerFn({ method: "POST" })
     (data: { role: string; email: string; activeDate?: string; timeRange?: string }) => data,
   )
   .handler(async ({ data }) => {
+    const user = await requireAuth();
+    const prisma = getTenantPrisma(user.workspaceId);
     const activeDate = data.activeDate ? new Date(data.activeDate) : new Date();
     const timeRange = data.timeRange || "today";
 
@@ -36,21 +39,21 @@ export const getCommandCenterServer = createServerFn({ method: "POST" })
     // Fetch transactions for the date range
     const transactions = await prisma.transaction.findMany({
       where: {
-        transactionDate: {
-          gte: startDate,
-          lte: endDate,
-        },
-      },
+              transactionDate: {
+                gte: startDate,
+                lte: endDate,
+              },
+            } as any,
     });
 
     // Fetch expenses for the date range
     const expenses = await prisma.expense.findMany({
       where: {
-        date: {
-          gte: startDate,
-          lte: endDate,
-        },
-      },
+              date: {
+                gte: startDate,
+                lte: endDate,
+              },
+            } as any,
     });
 
     const grossRevenue = transactions.reduce((sum, t) => sum + Number(t.totalAmount), 0);
@@ -62,12 +65,12 @@ export const getCommandCenterServer = createServerFn({ method: "POST" })
 
     const activeAnomalies = await prisma.utilityReading.count({
       where: {
-        readingDate: {
-          gte: startDate,
-          lte: endDate,
-        },
-        value: { gt: 1000 }, // Dummy anomaly logic
-      },
+              readingDate: {
+                gte: startDate,
+                lte: endDate,
+              },
+              value: { gt: 1000 }, // Dummy anomaly logic
+            } as any,
     });
 
     return {
@@ -83,6 +86,8 @@ export const getCommandCenterServer = createServerFn({ method: "POST" })
 export const getAnomaliesServer = createServerFn({ method: "POST" })
   .validator((data: { role: string; email: string; activeDate?: string }) => data)
   .handler(async ({ data }) => {
+    const user = await requireAuth();
+    const prisma = getTenantPrisma(user.workspaceId);
     const anomalies = await prisma.anomaly.findMany({
       orderBy: { detectedAt: "desc" },
     });
@@ -90,29 +95,31 @@ export const getAnomaliesServer = createServerFn({ method: "POST" })
     if (anomalies.length === 0) {
       // Seed initial anomalies in database so it is populated via PostgreSQL
       const seeded = [
+        // @ts-ignore
         await prisma.anomaly.create({
           data: {
-            type: "Energy Surge",
-            severity: "High",
-            title: "Grid energy draw spike",
-            description: "Suspect compressor valve failure on Roof Unit B.",
-            evidence: JSON.stringify({ expected: "24 kWh", actual: "41 kWh", deviation: "+71%" }),
-            entityType: "UtilityReading",
-            status: "Active",
-            detectedAt: new Date(),
-          },
+                      type: "Energy Surge",
+                      severity: "High",
+                      title: "Grid energy draw spike",
+                      description: "Suspect compressor valve failure on Roof Unit B.",
+                      evidence: JSON.stringify({ expected: "24 kWh", actual: "41 kWh", deviation: "+71%" }),
+                      entityType: "UtilityReading",
+                      status: "Active",
+                      detectedAt: new Date(),
+                    } as any,
         }),
+        // @ts-ignore
         await prisma.anomaly.create({
           data: {
-            type: "Expiry Risk",
-            severity: "Medium",
-            title: "Yogurt Expiry Velocity",
-            description: "Shelf placement obscured by new promotional stand.",
-            evidence: JSON.stringify({ expected: "12 units/day", actual: "3 units/day", deviation: "-75%" }),
-            entityType: "Product",
-            status: "Active",
-            detectedAt: new Date(),
-          },
+                      type: "Expiry Risk",
+                      severity: "Medium",
+                      title: "Yogurt Expiry Velocity",
+                      description: "Shelf placement obscured by new promotional stand.",
+                      evidence: JSON.stringify({ expected: "12 units/day", actual: "3 units/day", deviation: "-75%" }),
+                      entityType: "Product",
+                      status: "Active",
+                      detectedAt: new Date(),
+                    } as any,
         }),
       ];
       return seeded.map((a) => ({
@@ -152,6 +159,8 @@ export const getAnomaliesServer = createServerFn({ method: "POST" })
 export const getRecommendationsServer = createServerFn({ method: "POST" })
   .validator((data: { role: string; email: string }) => data)
   .handler(async () => {
+    const user = await requireAuth();
+    const prisma = getTenantPrisma(user.workspaceId);
     const recs = await prisma.recommendation.findMany({
       orderBy: { generatedAt: "desc" },
     });
@@ -159,29 +168,31 @@ export const getRecommendationsServer = createServerFn({ method: "POST" })
     if (recs.length === 0) {
       // Seed initial recommendations in database
       const seeded = [
+        // @ts-ignore
         await prisma.recommendation.create({
           data: {
-            type: "MARKDOWN",
-            title: "Apply 20% markdown on expiring Yogurt",
-            summary: "Accelerate sales velocity for remaining batch expiring in 48 hours.",
-            evidence: JSON.stringify({ expectedVelocity: "12/day", actual: "3/day" }),
-            confidence: 0.95,
-            priority: "high",
-            expectedImpact: "₹1,200 recovered margin",
-            status: "New",
-          },
+                      type: "MARKDOWN",
+                      title: "Apply 20% markdown on expiring Yogurt",
+                      summary: "Accelerate sales velocity for remaining batch expiring in 48 hours.",
+                      evidence: JSON.stringify({ expectedVelocity: "12/day", actual: "3/day" }),
+                      confidence: 0.95,
+                      priority: "high",
+                      expectedImpact: "₹1,200 recovered margin",
+                      status: "New",
+                    } as any,
         }),
+        // @ts-ignore
         await prisma.recommendation.create({
           data: {
-            type: "PO",
-            title: "Reorder Lakmé Foundation (24 units)",
-            summary: "Current stock level (4 units) is below reorder point (15 units).",
-            evidence: JSON.stringify({ stock: 4, reorder: 15 }),
-            confidence: 0.88,
-            priority: "medium",
-            expectedImpact: "Prevent stockout sales loss",
-            status: "New",
-          },
+                      type: "PO",
+                      title: "Reorder Lakmé Foundation (24 units)",
+                      summary: "Current stock level (4 units) is below reorder point (15 units).",
+                      evidence: JSON.stringify({ stock: 4, reorder: 15 }),
+                      confidence: 0.88,
+                      priority: "medium",
+                      expectedImpact: "Prevent stockout sales loss",
+                      status: "New",
+                    } as any,
         }),
       ];
       return seeded.map((r) => ({
@@ -213,6 +224,8 @@ export const getRecommendationsServer = createServerFn({ method: "POST" })
 export const getForecastingServer = createServerFn({ method: "POST" })
   .validator((data: { role: string; email: string; horizon?: string; scenario?: string }) => data)
   .handler(async ({ data }) => {
+    const user = await requireAuth();
+    const prisma = getTenantPrisma(user.workspaceId);
     const horizon = data.horizon || "7d";
     const scenario = data.scenario || "Normal";
 
@@ -284,25 +297,27 @@ export const getForecastingServer = createServerFn({ method: "POST" })
 export const dispatchEodReportServer = createServerFn({ method: "POST" })
   .validator((data: { activeDate?: string }) => data)
   .handler(async ({ data }) => {
+    const user = await requireAuth();
+    const prisma = getTenantPrisma(user.workspaceId);
     const date = data.activeDate ? new Date(data.activeDate) : new Date();
     const dateStr = date.toISOString().split("T")[0];
 
     const transactions = await prisma.transaction.findMany({
       where: {
-        transactionDate: {
-          gte: new Date(`${dateStr}T00:00:00.000Z`),
-          lte: new Date(`${dateStr}T23:59:59.999Z`),
-        },
-      },
+              transactionDate: {
+                gte: new Date(`${dateStr}T00:00:00.000Z`),
+                lte: new Date(`${dateStr}T23:59:59.999Z`),
+              },
+            } as any,
     });
 
     const expenses = await prisma.expense.findMany({
       where: {
-        date: {
-          gte: new Date(`${dateStr}T00:00:00.000Z`),
-          lte: new Date(`${dateStr}T23:59:59.999Z`),
-        },
-      },
+              date: {
+                gte: new Date(`${dateStr}T00:00:00.000Z`),
+                lte: new Date(`${dateStr}T23:59:59.999Z`),
+              },
+            } as any,
     });
 
     const grossRevenue = transactions.reduce((sum, t) => sum + Number(t.totalAmount), 0);

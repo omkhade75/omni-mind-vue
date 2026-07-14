@@ -7,138 +7,265 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model Mall {
-  id        String   @id @default(uuid())
-  name      String
-  location  String
-  timezone  String   @default("Asia/Kolkata")
-  currency  String   @default("INR")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model User {
+model Workspace {
   id           String   @id @default(uuid())
   name         String
-  email        String   @unique
-  role         String   // OWNER, ADMIN, MANAGER
-  departmentId String?
-  status       String   @default("Active") // Active, Inactive
+  industry     String?
+  businessType String?
+  timezone     String   @default("Asia/Kolkata")
+  currency     String   @default("INR")
+  status       String   @default("Active") // Active, Suspended
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  settings           WorkspaceSettings?
+  users              User[]
+  products           Product[]
+  customers          Customer[]
+  transactions       Transaction[]
+  inventoryStocks    InventoryStock[]
+  inventoryLocs      InventoryLocation[]
+  movements          InventoryMovement[]
+  suppliers          Supplier[]
+  purchaseOrders     PurchaseOrder[]
+  departments        Department[]
+  categories         Category[]
+  expenses           Expense[]
+  expenseCategories  ExpenseCategory[]
+  incomeRecords      IncomeRecord[]
+  goodsReceipts      GoodsReceipt[]
+  batches            ProductBatch[]
+  supplierProducts   SupplierProduct[]
+  payments           Payment[]
+  transactionItems   TransactionItem[]
+  purchaseOrderItems PurchaseOrderItem[]
+  goodsReceiptItems  GoodsReceiptItem[]
+  utilityMeters      UtilityMeter[]
+  utilityReadings    UtilityReading[]
+  staff              Staff[]
+  recommendations    Recommendation[]
+  anomalies          Anomaly[]
+  businessEvents     BusinessEvent[]
+  auditLogs          AuditLog[]
+  footfallReadings   FootfallReading[]
+  messageLogs        MessageLog[]
+  ledgerAccounts     LedgerAccount[]
+  ledgerEntries      LedgerEntry[]
+  investments        Investment[]
+  deliveryDispatches DeliveryDispatch[]
+  fixedDeposits      FixedDeposit[]
+  corporateLoans     CorporateLoan[]
 }
 
-model Department {
+model WorkspaceSettings {
+  id          String    @id @default(uuid())
+  workspaceId String    @unique
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  branding    String?
+  features    String?
+  updatedAt   DateTime  @updatedAt
+}
+
+model PendingRegistration {
   id            String   @id @default(uuid())
-  name          String
-  code          String   @unique // FASHION, ELECTRONICS, GROCERY, etc.
-  managerId     String?
-  floor         String
-  targetRevenue Decimal  @db.Decimal(14, 2)
-  status        String   @default("Active") // Active, Archived
+  companyName   String
+  businessType  String
+  industry      String
+  ownerName     String
+  ownerEmail    String   @unique
+  mobileNumber  String
+  designation   String
+  country       String
+  state         String
+  city          String
+  address       String
+  employeeCount String
+  branchCount   String
+  revenueRange  String
+  timezone      String   @default("Asia/Kolkata")
+  currency      String   @default("INR")
+  passwordHash  String
+  status        String   @default("Pending") // Pending, Approved, Rejected
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
 
+model LoginHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress String?
+  userAgent String?
+  status    String
+  timestamp DateTime @default(now())
+}
+
+model ApprovalLog {
+  id             String   @id @default(uuid())
+  adminId        String
+  admin          User     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  registrationId String
+  action         String
+  notes          String?
+  timestamp      DateTime @default(now())
+}
+
+model User {
+  id            String         @id @default(uuid())
+  name          String
+  email         String
+  passwordHash  String         @default("")
+  isSystemAdmin Boolean        @default(false)
+  role          String // OWNER, ADMIN, MANAGER
+  departmentId  String?
+  status        String         @default("Active") // Active, Inactive
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  loginHistory  LoginHistory[]
+  approvalLogs  ApprovalLog[]
+
+  @@unique([email, workspaceId])
+}
+
+model Department {
+  id            String     @id @default(uuid())
+  name          String
+  code          String // FASHION, ELECTRONICS, GROCERY, etc.
+  managerId     String?
+  floor         String
+  targetRevenue Decimal    @db.Decimal(14, 2)
+  status        String     @default("Active") // Active, Archived
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([code, workspaceId])
+}
+
 model Customer {
-  id                     String        @id @default(uuid())
-  customerCode           String        @unique
-  firstName              String
-  lastName               String
-  email                  String        @unique
-  phone                  String        @unique
-  loyaltyTier            String        @default("Regular") // VIP, Loyal, Regular
-  loyaltyPoints          Int           @default(0)
-  joinDate               DateTime      @default(now())
-  preferredDepartmentId  String?
-  status                 String        @default("Active") // Active, Archived
-  customerType           String        @default("B2C") // B2C, B2B
-  notes                  String?
-  churnRisk              String        @default("Low") // Low, Medium, High
-  transactions           Transaction[]
-  createdAt              DateTime      @default(now())
-  updatedAt              DateTime      @updatedAt
+  id                    String        @id @default(uuid())
+  customerCode          String
+  firstName             String
+  lastName              String
+  email                 String
+  phone                 String
+  loyaltyTier           String        @default("Regular") // VIP, Loyal, Regular
+  loyaltyPoints         Int           @default(0)
+  joinDate              DateTime      @default(now())
+  preferredDepartmentId String?
+  status                String        @default("Active") // Active, Archived
+  customerType          String        @default("B2C") // B2C, B2B
+  notes                 String?
+  churnRisk             String        @default("Low") // Low, Medium, High
+  transactions          Transaction[]
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([customerCode, workspaceId])
+  @@unique([email, workspaceId])
+  @@unique([phone, workspaceId])
 }
 
 model Category {
-  id           String    @id @default(uuid())
+  id           String     @id @default(uuid())
   name         String
   departmentId String
   products     Product[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model Product {
-  id                String             @id @default(uuid())
-  sku               String             @unique
-  barcode           String             @unique
+  id                String              @id @default(uuid())
+  sku               String
+  barcode           String
   name              String
   description       String?
   categoryId        String
-  category          Category           @relation(fields: [categoryId], references: [id])
+  category          Category            @relation(fields: [categoryId], references: [id])
   departmentId      String
   brand             String
-  sellingPrice      Decimal            @db.Decimal(14, 2)
-  costPrice         Decimal            @db.Decimal(14, 2)
-  taxRate           Decimal            @db.Decimal(4, 2) @default(18.00)
+  sellingPrice      Decimal             @db.Decimal(14, 2)
+  costPrice         Decimal             @db.Decimal(14, 2)
+  taxRate           Decimal             @default(18.00) @db.Decimal(4, 2)
   reorderLevel      Int
   reorderQuantity   Int
-  unit              String             @default("units")
-  status            String             @default("Active") // Active, Archived
+  unit              String              @default("units")
+  status            String              @default("Active") // Active, Archived
   stockItems        InventoryStock[]
   movements         InventoryMovement[]
   batches           ProductBatch[]
   transactionItems  TransactionItem[]
   poItems           PurchaseOrderItem[]
   goodsReceiptItems GoodsReceiptItem[]
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([sku, workspaceId])
+  @@unique([barcode, workspaceId])
 }
 
 model Supplier {
   id                 String            @id @default(uuid())
-  supplierCode       String            @unique
+  supplierCode       String
   name               String
   contactPerson      String
-  email              String            @unique
+  email              String
   phone              String
   address            String
   paymentTerms       String
   leadTimeDays       Int
-  onTimeDeliveryRate Decimal           @db.Decimal(5, 2) @default(100.00)
-  qualityScore       Decimal           @db.Decimal(5, 2) @default(100.00)
-  riskScore          Decimal           @db.Decimal(5, 2) @default(0.00)
+  onTimeDeliveryRate Decimal           @default(100.00) @db.Decimal(5, 2)
+  qualityScore       Decimal           @default(100.00) @db.Decimal(5, 2)
+  riskScore          Decimal           @default(0.00) @db.Decimal(5, 2)
   status             String            @default("Active") // Active, Archived
   supplierProducts   SupplierProduct[]
   batches            ProductBatch[]
   purchaseOrders     PurchaseOrder[]
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierCode, workspaceId])
+  @@unique([email, workspaceId])
 }
 
 model SupplierProduct {
-  id                   String   @id @default(uuid())
+  id                   String     @id @default(uuid())
   supplierId           String
-  supplier             Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplier             Supplier   @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   productId            String
-  supplierPrice        Decimal  @db.Decimal(14, 2)
+  supplierPrice        Decimal    @db.Decimal(14, 2)
   minimumOrderQuantity Int
   leadTimeDays         Int
-  preferred            Boolean  @default(false)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  preferred            Boolean    @default(false)
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model InventoryLocation {
-  id        String              @id @default(uuid())
-  name      String
-  type      String              // WAREHOUSE, RETAIL_FLOOR
-  floor     String
-  stocks    InventoryStock[]
-  movements InventoryMovement[]
-  createdAt DateTime            @default(now())
-  updatedAt DateTime            @updatedAt
+  id          String              @id @default(uuid())
+  name        String
+  type        String // WAREHOUSE, RETAIL_FLOOR
+  floor       String
+  stocks      InventoryStock[]
+  movements   InventoryMovement[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model InventoryStock {
@@ -151,8 +278,10 @@ model InventoryStock {
   reservedQty    Int               @default(0)
   availableQty   Int               @default(0)
   updatedAt      DateTime          @updatedAt
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
-  @@unique([productId, locationId])
+  @@unique([productId, locationId, workspaceId])
 }
 
 model InventoryMovement {
@@ -161,35 +290,39 @@ model InventoryMovement {
   product       Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
   locationId    String
   location      InventoryLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
-  movementType  String            // SALE, RETURN, PURCHASE_RECEIPT, ADJUSTMENT_IN, ADJUSTMENT_OUT, DAMAGE, EXPIRED
+  movementType  String // SALE, RETURN, PURCHASE_RECEIPT, ADJUSTMENT_IN, ADJUSTMENT_OUT, DAMAGE, EXPIRED
   quantity      Int
-  referenceType String?           // Transaction, PurchaseOrder, GoodsReceipt
+  referenceType String? // Transaction, PurchaseOrder, GoodsReceipt
   referenceId   String?
   reason        String?
   performedBy   String?
   occurredAt    DateTime          @default(now())
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model ProductBatch {
-  id                String          @id @default(uuid())
+  id                String            @id @default(uuid())
   productId         String
-  product           Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product           Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
   batchNumber       String
   manufacturingDate DateTime?
   expiryDate        DateTime?
   quantityReceived  Int
   quantityRemaining Int
-  costPrice         Decimal         @db.Decimal(14, 2)
+  costPrice         Decimal           @db.Decimal(14, 2)
   supplierId        String
-  supplier          Supplier        @relation(fields: [supplierId], references: [id])
-  receivedAt        DateTime        @default(now())
-  status            String          @default("Safe") // Safe, Warning, Expired, Markdown
+  supplier          Supplier          @relation(fields: [supplierId], references: [id])
+  receivedAt        DateTime          @default(now())
+  status            String            @default("Safe") // Safe, Warning, Expired, Markdown
   transactionItems  TransactionItem[]
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model Transaction {
   id                String            @id @default(uuid())
-  transactionNumber String            @unique
+  transactionNumber String
   customerId        String?
   customer          Customer?         @relation(fields: [customerId], references: [id])
   departmentId      String
@@ -199,12 +332,16 @@ model Transaction {
   discountAmount    Decimal           @db.Decimal(14, 2)
   taxAmount         Decimal           @db.Decimal(14, 2)
   totalAmount       Decimal           @db.Decimal(14, 2)
-  paymentStatus     String            // Paid, Refunded, Failed
+  paymentStatus     String // Paid, Refunded, Failed
   status            String            @default("Completed")
   items             TransactionItem[]
   payments          Payment[]
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([transactionNumber, workspaceId])
 }
 
 model TransactionItem {
@@ -221,28 +358,36 @@ model TransactionItem {
   discountAmount    Decimal       @db.Decimal(14, 2)
   taxAmount         Decimal       @db.Decimal(14, 2)
   lineTotal         Decimal       @db.Decimal(14, 2)
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model Payment {
   id              String      @id @default(uuid())
   transactionId   String
   transaction     Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
-  method          String      // CASH, CARD, UPI, WALLET, OTHER
+  method          String // CASH, CARD, UPI, WALLET, OTHER
   amount          Decimal     @db.Decimal(14, 2)
   referenceNumber String?
   status          String      @default("Success")
   paidAt          DateTime    @default(now())
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model ExpenseCategory {
-  id       String    @id @default(uuid())
-  name     String    @unique
-  expenses Expense[]
+  id          String     @id @default(uuid())
+  name        String
+  expenses    Expense[]
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([name, workspaceId])
 }
 
 model Expense {
   id              String          @id @default(uuid())
-  expenseNumber   String          @unique
+  expenseNumber   String
   date            DateTime
   categoryId      String
   category        ExpenseCategory @relation(fields: [categoryId], references: [id])
@@ -257,22 +402,28 @@ model Expense {
   createdBy       String
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([expenseNumber, workspaceId])
 }
 
 model IncomeRecord {
-  id           String   @id @default(uuid())
-  source       String   // rent, parking, advertising, kiosks, events, other
-  amount       Decimal  @db.Decimal(14, 2)
+  id           String     @id @default(uuid())
+  source       String // rent, parking, advertising, kiosks, events, other
+  amount       Decimal    @db.Decimal(14, 2)
   date         DateTime
   departmentId String?
   description  String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model PurchaseOrder {
   id                   String              @id @default(uuid())
-  poNumber             String              @unique
+  poNumber             String
   supplierId           String
   supplier             Supplier            @relation(fields: [supplierId], references: [id])
   departmentId         String?
@@ -289,46 +440,58 @@ model PurchaseOrder {
   goodsReceipts        GoodsReceipt[]
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([poNumber, workspaceId])
 }
 
 model PurchaseOrderItem {
-  id              String        @id @default(uuid())
-  purchaseOrderId String
-  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  productId       String
-  product         Product       @relation(fields: [productId], references: [id])
-  quantity        Int
-  receivedQuantity Int          @default(0)
-  unitCost        Decimal       @db.Decimal(14, 2)
-  lineTotal       Decimal       @db.Decimal(14, 2)
+  id               String        @id @default(uuid())
+  purchaseOrderId  String
+  purchaseOrder    PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product       @relation(fields: [productId], references: [id])
+  quantity         Int
+  receivedQuantity Int           @default(0)
+  unitCost         Decimal       @db.Decimal(14, 2)
+  lineTotal        Decimal       @db.Decimal(14, 2)
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model GoodsReceipt {
-  id              String        @id @default(uuid())
+  id              String             @id @default(uuid())
   purchaseOrderId String
-  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
-  receivedAt      DateTime      @default(now())
+  purchaseOrder   PurchaseOrder      @relation(fields: [purchaseOrderId], references: [id])
+  receivedAt      DateTime           @default(now())
   receivedBy      String
   notes           String?
   items           GoodsReceiptItem[]
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model GoodsReceiptItem {
-  id              String        @id @default(uuid())
-  goodsReceiptId  String
-  goodsReceipt    GoodsReceipt  @relation(fields: [goodsReceiptId], references: [id], onDelete: Cascade)
-  productId       String
-  product         Product       @relation(fields: [productId], references: [id])
-  quantity        Int
+  id             String       @id @default(uuid())
+  goodsReceiptId String
+  goodsReceipt   GoodsReceipt @relation(fields: [goodsReceiptId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product      @relation(fields: [productId], references: [id])
+  quantity       Int
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model UtilityMeter {
-  id        String           @id @default(uuid())
-  type      String           // ELECTRICITY, WATER, HVAC, GAS
-  zone      String
-  unit      String           // kWh, L, etc.
-  baseline  Decimal          @db.Decimal(14, 2)
-  readings  UtilityReading[]
+  id          String           @id @default(uuid())
+  type        String // ELECTRICITY, WATER, HVAC, GAS
+  zone        String
+  unit        String // kWh, L, etc.
+  baseline    Decimal          @db.Decimal(14, 2)
+  readings    UtilityReading[]
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model UtilityReading {
@@ -340,172 +503,204 @@ model UtilityReading {
   cost        Decimal      @db.Decimal(14, 2)
   source      String       @default("Meter")
   createdAt   DateTime     @default(now())
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model Staff {
-  id           String   @id @default(uuid())
-  employeeCode String   @unique
+  id           String     @id @default(uuid())
+  employeeCode String
   userId       String?
   name         String
   email        String
   phone        String
   departmentId String
   designation  String
-  salary       Decimal  @db.Decimal(14, 2)
+  salary       Decimal    @db.Decimal(14, 2)
   shift        String
   joiningDate  DateTime
-  status       String   @default("Active")
+  status       String     @default("Active")
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeCode, workspaceId])
 }
 
 model Recommendation {
-  id               String    @id @default(uuid())
+  id               String     @id @default(uuid())
   type             String
   title            String
   summary          String
-  evidence         String    // JSON String
-  confidence       Decimal   @db.Decimal(5, 2)
-  priority         String    // high, medium, low
+  evidence         String // JSON String
+  confidence       Decimal    @db.Decimal(5, 2)
+  priority         String // high, medium, low
   expectedImpact   String?
-  status           String    @default("New") // New, Investigating, Accepted, Rejected
+  status           String     @default("New") // New, Investigating, Accepted, Rejected
   targetEntityType String?
   targetEntityId   String?
-  generatedAt      DateTime  @default(now())
+  generatedAt      DateTime   @default(now())
   acceptedAt       DateTime?
   acceptedBy       String?
   executedAt       DateTime?
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model Anomaly {
-  id          String    @id @default(uuid())
+  id          String     @id @default(uuid())
   type        String
-  severity    String    // high, medium, low
+  severity    String // high, medium, low
   title       String
   description String
-  evidence    String    // JSON String
+  evidence    String // JSON String
   entityType  String?
   entityId    String?
-  detectedAt  DateTime  @default(now())
-  status      String    @default("Active") // Active, Resolved
+  detectedAt  DateTime   @default(now())
+  status      String     @default("Active") // Active, Resolved
   resolvedAt  DateTime?
   resolvedBy  String?
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model BusinessEvent {
-  id          String   @id @default(uuid())
+  id          String     @id @default(uuid())
   eventType   String
   entityType  String?
   entityId    String?
   title       String
   description String
-  metadata    String?  // JSON String
-  occurredAt  DateTime @default(now())
+  metadata    String? // JSON String
+  occurredAt  DateTime   @default(now())
   actorId     String?
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model AuditLog {
-  id         String   @id @default(uuid())
-  userId     String
-  action     String
-  entityType String?
-  entityId   String?
-  beforeData String?  // JSON String
-  afterData  String?  // JSON String
-  timestamp  DateTime @default(now())
-  ipAddress  String?
+  id          String     @id @default(uuid())
+  userId      String
+  action      String
+  entityType  String?
+  entityId    String?
+  beforeData  String? // JSON String
+  afterData   String? // JSON String
+  timestamp   DateTime   @default(now())
+  ipAddress   String?
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model FootfallReading {
-  id           String   @id @default(uuid())
+  id           String     @id @default(uuid())
   readingDate  DateTime
   value        Int
   departmentId String?
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model MessageLog {
-  id            String   @id @default(uuid())
-  channel       String   // WHATSAPP, VOICE
-  recipientName String
+  id             String     @id @default(uuid())
+  channel        String // WHATSAPP, VOICE
+  recipientName  String
   recipientPhone String
-  messageType   String   // BILL, EOD_REPORT, LOW_STOCK_ALERT, CRM_OUTREACH
-  body          String
-  status        String   // PENDING, SENT, DELIVERED, FAILED
-  error         String?
-  providerId    String?  // Twilio SID / Vapi call ID
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  messageType    String // BILL, EOD_REPORT, LOW_STOCK_ALERT, CRM_OUTREACH
+  body           String
+  status         String // PENDING, SENT, DELIVERED, FAILED
+  error          String?
+  providerId     String? // Twilio SID / Vapi call ID
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model LedgerAccount {
   id          String        @id @default(uuid())
-  code        String        @unique // e.g. "1000" for Cash, "4000" for Sales Revenue
-  name        String        // Cash, Inventory Asset, Cost of Goods Sold, Accounts Payable, Accounts Receivable, Sales Revenue, Utility Expense
-  type        String        // ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE
+  code        String // e.g. "1000" for Cash, "4000" for Sales Revenue
+  name        String // Cash, Inventory Asset, Cost of Goods Sold, Accounts Payable, Accounts Receivable, Sales Revenue, Utility Expense
+  type        String // ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE
   entries     LedgerEntry[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([code, workspaceId])
 }
 
 model LedgerEntry {
-  id               String        @id @default(uuid())
-  accountId        String
-  account          LedgerAccount @relation(fields: [accountId], references: [id])
-  journalId        String        // Groups the debit and credit sides together
-  debitAmount      Decimal       @db.Decimal(14, 2)
-  creditAmount     Decimal       @db.Decimal(14, 2)
-  referenceType    String?       // Transaction, PurchaseOrder, Expense, Payment
-  referenceId      String?
-  description      String
-  createdAt        DateTime      @default(now())
+  id            String        @id @default(uuid())
+  accountId     String
+  account       LedgerAccount @relation(fields: [accountId], references: [id])
+  journalId     String // Groups the debit and credit sides together
+  debitAmount   Decimal       @db.Decimal(14, 2)
+  creditAmount  Decimal       @db.Decimal(14, 2)
+  referenceType String? // Transaction, PurchaseOrder, Expense, Payment
+  referenceId   String?
+  description   String
+  createdAt     DateTime      @default(now())
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model Investment {
-  id              String        @id @default(uuid())
-  assetName       String        // Gold, Silver, Tech Index, etc.
-  symbol          String        // XAU, XAG, Tech, etc.
-  purchasePrice   Decimal       @db.Decimal(14, 2)
-  quantity        Decimal       @db.Decimal(14, 4)
-  totalCost       Decimal       @db.Decimal(14, 2)
-  currentValue    Decimal       @db.Decimal(14, 2)
-  status          String        @default("Active") // Active, Liquidated
-  purchasedAt     DateTime      @default(now())
-  liquidatedAt    DateTime?
-  liquidatedPrice Decimal?      @db.Decimal(14, 2)
-  liquidatedAmount Decimal?     @db.Decimal(14, 2)
+  id               String     @id @default(uuid())
+  assetName        String // Gold, Silver, Tech Index, etc.
+  symbol           String // XAU, XAG, Tech, etc.
+  purchasePrice    Decimal    @db.Decimal(14, 2)
+  quantity         Decimal    @db.Decimal(14, 4)
+  totalCost        Decimal    @db.Decimal(14, 2)
+  currentValue     Decimal    @db.Decimal(14, 2)
+  status           String     @default("Active") // Active, Liquidated
+  purchasedAt      DateTime   @default(now())
+  liquidatedAt     DateTime?
+  liquidatedPrice  Decimal?   @db.Decimal(14, 2)
+  liquidatedAmount Decimal?   @db.Decimal(14, 2)
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model DeliveryDispatch {
-  id               String    @id @default(uuid())
-  orderNumber      String
-  customerName     String
-  destination      String
-  driverName       String
-  vehicleNumber    String
-  itemsCount       Int
-  status           String    @default("Dispatched") // Dispatched, In Transit, Delayed, Out for Delivery, Delivered
-  delayReason      String?
-  dispatchedAt     DateTime  @default(now())
-  deliveredAt      DateTime?
-  updatedAt        DateTime  @updatedAt
+  id            String     @id @default(uuid())
+  orderNumber   String
+  customerName  String
+  destination   String
+  driverName    String
+  vehicleNumber String
+  itemsCount    Int
+  status        String     @default("Dispatched") // Dispatched, In Transit, Delayed, Out for Delivery, Delivered
+  delayReason   String?
+  dispatchedAt  DateTime   @default(now())
+  deliveredAt   DateTime?
+  updatedAt     DateTime   @updatedAt
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model FixedDeposit {
-  id           String   @id @default(uuid())
+  id           String     @id @default(uuid())
   bankName     String
-  principal    Decimal  @db.Decimal(14, 2)
-  interestRate Decimal  @db.Decimal(5, 2)
-  duration     Int      // In months
-  status       String   @default("Active") // Active, Matured
-  startDate    DateTime @default(now())
+  principal    Decimal    @db.Decimal(14, 2)
+  interestRate Decimal    @db.Decimal(5, 2)
+  duration     Int // In months
+  status       String     @default("Active") // Active, Matured
+  startDate    DateTime   @default(now())
   matureDate   DateTime
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model CorporateLoan {
-  id           String   @id @default(uuid())
+  id           String     @id @default(uuid())
   bankName     String
-  principal    Decimal  @db.Decimal(14, 2)
-  interestRate Decimal  @db.Decimal(5, 2)
-  balance      Decimal  @db.Decimal(14, 2)
-  duration     Int      // In months
-  status       String   @default("Active") // Active, Paid
-  takenDate    DateTime @default(now())
+  principal    Decimal    @db.Decimal(14, 2)
+  interestRate Decimal    @db.Decimal(5, 2)
+  balance      Decimal    @db.Decimal(14, 2)
+  duration     Int // In months
+  status       String     @default("Active") // Active, Paid
+  takenDate    DateTime   @default(now())
+  workspaceId   String
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }

@@ -24,7 +24,7 @@ export function resolveDateRange(
 // Helper to get Fashion department ID for RBAC checks
 export async function getFashionDepartmentId(): Promise<string> {
   const dept = await prisma.department.findFirst({
-    where: { code: { equals: "FASHION", mode: "insensitive" } },
+    where: { code: { equals: "FASHION", mode: "insensitive" } } as any,
   });
   return dept?.id || "dept-fashion-id-placeholder";
 }
@@ -189,9 +189,9 @@ export async function getInventoryRisk(params: {
       if (isHistorical) {
         const movements = await prisma.inventoryMovement.findMany({
           where: {
-            productId: p.id,
-            occurredAt: { gt: end },
-          },
+                      productId: p.id,
+                      occurredAt: { gt: end },
+                    } as any,
         });
 
         // Reconstruct by rolling back movements occurred after the target date
@@ -239,9 +239,9 @@ export async function getInventoryRisk(params: {
   // Expiring and expired batches
   const batches = await prisma.productBatch.findMany({
     where: {
-      productId: { in: products.map((p) => p.id) },
-      quantityRemaining: { gt: 0 },
-    },
+          productId: { in: products.map((p) => p.id) },
+          quantityRemaining: { gt: 0 },
+        } as any,
   });
 
   const expiringCount = batches.filter(

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { prisma } from "./server/prisma";
 import { useSession, clearSession } from "@tanstack/start-server-core";
 import type { SessionConfig } from "@tanstack/start-server-core";
+import bcrypt from "bcryptjs";
 
 // Session configuration - password comes from env, never hardcoded
 const SESSION_SECRET =
@@ -25,98 +26,55 @@ export type AuthUser = {
   email: string;
   role: string;
   departmentId: string | null;
+  workspaceId: string;
+  isSystemAdmin: boolean;
+};
+
+type SessionData = {
+  userId: string;
+  role: string;
+  email: string;
+  name: string;
+  departmentId: string | null;
+  workspaceId: string;
+  isSystemAdmin: boolean;
 };
 
 /**
  * Server-side login: validates credentials against the DB User table.
- * For demo accounts, we allow login by email without password verification.
- * In production, you'd verify bcrypt/argon2 hashed passwords.
  */
 export const loginServer = createServerFn({ method: "POST" })
   .validator((data: { email: string; password: string }) => data)
   .handler(async ({ data: payload }) => {
-    const user = await prisma.user.findUnique({
-      where: { email: payload.email },
+    const user = await prisma.user.findFirst({
+      where: { email: payload.email } as any,
     });
 
     if (!user) {
       throw new Error("Invalid email or password");
     }
 
-    // For demo: allow any password for seeded demo accounts
-    // In production, verify password hash here:
-    // const valid = await bcrypt.compare(payload.password, user.passwordHash);
-    // if (!valid) throw new Error("Invalid email or password");
+    if (user.status !== "Active") {
+      throw new Error("Your account is currently inactive or pending approval.");
+    }
+
+    if (!user.workspaceId) {
+      throw new Error("User has no associated workspace. Please contact system admin.");
+    }
+
+    const valid = await bcrypt.compare(payload.password, user.passwordHash);
+    if (!valid) throw new Error("Invalid email or password");
 
     // Create server session
-    const session = await useSession<{
-      userId: string;
-      role: string;
-      email: string;
-      name: string;
-      departmentId: string | null;
-    }>(sessionConfig);
+    const session = await useSession<SessionData>(sessionConfig);
     await session.update({
       userId: user.id,
       role: user.role,
       email: user.email,
       name: user.name,
       departmentId: user.departmentId,
-    });
-
-    // Return sanitized user (never return passwordHash)
-    return {
-      success: true,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        departmentId: user.departmentId,
-      } as AuthUser,
-    };
-  });
-
-/**
- * Quick demo login by role name. Used by the demo buttons.
- */
-export const demoLoginServer = createServerFn({ method: "POST" })
-  .validator((data: { role: string }) => data)
-  .handler(async ({ data: payload }) => {
-    const roleMap: Record<string, string> = {
-      owner: "OWNER",
-      admin: "ADMIN",
-      manager: "MANAGER",
-      Owner: "OWNER",
-      Admin: "ADMIN",
-      Manager: "MANAGER",
-      OWNER: "OWNER",
-      ADMIN: "ADMIN",
-      MANAGER: "MANAGER",
-    };
-
-    const dbRole = roleMap[payload.role];
-    if (!dbRole) throw new Error("Invalid role");
-
-    const user = await prisma.user.findFirst({
-      where: { role: dbRole },
-    });
-
-    if (!user) throw new Error(`No ${dbRole} user found in database`);
-
-    const session = await useSession<{
-      userId: string;
-      role: string;
-      email: string;
-      name: string;
-      departmentId: string | null;
-    }>(sessionConfig);
-    await session.update({
-      userId: user.id,
-      role: user.role,
-      email: user.email,
-      name: user.name,
-      departmentId: user.departmentId,
+      workspaceId: user.workspaceId,
+      isSystemAdmin: user.isSystemAdmin,
     });
 
     return {
@@ -127,6 +85,8 @@ export const demoLoginServer = createServerFn({ method: "POST" })
         email: user.email,
         role: user.role,
         departmentId: user.departmentId,
+        workspaceId: user.workspaceId,
+        isSystemAdmin: user.isSystemAdmin,
       } as AuthUser,
     };
   });
@@ -137,14 +97,8 @@ export const demoLoginServer = createServerFn({ method: "POST" })
  */
 export const getCurrentSessionServer = createServerFn({ method: "GET" }).handler(async () => {
   try {
-    const session = await useSession<{
-      userId: string;
-      role: string;
-      email: string;
-      name: string;
-      departmentId: string | null;
-    }>(sessionConfig);
-    if (!session.data.userId) {
+    const session = await useSession<SessionData>(sessionConfig);
+    if (!session.data.userId || !session.data.workspaceId) {
       return { user: null };
     }
 
@@ -155,6 +109,8 @@ export const getCurrentSessionServer = createServerFn({ method: "GET" }).handler
         email: session.data.email || "",
         role: session.data.role || "",
         departmentId: session.data.departmentId || null,
+        workspaceId: session.data.workspaceId,
+        isSystemAdmin: session.data.isSystemAdmin || false,
       } as AuthUser,
     };
   } catch {
@@ -176,14 +132,8 @@ export const logoutServer = createServerFn({ method: "POST" }).handler(async () 
  */
 export async function getSecureSessionUser(): Promise<AuthUser | null> {
   try {
-    const session = await useSession<{
-      userId: string;
-      role: string;
-      email: string;
-      name: string;
-      departmentId: string | null;
-    }>(sessionConfig);
-    if (!session.data.userId) {
+    const session = await useSession<SessionData>(sessionConfig);
+    if (!session.data.userId || !session.data.workspaceId) {
       return null;
     }
     return {
@@ -192,8 +142,32 @@ export async function getSecureSessionUser(): Promise<AuthUser | null> {
       email: session.data.email || "",
       role: session.data.role || "",
       departmentId: session.data.departmentId || null,
+      workspaceId: session.data.workspaceId,
+      isSystemAdmin: session.data.isSystemAdmin || false,
     };
   } catch {
     return null;
   }
+}
+
+/**
+ * Helper to ensure the caller is authenticated. Throws if not.
+ */
+export async function requireAuth(): Promise<AuthUser> {
+  const user = await getSecureSessionUser();
+  if (!user) {
+    throw new Error("Unauthorized: Please log in.");
+  }
+  return user;
+}
+
+/**
+ * Helper to ensure the caller is a System Admin. Throws if not.
+ */
+export async function requireSystemAdmin(): Promise<AuthUser> {
+  const user = await requireAuth();
+  if (!user.isSystemAdmin) {
+    throw new Error("Forbidden: System Administrator access required.");
+  }
+  return user;
 }

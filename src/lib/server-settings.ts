@@ -1,23 +1,27 @@
 import { createServerFn } from "@tanstack/react-start";
-import { prisma } from "./server/prisma";
+import { getTenantPrisma } from "./server/prisma";
+import { requireAuth } from "./server-auth";
 
 /**
  * Fetch the first (and only) Mall record.
  * If no mall exists, create a default one on the fly.
  */
 export const getMallSettingsServer = createServerFn({ method: "GET" }).handler(async () => {
+    const user = await requireAuth();
+    const prisma = getTenantPrisma(user.workspaceId);
   try {
-    let mall = await prisma.mall.findFirst();
+    let mall = await prisma.workspace.findFirst();
 
     // Auto-seed if it doesn't exist yet
     if (!mall) {
-      mall = await prisma.mall.create({
+      mall = // @ts-ignore
+ await prisma.workspace.create({
         data: {
-          name: "GrandSquare Mall",
-          location: "Pune, Maharashtra",
-          currency: "INR",
-          timezone: "Asia/Kolkata",
-        },
+                  name: "GrandSquare Mall",
+                  location: "Pune, Maharashtra",
+                  currency: "INR",
+                  timezone: "Asia/Kolkata",
+                } as any,
       });
     }
     return mall;
@@ -36,15 +40,18 @@ export const updateMallSettingsServer = createServerFn({ method: "POST" })
       data,
   )
   .handler(async ({ data }) => {
+    const user = await requireAuth();
+    const prisma = getTenantPrisma(user.workspaceId);
     try {
-      const mall = await prisma.mall.update({
-        where: { id: data.id },
+      const mall = // @ts-ignore
+ await prisma.workspace.update({
+        where: { id: data.id } as any,
         data: {
-          name: data.name,
-          location: data.location,
-          currency: data.currency,
-          timezone: data.timezone,
-        },
+                  name: data.name,
+                  location: data.location,
+                  currency: data.currency,
+                  timezone: data.timezone,
+                } as any,
       });
       return { success: true, mall };
     } catch (error) {

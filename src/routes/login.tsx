@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useAuth, type Role } from "@/lib/auth-context";
+import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
@@ -26,7 +26,7 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const { user, loading, login, demoLogin } = useAuth();
+  const { user, loading, login } = useAuth();
   const navigate = useNavigate();
 
   // If already authenticated, redirect
@@ -50,17 +50,7 @@ function LoginPage() {
     }
   };
 
-  const quickLogin = async (role: Role) => {
-    setSubmitting(true);
-    try {
-      await demoLogin(role);
-      navigate({ to: "/command-center" });
-    } catch (err: any) {
-      toast.error(err.message || "Demo login failed");
-    } finally {
-      setSubmitting(false);
-    }
-  };
+
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
@@ -111,9 +101,9 @@ function LoginPage() {
             </div>
           </div>
 
-          <p className="text-xs text-muted-foreground">
-            Deployed at GrandSquare Mall · Pune, Maharashtra
-          </p>
+            <p className="text-xs text-muted-foreground">
+              Enterprise Grade • Multi-Tenant • Secure
+            </p>
         </div>
 
         {/* Right: form */}
@@ -184,32 +174,8 @@ function LoginPage() {
                 </Button>
               </form>
 
-              <div className="my-6 flex items-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground">
-                <span className="h-px flex-1 bg-hairline" />
-                or continue as
-                <span className="h-px flex-1 bg-hairline" />
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                {(
-                  [
-                    { r: "owner", label: "Owner" },
-                    { r: "admin", label: "Admin" },
-                    { r: "manager", label: "Manager" },
-                  ] as { r: Role; label: string }[]
-                ).map((o) => (
-                  <button
-                    key={o.r}
-                    onClick={() => quickLogin(o.r)}
-                    className="rounded-md border border-hairline bg-surface px-3 py-2 text-xs font-medium transition-colors hover:border-primary/40 hover:bg-surface-2"
-                  >
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-
               <p className="mt-6 text-center text-[11px] text-muted-foreground">
-                Demo environment · No real credentials required
+                Protected by Enterprise Grade Security
               </p>
             </div>
           </div>

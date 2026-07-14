@@ -1,13 +1,8 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import {
-  getCurrentSessionServer,
-  loginServer,
-  logoutServer,
-  demoLoginServer,
-  type AuthUser,
-} from "./server-auth";
+import { createContext, useContext, useEffect, useState } from "react";
+import { getCurrentSessionServer, loginServer, logoutServer, type AuthUser } from "./server-auth";
+import type { ReactNode } from "react";
 
-export type Role = "owner" | "admin" | "manager";
+export type Role = "owner" | "admin" | "manager" | "staff" | "security";
 
 export interface User {
   id: string;
@@ -15,13 +10,14 @@ export interface User {
   email: string;
   role: Role;
   departmentId: string | null;
+  workspaceId: string;
+  isSystemAdmin: boolean;
 }
 
 interface AuthCtx {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  demoLogin: (role: Role) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -29,16 +25,16 @@ const Ctx = createContext<AuthCtx>({
   user: null,
   loading: true,
   login: async () => {},
-  demoLogin: async () => {},
   logout: async () => {},
 });
 
 function mapDbRoleToLocal(dbRole: string): Role {
-  const lower = dbRole.toLowerCase();
-  if (lower === "owner") return "owner";
-  if (lower === "admin") return "admin";
-  if (lower === "manager") return "manager";
-  return "owner";
+  const r = dbRole.toLowerCase();
+  if (r === "owner") return "owner";
+  if (r === "admin") return "admin";
+  if (r === "manager") return "manager";
+  if (r === "security") return "security";
+  return "staff";
 }
 
 function mapAuthUserToUser(authUser: AuthUser): User {
@@ -48,6 +44,8 @@ function mapAuthUserToUser(authUser: AuthUser): User {
     email: authUser.email,
     role: mapDbRoleToLocal(authUser.role),
     departmentId: authUser.departmentId,
+    workspaceId: authUser.workspaceId,
+    isSystemAdmin: authUser.isSystemAdmin,
   };
 }
 
@@ -55,37 +53,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // On mount, check server session (not localStorage!)
   useEffect(() => {
-    console.log("🔍 [AuthContext] Mounting AuthProvider. Checking server session...");
-    getCurrentSessionServer()
-      .then((res) => {
-        console.log("🔍 [AuthContext] Session resolved successfully:", res);
-        if (res.user) {
-          setUser(mapAuthUserToUser(res.user));
-        } else {
-          setUser(null);
-        }
-      })
-      .catch((err) => {
-        console.error("❌ [AuthContext] Session check failed:", err);
-        setUser(null);
-      })
-      .finally(() => {
-        console.log("🔍 [AuthContext] Session check complete. Setting loading = false");
-        setLoading(false);
-      });
+    getCurrentSessionServer().then((res) => {
+      if (res.user) {
+        setUser(mapAuthUserToUser(res.user));
+      }
+      setLoading(false);
+    });
   }, []);
 
   const login = async (email: string, password: string) => {
     const res = await loginServer({ data: { email, password } });
-    if (res.success && res.user) {
-      setUser(mapAuthUserToUser(res.user));
-    }
-  };
-
-  const demoLogin = async (role: Role) => {
-    const res = await demoLoginServer({ data: { role } });
     if (res.success && res.user) {
       setUser(mapAuthUserToUser(res.user));
     }
@@ -97,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <Ctx.Provider value={{ user, loading, login, demoLogin, logout }}>{children}</Ctx.Provider>
+    <Ctx.Provider value={{ user, loading, login, logout }}>{children}</Ctx.Provider>
   );
 }
 

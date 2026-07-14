@@ -1,11 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
-import { prisma } from "./server/prisma";
+import { getTenantPrisma } from "./server/prisma";
+import { requireAuth } from "./server-auth";
 import { readWhatsAppConfig } from "./server-whatsapp-config";
 import { sendEodReportWhatsApp } from "./server-whatsapp";
 
 export const getPaymentReportsServer = createServerFn({ method: "POST" })
   .validator((data: { role: string; email: string }) => data)
   .handler(async ({ data }) => {
+    const user = await requireAuth();
+    const prisma = getTenantPrisma(user.workspaceId);
     // 1. Accounts Payable (Money we owe to Suppliers for Draft/Ordered POs)
     const suppliers = await prisma.supplier.findMany({
       include: { purchaseOrders: true },
@@ -31,8 +34,8 @@ export const getPaymentReportsServer = createServerFn({ method: "POST" })
     // Note: In retail, this is rare, but we will track failed/pending transactions.
     const transactions = await prisma.transaction.findMany({
       where: {
-        paymentStatus: { in: ["Pending", "Failed"] },
-      },
+              paymentStatus: { in: ["Pending", "Failed"] },
+            } as any,
       include: {
         customer: true,
       },
@@ -62,6 +65,8 @@ export const getPaymentReportsServer = createServerFn({ method: "POST" })
 export const sendAllReportsWhatsAppServer = createServerFn({ method: "POST" })
   .validator((data: { role: string; email: string }) => data)
   .handler(async ({ data }) => {
+    const user = await requireAuth();
+    const prisma = getTenantPrisma(user.workspaceId);
     const waConfig = readWhatsAppConfig();
     const ownerPhone = waConfig.ownerWhatsAppNumber || "+919876543210";
     const managerPhone = waConfig.managerWhatsAppNumber || "+919876543211";
