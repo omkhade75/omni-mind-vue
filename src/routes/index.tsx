@@ -63,7 +63,7 @@ function LandingPage() {
         {/* Floating geometric shapes (Bright & Luminous) */}
         <div className="absolute left-[12%] top-[22%] animate-float-slow opacity-100">
           <div
-            className="h-28 w-28 rounded-3xl border border-primary/50 bg-gradient-to-br from-primary/60 to-primary/20 backdrop-blur-3xl shadow-[0_0_40px_var(--color-primary)]/40"
+            className="h-28 w-28 rounded-3xl border border-primary/50 bg-gradient-to-br from-primary/60 to-primary/20 backdrop-blur-3xl shadow-[0_0_40px_hsl(var(--color-primary))]/40"
             style={{ transform: "rotate(25deg) skewX(-10deg)" }}
           />
         </div>
@@ -73,7 +73,7 @@ function LandingPage() {
           style={{ animationDelay: "1.5s" }}
         >
           <div
-            className="h-36 w-36 rounded-full border border-violet/50 bg-gradient-to-bl from-violet/50 to-violet/10 backdrop-blur-3xl shadow-[0_0_40px_var(--color-violet)]/40"
+            className="h-36 w-36 rounded-full border border-violet/50 bg-gradient-to-bl from-violet/50 to-violet/10 backdrop-blur-3xl shadow-[0_0_40px_hsl(var(--color-violet))]/40"
             style={{ transform: "scaleY(0.85) rotate(-15deg)" }}
           />
         </div>
@@ -83,7 +83,7 @@ function LandingPage() {
           style={{ animationDelay: "2.5s" }}
         >
           <div
-            className="h-24 w-24 rounded-2xl border border-warning/50 bg-gradient-to-tr from-warning/60 to-warning/20 backdrop-blur-xl shadow-[0_0_35px_var(--color-warning)]/40"
+            className="h-24 w-24 rounded-2xl border border-warning/50 bg-gradient-to-tr from-warning/60 to-warning/20 backdrop-blur-xl shadow-[0_0_35px_hsl(var(--color-warning))]/40"
             style={{ transform: "rotate(40deg)" }}
           />
         </div>
@@ -93,7 +93,7 @@ function LandingPage() {
           style={{ animationDelay: "1s" }}
         >
           <div
-            className="h-32 w-32 rounded-full border border-success/50 bg-gradient-to-br from-success/50 to-success/10 backdrop-blur-md shadow-[0_0_40px_var(--color-success)]/30"
+            className="h-32 w-32 rounded-full border border-success/50 bg-gradient-to-br from-success/50 to-success/10 backdrop-blur-md shadow-[0_0_40px_hsl(var(--color-success))]/30"
             style={{ transform: "rotate(-25deg)" }}
           />
         </div>
@@ -103,23 +103,23 @@ function LandingPage() {
           style={{ animationDelay: "3s" }}
         >
           <div
-            className="h-16 w-16 rounded-xl border border-cyan/60 bg-gradient-to-br from-cyan/50 to-cyan/20 backdrop-blur-md shadow-[0_0_25px_var(--color-cyan)]/50"
+            className="h-16 w-16 rounded-xl border border-cyan/60 bg-gradient-to-br from-cyan/50 to-cyan/20 backdrop-blur-md shadow-[0_0_25px_hsl(var(--color-cyan))]/50"
             style={{ transform: "rotate(65deg)" }}
           />
         </div>
 
         {/* Micro-particles / stars */}
-        <div className="absolute left-[30%] top-[40%] h-2 w-2 animate-pulse rounded-full bg-primary shadow-[0_0_12px_var(--color-primary)]" />
+        <div className="absolute left-[30%] top-[40%] h-2 w-2 animate-pulse rounded-full bg-primary shadow-[0_0_12px_hsl(var(--color-primary))]" />
         <div
-          className="absolute right-[25%] top-[35%] h-2 w-2 animate-pulse rounded-full bg-warning shadow-[0_0_15px_var(--color-warning)]"
+          className="absolute right-[25%] top-[35%] h-2 w-2 animate-pulse rounded-full bg-warning shadow-[0_0_15px_hsl(var(--color-warning))]"
           style={{ animationDelay: "1s" }}
         />
         <div
-          className="absolute left-[55%] bottom-[25%] h-2 w-2 animate-pulse rounded-full bg-success shadow-[0_0_12px_var(--color-success)]"
+          className="absolute left-[55%] bottom-[25%] h-2 w-2 animate-pulse rounded-full bg-success shadow-[0_0_12px_hsl(var(--color-success))]"
           style={{ animationDelay: "0.5s" }}
         />
         <div
-          className="absolute right-[40%] top-[20%] h-1.5 w-1.5 animate-pulse rounded-full bg-violet shadow-[0_0_10px_var(--color-violet)]"
+          className="absolute right-[40%] top-[20%] h-1.5 w-1.5 animate-pulse rounded-full bg-violet shadow-[0_0_10px_hsl(var(--color-violet))]"
           style={{ animationDelay: "2s" }}
         />
       </div>
