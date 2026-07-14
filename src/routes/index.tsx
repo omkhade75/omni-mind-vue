@@ -136,12 +136,20 @@ function LandingPage() {
               <p className="text-[10px] text-muted-foreground">Mall Intelligence OS</p>
             </div>
           </div>
-          <Link
-            to="/login"
-            className="inline-flex items-center gap-2 rounded-md gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-all hover:opacity-90"
-          >
-            Sign in <ArrowRight className="h-4 w-4" />
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              to="/login"
+              className="text-sm font-medium text-foreground transition-colors hover:text-primary"
+            >
+              Login
+            </Link>
+            <Link
+              to="/register"
+              className="inline-flex items-center gap-2 rounded-md gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-all hover:opacity-90"
+            >
+              Register Company <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
         </header>
 
         {/* Hero */}

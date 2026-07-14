@@ -15,6 +15,7 @@ model Workspace {
   timezone     String   @default("Asia/Kolkata")
   currency     String   @default("INR")
   status       String   @default("Active") // Active, Suspended
+  setupCompleted Boolean @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -67,14 +68,16 @@ model WorkspaceSettings {
 }
 
 model PendingRegistration {
-  id            String   @id @default(uuid())
-  companyName   String
-  businessType  String
-  industry      String
-  ownerName     String
-  ownerEmail    String   @unique
-  mobileNumber  String
-  designation   String
+  id             String   @id @default(uuid())
+  companyName    String
+  businessType   String
+  industry       String
+  gstNumber      String?
+  companyWebsite String?
+  ownerName      String
+  ownerEmail     String   @unique
+  mobileNumber   String
+  designation    String
   country       String
   state         String
   city          String

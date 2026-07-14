@@ -9,6 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SetupRouteImport } from './routes/setup'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
@@ -17,6 +19,7 @@ import { Route as AppTransactionsRouteImport } from './routes/_app.transactions'
 import { Route as AppTime_machineRouteImport } from './routes/_app.time_machine'
 import { Route as AppTimeMachineRouteImport } from './routes/_app.time-machine'
 import { Route as AppTaxRouteImport } from './routes/_app.tax'
+import { Route as AppSystemAdminRouteImport } from './routes/_app.system-admin'
 import { Route as AppSuppliersRouteImport } from './routes/_app.suppliers'
 import { Route as AppStaffRouteImport } from './routes/_app.staff'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
@@ -45,6 +48,16 @@ import { Route as AppAi_decisionsRouteImport } from './routes/_app.ai_decisions'
 import { Route as AppAiDecisionsRouteImport } from './routes/_app.ai-decisions'
 import { Route as AppAccountsRouteImport } from './routes/_app.accounts'
 
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -82,6 +95,11 @@ const AppTimeMachineRoute = AppTimeMachineRouteImport.update({
 const AppTaxRoute = AppTaxRouteImport.update({
   id: '/tax',
   path: '/tax',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSystemAdminRoute = AppSystemAdminRouteImport.update({
+  id: '/system-admin',
+  path: '/system-admin',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSuppliersRoute = AppSuppliersRouteImport.update({
@@ -223,6 +241,8 @@ const AppAccountsRoute = AppAccountsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
+  '/setup': typeof SetupRoute
   '/accounts': typeof AppAccountsRoute
   '/ai-decisions': typeof AppAiDecisionsRoute
   '/ai_decisions': typeof AppAi_decisionsRoute
@@ -250,6 +270,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AppSettingsRoute
   '/staff': typeof AppStaffRoute
   '/suppliers': typeof AppSuppliersRoute
+  '/system-admin': typeof AppSystemAdminRoute
   '/tax': typeof AppTaxRoute
   '/time-machine': typeof AppTimeMachineRoute
   '/time_machine': typeof AppTime_machineRoute
@@ -259,6 +280,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
+  '/setup': typeof SetupRoute
   '/accounts': typeof AppAccountsRoute
   '/ai-decisions': typeof AppAiDecisionsRoute
   '/ai_decisions': typeof AppAi_decisionsRoute
@@ -286,6 +309,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AppSettingsRoute
   '/staff': typeof AppStaffRoute
   '/suppliers': typeof AppSuppliersRoute
+  '/system-admin': typeof AppSystemAdminRoute
   '/tax': typeof AppTaxRoute
   '/time-machine': typeof AppTimeMachineRoute
   '/time_machine': typeof AppTime_machineRoute
@@ -297,6 +321,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
+  '/setup': typeof SetupRoute
   '/_app/accounts': typeof AppAccountsRoute
   '/_app/ai-decisions': typeof AppAiDecisionsRoute
   '/_app/ai_decisions': typeof AppAi_decisionsRoute
@@ -324,6 +350,7 @@ export interface FileRoutesById {
   '/_app/settings': typeof AppSettingsRoute
   '/_app/staff': typeof AppStaffRoute
   '/_app/suppliers': typeof AppSuppliersRoute
+  '/_app/system-admin': typeof AppSystemAdminRoute
   '/_app/tax': typeof AppTaxRoute
   '/_app/time-machine': typeof AppTimeMachineRoute
   '/_app/time_machine': typeof AppTime_machineRoute
@@ -335,6 +362,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/register'
+    | '/setup'
     | '/accounts'
     | '/ai-decisions'
     | '/ai_decisions'
@@ -362,6 +391,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/staff'
     | '/suppliers'
+    | '/system-admin'
     | '/tax'
     | '/time-machine'
     | '/time_machine'
@@ -371,6 +401,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/register'
+    | '/setup'
     | '/accounts'
     | '/ai-decisions'
     | '/ai_decisions'
@@ -398,6 +430,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/staff'
     | '/suppliers'
+    | '/system-admin'
     | '/tax'
     | '/time-machine'
     | '/time_machine'
@@ -408,6 +441,8 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/login'
+    | '/register'
+    | '/setup'
     | '/_app/accounts'
     | '/_app/ai-decisions'
     | '/_app/ai_decisions'
@@ -435,6 +470,7 @@ export interface FileRouteTypes {
     | '/_app/settings'
     | '/_app/staff'
     | '/_app/suppliers'
+    | '/_app/system-admin'
     | '/_app/tax'
     | '/_app/time-machine'
     | '/_app/time_machine'
@@ -446,10 +482,26 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  RegisterRoute: typeof RegisterRoute
+  SetupRoute: typeof SetupRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -504,6 +556,13 @@ declare module '@tanstack/react-router' {
       path: '/tax'
       fullPath: '/tax'
       preLoaderRoute: typeof AppTaxRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/system-admin': {
+      id: '/_app/system-admin'
+      path: '/system-admin'
+      fullPath: '/system-admin'
+      preLoaderRoute: typeof AppSystemAdminRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/suppliers': {
@@ -726,6 +785,7 @@ interface AppRouteChildren {
   AppSettingsRoute: typeof AppSettingsRoute
   AppStaffRoute: typeof AppStaffRoute
   AppSuppliersRoute: typeof AppSuppliersRoute
+  AppSystemAdminRoute: typeof AppSystemAdminRoute
   AppTaxRoute: typeof AppTaxRoute
   AppTimeMachineRoute: typeof AppTimeMachineRoute
   AppTime_machineRoute: typeof AppTime_machineRoute
@@ -761,6 +821,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsRoute: AppSettingsRoute,
   AppStaffRoute: AppStaffRoute,
   AppSuppliersRoute: AppSuppliersRoute,
+  AppSystemAdminRoute: AppSystemAdminRoute,
   AppTaxRoute: AppTaxRoute,
   AppTimeMachineRoute: AppTimeMachineRoute,
   AppTime_machineRoute: AppTime_machineRoute,
@@ -774,6 +835,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  RegisterRoute: RegisterRoute,
+  SetupRoute: SetupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

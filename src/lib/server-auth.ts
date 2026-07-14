@@ -28,6 +28,7 @@ export type AuthUser = {
   departmentId: string | null;
   workspaceId: string;
   isSystemAdmin: boolean;
+  setupCompleted: boolean;
 };
 
 type SessionData = {
@@ -38,6 +39,7 @@ type SessionData = {
   departmentId: string | null;
   workspaceId: string;
   isSystemAdmin: boolean;
+  setupCompleted: boolean;
 };
 
 /**
@@ -48,6 +50,7 @@ export const loginServer = createServerFn({ method: "POST" })
   .handler(async ({ data: payload }) => {
     const user = await prisma.user.findFirst({
       where: { email: payload.email } as any,
+      include: { workspace: true },
     });
 
     if (!user) {
@@ -58,7 +61,7 @@ export const loginServer = createServerFn({ method: "POST" })
       throw new Error("Your account is currently inactive or pending approval.");
     }
 
-    if (!user.workspaceId) {
+    if (!user.workspaceId || !user.workspace) {
       throw new Error("User has no associated workspace. Please contact system admin.");
     }
 
@@ -75,6 +78,7 @@ export const loginServer = createServerFn({ method: "POST" })
       departmentId: user.departmentId,
       workspaceId: user.workspaceId,
       isSystemAdmin: user.isSystemAdmin,
+      setupCompleted: user.workspace.setupCompleted,
     });
 
     return {
@@ -87,6 +91,7 @@ export const loginServer = createServerFn({ method: "POST" })
         departmentId: user.departmentId,
         workspaceId: user.workspaceId,
         isSystemAdmin: user.isSystemAdmin,
+        setupCompleted: user.workspace.setupCompleted,
       } as AuthUser,
     };
   });
@@ -111,6 +116,7 @@ export const getCurrentSessionServer = createServerFn({ method: "GET" }).handler
         departmentId: session.data.departmentId || null,
         workspaceId: session.data.workspaceId,
         isSystemAdmin: session.data.isSystemAdmin || false,
+        setupCompleted: session.data.setupCompleted ?? true,
       } as AuthUser,
     };
   } catch {
@@ -144,6 +150,7 @@ export async function getSecureSessionUser(): Promise<AuthUser | null> {
       departmentId: session.data.departmentId || null,
       workspaceId: session.data.workspaceId,
       isSystemAdmin: session.data.isSystemAdmin || false,
+      setupCompleted: session.data.setupCompleted ?? true,
     };
   } catch {
     return null;
