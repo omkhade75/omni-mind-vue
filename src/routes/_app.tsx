@@ -365,10 +365,10 @@ function AppShell() {
       <aside
         className={cn(
           "fixed top-0 left-0 z-50 flex h-screen shrink-0 flex-col bg-sidebar transition-all duration-300",
-          "border-r border-sidebar-border shadow-sm",
+          "border-r-2 border-r-primary/30",
           // Desktop
           "lg:sticky lg:translate-x-0",
-          collapsed ? "lg:w-[72px]" : "lg:w-[250px]",
+          collapsed ? "lg:w-[68px]" : "lg:w-[260px]",
           // Mobile
           mobileOpen
             ? "w-[280px] translate-x-0 shadow-2xl shadow-primary/10"
@@ -997,7 +997,7 @@ function AppShell() {
         </header>
 
         <main className="min-w-0 flex-1">
-          <div className="w-full p-4 sm:p-5 lg:p-6 xl:p-8">
+          <div className="w-full p-4 sm:p-6 lg:p-8">
             <Outlet />
           </div>
         </main>
