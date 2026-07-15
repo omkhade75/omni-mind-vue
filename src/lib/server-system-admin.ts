@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { prisma } from "./server/prisma";
 import { getSecureSessionUser } from "./server-auth";
-import { sendSystemEmail } from "./server-email";
+import { sendSystemEmail, EmailTemplates } from "./server-email";
 
 // Middleware to ensure only SYSTEM_ADMIN can run these functions
 async function requireSystemAdmin() {
@@ -116,23 +116,16 @@ export const approveRegistrationServer = createServerFn({ method: "POST" })
 
     // 6. Send Approval Email
     try {
+      const appUrl = process.env.APP_URL || "http://localhost:3000";
       await sendSystemEmail({
         to: registration.ownerEmail,
         subject: `Welcome to OmniMind AI: ${registration.companyName} Approved!`,
-        body: `
-Dear ${registration.ownerName},
-
-Your registration for ${registration.companyName} has been approved!
-Your dedicated workspace has been provisioned successfully.
-
-You can now log in at: https://omni-mind-vue-main.vercel.app/login (or your production URL)
-Using your email: ${registration.ownerEmail}
-
-Upon your first login, you will be guided through a quick business setup wizard.
-
-Welcome aboard!
-- OmniMind AI System Administrator
-        `,
+        body: EmailTemplates.ApprovalEmail({
+          companyName: registration.companyName,
+          ownerEmail: registration.ownerEmail,
+          workspaceName: registration.companyName,
+          loginUrl: `${appUrl}/login`,
+        }),
       });
     } catch (e) {
       console.error("Failed to send approval email", e);
@@ -166,18 +159,17 @@ export const rejectRegistrationServer = createServerFn({ method: "POST" })
       },
     });
 
+    // 4. Send Rejection Email
     try {
+      const contactEmail = process.env.SYSTEM_ADMIN_EMAIL || "support@omnimind.ai";
       await sendSystemEmail({
         to: registration.ownerEmail,
-        subject: `Registration Update: ${registration.companyName}`,
-        body: `
-Dear ${registration.ownerName},
-
-Unfortunately, your registration for OmniMind AI has been declined at this time.
-Reason: ${data.reason || "Internal administrative decision."}
-
-If you believe this was in error, please reply to this email.
-        `,
+        subject: `Update on your OmniMind AI Registration`,
+        body: EmailTemplates.RejectionEmail({
+          companyName: registration.companyName,
+          reason: data.reason,
+          contactEmail: contactEmail,
+        }),
       });
     } catch (e) {
       console.error("Failed to send rejection email", e);

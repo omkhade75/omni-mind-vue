@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { prisma } from "./server/prisma";
 import bcrypt from "bcryptjs";
-import { sendSystemEmail } from "./server-email";
+import { sendSystemEmail, EmailTemplates } from "./server-email";
 
 export const registerCompanyServer = createServerFn({ method: "POST" })
   .validator((data: any) => data) // We could add Zod validation here
@@ -37,28 +37,22 @@ export const registerCompanyServer = createServerFn({ method: "POST" })
     });
 
     // 3. Send Email Notification
-    const adminEmail = process.env.SYSTEM_ADMIN_EMAIL || "khade8915@gmail.com";
-    
-    const emailBody = `
-New Enterprise Registration Request
-===================================
-Company Name: ${data.companyName}
-Industry: ${data.industry}
-
-Owner Name: ${data.ownerName}
-Owner Email: ${data.ownerEmail}
-Phone: ${data.mobileNumber}
-
-Time: ${new Date().toISOString()}
-
-Please log in to the System Admin portal (/system-admin) to Review and Approve this request.
-    `;
-
     try {
+      const adminEmail = process.env.SYSTEM_ADMIN_EMAIL || "khade8915@gmail.com";
+      const appUrl = process.env.APP_URL || "http://localhost:3000";
+
       await sendSystemEmail({
         to: adminEmail,
-        subject: `New Registration Request: ${data.companyName}`,
-        body: emailBody,
+        subject: `New SaaS Registration: ${registration.companyName}`,
+        body: EmailTemplates.NewRegistrationNotification({
+          companyName: registration.companyName,
+          ownerName: registration.ownerName,
+          email: registration.ownerEmail,
+          phone: registration.mobileNumber,
+          businessType: registration.businessType,
+          registrationTime: registration.createdAt,
+          loginUrl: `${appUrl}/system-admin`,
+        }),
       });
     } catch (err) {
       console.error("Failed to send admin email:", err);
