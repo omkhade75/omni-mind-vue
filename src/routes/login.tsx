@@ -8,7 +8,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 
+import { z } from "zod";
+
+const loginSearchSchema = z.object({
+  redirect: z.string().optional(),
+});
+
 export const Route = createFileRoute("/login")({
+  validateSearch: (search: Record<string, unknown>) => loginSearchSchema.parse(search),
   head: () => ({
     meta: [
       { title: "Sign in — OmniMind AI" },
@@ -28,11 +35,22 @@ function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const { user, loading, login } = useAuth();
   const navigate = useNavigate();
+  const { redirect } = Route.useSearch();
+
+  const getRedirectTarget = () => {
+    if (!redirect) return "/command-center";
+    try {
+      const url = new URL(redirect);
+      return url.pathname + url.search;
+    } catch {
+      return redirect;
+    }
+  };
 
   // If already authenticated, redirect
   useEffect(() => {
     if (!loading && user) {
-      navigate({ to: "/command-center", replace: true });
+      navigate({ to: getRedirectTarget(), replace: true });
     }
   }, [loading, user, navigate]);
 
@@ -42,7 +60,7 @@ function LoginPage() {
     setSubmitting(true);
     try {
       await login(email, pass);
-      navigate({ to: "/command-center" });
+      navigate({ to: getRedirectTarget() });
     } catch (err: any) {
       toast.error(err.message || "Login failed");
     } finally {

@@ -64,12 +64,15 @@ import {
 } from "@/components/details-drawers";
 
 export const Route = createFileRoute("/_app")({
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }: { location: any }) => {
     const { getCurrentSessionServer } = await import("@/lib/server-auth");
     const res = await getCurrentSessionServer();
     if (!res.user) {
       throw redirect({
         to: "/login",
+        search: {
+          redirect: location.href,
+        },
       });
     }
 
@@ -344,7 +347,7 @@ function AppShell() {
     return null; // Don't render anything, useEffect will redirect
   }
 
-  const filteredNAV = NAV.map((section) => ({
+  let filteredNAV = NAV.map((section) => ({
     ...section,
     items: section.items.filter((item) => {
       if (user?.role === "manager") {
@@ -354,6 +357,21 @@ function AppShell() {
       return true;
     }),
   })).filter((section) => section.items.length > 0);
+
+  if (user?.isSystemAdmin) {
+    filteredNAV = filteredNAV.map((section) => {
+      if (section.section === "System") {
+        return {
+          ...section,
+          items: [
+            ...section.items,
+            { to: "/system-admin", label: "System Admin Portal", icon: ShieldAlert },
+          ],
+        };
+      }
+      return section;
+    });
+  }
 
   const currentLabel =
     filteredNAV.flatMap((s) => s.items).find((i) => i.to === pathname)?.label ?? "Overview";
