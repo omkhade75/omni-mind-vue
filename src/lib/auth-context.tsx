@@ -12,6 +12,8 @@ export interface User {
   departmentId: string | null;
   workspaceId: string;
   isSystemAdmin: boolean;
+  isImpersonating?: boolean;
+  originalAdminId?: string;
 }
 
 interface AuthCtx {
@@ -46,6 +48,8 @@ function mapAuthUserToUser(authUser: AuthUser): User {
     departmentId: authUser.departmentId,
     workspaceId: authUser.workspaceId,
     isSystemAdmin: authUser.isSystemAdmin,
+    isImpersonating: authUser.isImpersonating,
+    originalAdminId: authUser.originalAdminId,
   };
 }
 

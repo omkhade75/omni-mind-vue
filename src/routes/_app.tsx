@@ -50,6 +50,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { stopImpersonatingServer } from "@/lib/server-auth";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { MALL, ANOMALIES, LIVE_FEED } from "@/lib/mock-data";
@@ -358,8 +359,28 @@ function AppShell() {
     filteredNAV.flatMap((s) => s.items).find((i) => i.to === pathname)?.label ?? "Overview";
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
-      {/* Mobile sidebar overlay */}
+    <div className="flex flex-col min-h-screen bg-background text-foreground">
+      {user?.isImpersonating && (
+        <div className="flex items-center justify-between bg-warning text-warning-foreground px-4 py-2 text-sm font-semibold select-none z-50">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4.5 w-4.5 text-warning-foreground animate-pulse" />
+            <span>Impersonation Active: Viewing workspace as Owner ({user.name} - {user.email})</span>
+          </div>
+          <Button 
+            size="sm" 
+            variant="destructive" 
+            onClick={async () => {
+              await stopImpersonatingServer();
+              toast.success("Returned to System Admin session.");
+              window.location.reload();
+            }}
+          >
+            Stop Impersonation
+          </Button>
+        </div>
+      )}
+      <div className="flex flex-1 min-h-0 bg-background text-foreground">
+        {/* Mobile sidebar overlay */}
       {mobileOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
@@ -1031,5 +1052,6 @@ function AppShell() {
         />
       </div>
     </div>
+  </div>
   );
 }

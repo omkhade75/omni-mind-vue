@@ -29,6 +29,8 @@ export type AuthUser = {
   workspaceId: string;
   isSystemAdmin: boolean;
   setupCompleted: boolean;
+  originalAdminId?: string;
+  isImpersonating?: boolean;
 };
 
 type SessionData = {
@@ -40,6 +42,8 @@ type SessionData = {
   workspaceId: string;
   isSystemAdmin: boolean;
   setupCompleted: boolean;
+  originalAdminId?: string;
+  isImpersonating?: boolean;
 };
 
 /**
@@ -63,6 +67,14 @@ export const loginServer = createServerFn({ method: "POST" })
 
     if (!user.workspaceId || !user.workspace) {
       throw new Error("User has no associated workspace. Please contact system admin.");
+    }
+
+    if (user.workspace.status === "SUSPENDED") {
+      throw new Error("Your workspace has been suspended. Please contact system admin.");
+    }
+
+    if (user.workspace.status === "DELETED") {
+      throw new Error("Your workspace has been deleted.");
     }
 
     const valid = await bcrypt.compare(payload.password, user.passwordHash);
@@ -117,6 +129,8 @@ export const getCurrentSessionServer = createServerFn({ method: "GET" }).handler
         workspaceId: session.data.workspaceId,
         isSystemAdmin: session.data.isSystemAdmin || false,
         setupCompleted: session.data.setupCompleted ?? true,
+        originalAdminId: session.data.originalAdminId,
+        isImpersonating: session.data.isImpersonating,
       } as AuthUser,
     };
   } catch {
@@ -151,6 +165,8 @@ export async function getSecureSessionUser(): Promise<AuthUser | null> {
       workspaceId: session.data.workspaceId,
       isSystemAdmin: session.data.isSystemAdmin || false,
       setupCompleted: session.data.setupCompleted ?? true,
+      originalAdminId: session.data.originalAdminId,
+      isImpersonating: session.data.isImpersonating,
     };
   } catch {
     return null;
@@ -178,3 +194,75 @@ export async function requireSystemAdmin(): Promise<AuthUser> {
   }
   return user;
 }
+
+export const impersonateTenantServer = createServerFn({ method: "POST" })
+  .validator((data: { workspaceId: string }) => data)
+  .handler(async ({ data }) => {
+    const admin = await getSecureSessionUser();
+    if (!admin) throw new Error("Unauthorized");
+    
+    if (!admin.isSystemAdmin && !admin.isImpersonating) {
+      throw new Error("Forbidden: System Admin required");
+    }
+
+    const targetWorkspace = await prisma.workspace.findUnique({
+      where: { id: data.workspaceId },
+      include: { users: { where: { role: "OWNER" }, take: 1 } },
+    });
+
+    if (!targetWorkspace) throw new Error("Target workspace not found");
+
+    const ownerUser = targetWorkspace.users[0];
+    if (!ownerUser) throw new Error("No owner found for this workspace");
+
+    const session = await useSession<SessionData>(sessionConfig);
+    
+    const originalAdminId = admin.isImpersonating ? admin.originalAdminId : admin.id;
+
+    await session.update({
+      userId: ownerUser.id,
+      role: ownerUser.role,
+      email: ownerUser.email,
+      name: ownerUser.name,
+      departmentId: ownerUser.departmentId,
+      workspaceId: targetWorkspace.id,
+      isSystemAdmin: false,
+      setupCompleted: targetWorkspace.setupCompleted,
+      originalAdminId: originalAdminId,
+      isImpersonating: true,
+    });
+
+    return { success: true };
+  });
+
+export const stopImpersonatingServer = createServerFn({ method: "POST" })
+  .handler(async () => {
+    const user = await getSecureSessionUser();
+    if (!user || !user.isImpersonating || !user.originalAdminId) {
+      throw new Error("Not currently impersonating");
+    }
+
+    const originalAdmin = await prisma.user.findUnique({
+      where: { id: user.originalAdminId },
+      include: { workspace: true },
+    });
+
+    if (!originalAdmin) throw new Error("Original admin user not found");
+
+    const session = await useSession<SessionData>(sessionConfig);
+    await session.update({
+      userId: originalAdmin.id,
+      role: originalAdmin.role,
+      email: originalAdmin.email,
+      name: originalAdmin.name,
+      departmentId: originalAdmin.departmentId,
+      workspaceId: originalAdmin.workspaceId,
+      isSystemAdmin: originalAdmin.isSystemAdmin,
+      setupCompleted: originalAdmin.workspace.setupCompleted,
+      originalAdminId: undefined,
+      isImpersonating: false,
+    });
+
+    return { success: true };
+  });
+

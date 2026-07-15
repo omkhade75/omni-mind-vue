@@ -14,8 +14,13 @@ model Workspace {
   businessType String?
   timezone     String   @default("Asia/Kolkata")
   currency     String   @default("INR")
-  status       String   @default("Active") // Active, Suspended
+  status       String   @default("ACTIVE") // TRIAL, ACTIVE, SUSPENDED, EXPIRED, DELETED
   setupCompleted Boolean @default(true)
+  plan         String   @default("TRIAL") // TRIAL, BASIC, GROWTH, ENTERPRISE
+  trialEndDate DateTime?
+  storageLimit Float    @default(5368709120) // 5GB in bytes (using Float for safety with large numbers in client)
+  aiTokenLimit Int      @default(100000)
+  subscriptionStatus String @default("TRIAL") // TRIAL, ACTIVE, PAST_DUE, CANCELED
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -56,6 +61,12 @@ model Workspace {
   deliveryDispatches DeliveryDispatch[]
   fixedDeposits      FixedDeposit[]
   corporateLoans     CorporateLoan[]
+
+  notificationSettings NotificationSettings?
+  securitySettings     SecuritySettings?
+  dashboardPreferences DashboardPreferences?
+  aiConfiguration      AIConfiguration?
+  members              WorkspaceMember[]
 }
 
 model WorkspaceSettings {
@@ -128,6 +139,7 @@ model User {
   workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   loginHistory  LoginHistory[]
   approvalLogs  ApprovalLog[]
+  workspaceMembers WorkspaceMember[]
 
   @@unique([email, workspaceId])
 }
@@ -707,3 +719,66 @@ model CorporateLoan {
   workspaceId   String
   workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
+
+model NotificationSettings {
+  id          String    @id @default(uuid())
+  workspaceId String    @unique
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  emailAlerts Boolean   @default(true)
+  smsAlerts   Boolean   @default(false)
+  updatedAt   DateTime  @updatedAt
+}
+
+model SecuritySettings {
+  id            String    @id @default(uuid())
+  workspaceId   String    @unique
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  twoFactorAuth Boolean   @default(false)
+  ipWhitelist   String?
+  updatedAt     DateTime  @updatedAt
+}
+
+model DashboardPreferences {
+  id          String    @id @default(uuid())
+  workspaceId String    @unique
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  layout      String?   // JSON string
+  theme       String    @default("dark")
+  updatedAt   DateTime  @updatedAt
+}
+
+model AIConfiguration {
+  id                 String    @id @default(uuid())
+  workspaceId        String    @unique
+  workspace          Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  modelName          String    @default("gemini-1.5-pro")
+  temperature        Float     @default(0.7)
+  systemInstruction  String?
+  updatedAt          DateTime  @updatedAt
+}
+
+model WorkspaceMember {
+  id          String    @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        String    @default("MEMBER") // OWNER, ADMIN, MEMBER
+  joinedAt    DateTime  @default(now())
+
+  @@unique([workspaceId, userId])
+}
+
+model ApprovalAudit {
+  id             String   @id @default(uuid())
+  adminId        String
+  adminEmail     String
+  tenantName     String
+  workspaceId    String
+  userAgent      String?
+  ipAddress      String?
+  timestamp      DateTime @default(now())
+  actionType     String // APPROVE, REJECT, SUSPEND, REACTIVATE
+  registrationId String?
+}
+
