@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 
 import { z } from "zod";
 
@@ -33,12 +34,22 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [adminSubmitting, setAdminSubmitting] = useState(false);
   const { user, loading, login } = useAuth();
   const navigate = useNavigate();
   const { redirect } = Route.useSearch();
 
-  const getRedirectTarget = () => {
-    if (!redirect) return "/command-center";
+  const getRedirectTarget = (u?: any) => {
+    const activeUser = u || user;
+    if (!redirect) {
+      if (activeUser?.isSystemAdmin) {
+        return "/system-admin";
+      }
+      return "/command-center";
+    }
     try {
       const url = new URL(redirect);
       return url.pathname + url.search;
@@ -50,7 +61,7 @@ function LoginPage() {
   // If already authenticated, redirect
   useEffect(() => {
     if (!loading && user) {
-      navigate({ to: getRedirectTarget(), replace: true });
+      navigate({ to: getRedirectTarget(user), replace: true });
     }
   }, [loading, user, navigate]);
 
@@ -59,12 +70,33 @@ function LoginPage() {
     if (!email.trim()) return toast.error("Enter your email");
     setSubmitting(true);
     try {
-      await login(email, pass);
-      navigate({ to: getRedirectTarget() });
+      const loggedIn = await login(email, pass);
+      navigate({ to: getRedirectTarget(loggedIn) });
     } catch (err: any) {
       toast.error(err.message || "Login failed");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleAdminLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (adminEmail !== "om1234@gmail.com" || adminPassword !== "123456789") {
+      toast.error("Incorrect admin credentials. Please enter om1234@gmail.com and 123456789.");
+      return;
+    }
+    setAdminSubmitting(true);
+    try {
+      const loggedIn = await login(adminEmail, adminPassword);
+      setShowAdminModal(false);
+      setAdminEmail("");
+      setAdminPassword("");
+      toast.success("Authorized successfully.");
+      navigate({ to: getRedirectTarget(loggedIn) });
+    } catch (err: any) {
+      toast.error(err.message || "Admin login failed");
+    } finally {
+      setAdminSubmitting(false);
     }
   };
 
@@ -202,10 +234,67 @@ function LoginPage() {
               <p className="mt-6 text-center text-[11px] text-muted-foreground">
                 Protected by Enterprise Grade Security
               </p>
+
+              <div className="mt-6 text-center border-t border-hairline pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAdminModal(true)}
+                  className="text-xs text-muted-foreground hover:text-primary transition-colors hover:underline"
+                >
+                  System Administrator Login
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* ADMIN LOGIN DIALOG */}
+      <Dialog open={showAdminModal} onOpenChange={(open) => !open && setShowAdminModal(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>System Admin Login</DialogTitle>
+            <DialogDescription>
+              Please enter username as <span className="font-semibold text-primary">om1234@gmail.com</span> and password <span className="font-semibold text-primary">123456789</span>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleAdminLoginSubmit} className="space-y-4 my-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="adminEmail">Admin Email</Label>
+              <Input
+                id="adminEmail"
+                type="email"
+                value={adminEmail}
+                onChange={(e) => setAdminEmail(e.target.value)}
+                placeholder="om1234@gmail.com"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="adminPassword">Password</Label>
+              <Input
+                id="adminPassword"
+                type="password"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+              />
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" onClick={() => { setShowAdminModal(false); setAdminEmail(""); setAdminPassword(""); }}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={adminSubmitting}>
+                {adminSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Authorize Admin
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

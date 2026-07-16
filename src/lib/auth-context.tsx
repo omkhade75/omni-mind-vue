@@ -19,14 +19,14 @@ export interface User {
 interface AuthCtx {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User | undefined>;
   logout: () => Promise<void>;
 }
 
 const Ctx = createContext<AuthCtx>({
   user: null,
   loading: true,
-  login: async () => {},
+  login: async () => undefined,
   logout: async () => {},
 });
 
@@ -69,7 +69,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const res = await loginServer({ data: { email, password } });
     if (res.success && res.user) {
-      setUser(mapAuthUserToUser(res.user));
+      const mapped = mapAuthUserToUser(res.user);
+      setUser(mapped);
+      return mapped;
     }
   };
 
