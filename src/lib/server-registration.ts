@@ -51,7 +51,7 @@ export const registerCompanyServer = createServerFn({ method: "POST" })
           phone: registration.mobileNumber,
           businessType: registration.businessType,
           registrationTime: registration.createdAt,
-          loginUrl: `${appUrl}/system-admin`,
+          loginUrl: `${appUrl}/system-admin?reviewId=${registration.id}`,
         }),
       });
     } catch (err) {
