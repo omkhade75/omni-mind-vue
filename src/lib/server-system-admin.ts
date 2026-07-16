@@ -379,6 +379,19 @@ export const searchCompaniesServer = createServerFn({ method: "GET" })
           where: { role: "OWNER" },
           take: 1,
         },
+        _count: {
+          select: {
+            products: true,
+            customers: true,
+            transactions: true,
+            users: true,
+            suppliers: true,
+            departments: true,
+            expenses: true,
+            recommendations: true,
+            anomalies: true,
+          }
+        }
       },
       orderBy: { createdAt: "desc" },
     });

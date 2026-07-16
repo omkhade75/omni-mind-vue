@@ -60,6 +60,7 @@ function SystemAdminPage() {
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [tempPassword, setTempPassword] = useState("");
+  const [showWorkspaceDetails, setShowWorkspaceDetails] = useState(false);
 
   // Backup / Restore state
   const [showImport, setShowImport] = useState(false);
@@ -362,6 +363,11 @@ function SystemAdminPage() {
       <PageHeader
         title="Enterprise System Administration"
         subtitle="Manage multitenant provisioning, license keys, tenant impersonation, backups, and onboarding approvals."
+        actions={
+          <Button variant="outline" onClick={() => navigate({ to: "/command-center" })}>
+            ← Back to Shop Dashboard
+          </Button>
+        }
       />
 
       {/* METRICS PANELS */}
@@ -568,7 +574,12 @@ function SystemAdminPage() {
                     {workspaces.map((ws: any) => (
                       <tr key={ws.id} className="transition-colors hover:bg-surface/30">
                         <td className="px-4 py-3">
-                          <span className="font-semibold">{ws.name}</span>
+                          <span 
+                            className="font-semibold text-primary hover:underline cursor-pointer"
+                            onClick={() => { setSelectedWorkspace(ws); setShowWorkspaceDetails(true); }}
+                          >
+                            {ws.name}
+                          </span>
                           {ws.id === "grandsquare-mall" && <span className="ml-2 text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-mono uppercase">Demo</span>}
                           <br />
                           <span className="text-[10px] text-muted-foreground font-mono">{ws.id}</span>
@@ -862,6 +873,136 @@ function SystemAdminPage() {
             </Button>
             <Button onClick={handleImportWorkspace}>
               Import Configuration
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* WORKSPACE DETAILS DIALOG */}
+      <Dialog open={showWorkspaceDetails} onOpenChange={(open) => !open && setShowWorkspaceDetails(false)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Workspace Control Center: {selectedWorkspace?.name}</DialogTitle>
+            <DialogDescription>
+              Real-time resource counts, configuration details, and system administration keys for this isolated tenant.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedWorkspace && (
+            <div className="space-y-6 my-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Subscription & Licensing</h4>
+                  <div className="rounded-md bg-surface p-3 text-sm space-y-1">
+                    <p><span className="text-muted-foreground">Workspace ID:</span> <span className="font-mono text-xs">{selectedWorkspace.id}</span></p>
+                    <p><span className="text-muted-foreground">Plan Level:</span> <span className="font-semibold text-primary">{selectedWorkspace.plan}</span></p>
+                    <p className="flex items-center gap-1.5">
+                      <span className="text-muted-foreground">Status:</span>{" "}
+                      <StatusPill tone={selectedWorkspace.status === "ACTIVE" ? "success" : selectedWorkspace.status === "SUSPENDED" ? "warning" : "danger"}>
+                        {selectedWorkspace.status}
+                      </StatusPill>
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Trial End:</span>{" "}
+                      {selectedWorkspace.trialEndDate ? new Date(selectedWorkspace.trialEndDate).toLocaleDateString() : "No Trial"}
+                    </p>
+                    <p><span className="text-muted-foreground">Timezone:</span> {selectedWorkspace.timezone}</p>
+                    <p><span className="text-muted-foreground">Currency:</span> {selectedWorkspace.currency}</p>
+                    <p><span className="text-muted-foreground">Created At:</span> {new Date(selectedWorkspace.createdAt).toLocaleString()}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Workspace Owner Contact</h4>
+                  <div className="rounded-md bg-surface p-3 text-sm space-y-1">
+                    <p><span className="text-muted-foreground">Full Name:</span> {selectedWorkspace.users[0]?.name || "N/A"}</p>
+                    <p><span className="text-muted-foreground">Email Contact:</span> {selectedWorkspace.users[0]?.email || "N/A"}</p>
+                    <p><span className="text-muted-foreground">Role:</span> OWNER</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Resource Utilization (Database Rows)</h4>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <div className="bg-surface/50 p-2.5 rounded border border-hairline text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase">Products</p>
+                    <p className="text-lg font-semibold mt-0.5">{selectedWorkspace._count?.products ?? 0}</p>
+                  </div>
+                  <div className="bg-surface/50 p-2.5 rounded border border-hairline text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase">Customers</p>
+                    <p className="text-lg font-semibold mt-0.5">{selectedWorkspace._count?.customers ?? 0}</p>
+                  </div>
+                  <div className="bg-surface/50 p-2.5 rounded border border-hairline text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase">Transactions</p>
+                    <p className="text-lg font-semibold mt-0.5">{selectedWorkspace._count?.transactions ?? 0}</p>
+                  </div>
+                  <div className="bg-surface/50 p-2.5 rounded border border-hairline text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase">Total Users</p>
+                    <p className="text-lg font-semibold mt-0.5">{selectedWorkspace._count?.users ?? 0}</p>
+                  </div>
+                  <div className="bg-surface/50 p-2.5 rounded border border-hairline text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase">Suppliers</p>
+                    <p className="text-lg font-semibold mt-0.5">{selectedWorkspace._count?.suppliers ?? 0}</p>
+                  </div>
+                  <div className="bg-surface/50 p-2.5 rounded border border-hairline text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase">Departments</p>
+                    <p className="text-lg font-semibold mt-0.5">{selectedWorkspace._count?.departments ?? 0}</p>
+                  </div>
+                  <div className="bg-surface/50 p-2.5 rounded border border-hairline text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase">Expenses</p>
+                    <p className="text-lg font-semibold mt-0.5">{selectedWorkspace._count?.expenses ?? 0}</p>
+                  </div>
+                  <div className="bg-surface/50 p-2.5 rounded border border-hairline text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase">AI Decisions</p>
+                    <p className="text-lg font-semibold mt-0.5">{selectedWorkspace._count?.recommendations ?? 0}</p>
+                  </div>
+                  <div className="bg-surface/50 p-2.5 rounded border border-hairline text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase">Risk Anomalies</p>
+                    <p className="text-lg font-semibold mt-0.5">{selectedWorkspace._count?.anomalies ?? 0}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Administrative Controls</h4>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => { setShowWorkspaceDetails(false); handleImpersonate(selectedWorkspace.id); }}>
+                    <LogIn className="h-4 w-4 mr-1.5" /> Impersonate (Login As)
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => { setShowWorkspaceDetails(false); setShowPasswordReset(true); }}>
+                    <Key className="h-4 w-4 mr-1.5" /> Reset Owner Password
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => handleResendWelcome(selectedWorkspace.id)}>
+                    <Mail className="h-4 w-4 mr-1.5" /> Resend Welcome
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => handleExportWorkspace(selectedWorkspace.id)}>
+                    <Download className="h-4 w-4 mr-1.5" /> Export Configuration (Backup)
+                  </Button>
+                  {selectedWorkspace.id !== "grandsquare-mall" && (
+                    <>
+                      {selectedWorkspace.status === "ACTIVE" ? (
+                        <Button size="sm" variant="outline" className="text-warning hover:bg-warning/10" onClick={async () => { await handleSuspendWorkspace(selectedWorkspace.id); setShowWorkspaceDetails(false); }}>
+                          <Ban className="h-4 w-4 mr-1.5" /> Suspend Tenant
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="outline" className="text-success hover:bg-success/10" onClick={async () => { await handleReactivateWorkspace(selectedWorkspace.id); setShowWorkspaceDetails(false); }}>
+                          <Play className="h-4 w-4 mr-1.5" /> Reactivate Tenant
+                        </Button>
+                      )}
+                      <Button size="sm" variant="outline" className="text-destructive hover:bg-destructive/10" onClick={async () => { await handleDeleteWorkspace(selectedWorkspace.id); setShowWorkspaceDetails(false); }}>
+                        <XCircle className="h-4 w-4 mr-1.5" /> Soft Delete Workspace
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button onClick={() => setShowWorkspaceDetails(false)}>
+              Close Control Center
             </Button>
           </DialogFooter>
         </DialogContent>

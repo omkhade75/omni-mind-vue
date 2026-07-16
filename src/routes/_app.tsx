@@ -48,6 +48,7 @@ import {
   ShoppingBag as ShoppingBagIcon,
   RotateCcw,
   Loader2,
+  ArrowLeft,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { stopImpersonatingServer } from "@/lib/server-auth";
@@ -542,6 +543,15 @@ function AppShell() {
               className="rounded-md p-1.5 text-muted-foreground hover:text-foreground lg:hidden"
             >
               <Menu className="h-5 w-5" />
+            </button>
+
+            {/* Back button */}
+            <button
+              onClick={() => window.history.back()}
+              className="rounded-md p-1.5 text-muted-foreground hover:bg-surface/30 hover:text-foreground transition-colors mr-1"
+              title="Go Back"
+            >
+              <ArrowLeft className="h-4.5 w-4.5" />
             </button>
 
             <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
