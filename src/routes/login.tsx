@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { Eye, EyeOff, ShieldCheck, Sparkles, TrendingUp, Zap, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -191,6 +191,13 @@ function LoginPage() {
                   Sign in
                 </Button>
               </form>
+
+              <div className="mt-4 text-center text-xs text-muted-foreground">
+                Don't have an account?{" "}
+                <Link to="/register" className="text-primary hover:underline font-semibold">
+                  Register your company
+                </Link>
+              </div>
 
               <p className="mt-6 text-center text-[11px] text-muted-foreground">
                 Protected by Enterprise Grade Security

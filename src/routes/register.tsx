@@ -110,8 +110,8 @@ function RegisterPage() {
             <br /><br />
             The OmniMind administrator has been notified. You will receive an email after approval.
           </p>
-          <Button className="mt-8 w-full" onClick={() => navigate({ to: "/" })}>
-            Return to Home
+          <Button className="mt-8 w-full" onClick={() => navigate({ to: "/login" })}>
+            Return to Login
           </Button>
         </div>
       </div>
@@ -337,7 +337,9 @@ function RegisterPage() {
                   Back
                 </Button>
               ) : (
-                <div /> // Spacer
+                <Button type="button" variant="outline" onClick={() => navigate({ to: "/login" })} disabled={submitting}>
+                  ← Back to Login
+                </Button>
               )}
               
               {step < 5 ? (
