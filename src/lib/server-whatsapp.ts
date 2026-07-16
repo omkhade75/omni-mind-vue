@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { createServerFn } from "@tanstack/react-start";
-import { prisma } from "./server/prisma";
+import { getTenantPrisma } from "./server/prisma";
 import { readWhatsAppConfig } from "./server-whatsapp-config";
 
 /**
@@ -29,7 +29,9 @@ export async function sendCustomerBillWhatsApp(
     itemsCount: number;
     customerName: string;
   },
+  workspaceId: string,
 ) {
+  const prisma = getTenantPrisma(workspaceId);
   const formattedPhone = customerPhone.startsWith("+") ? customerPhone : `+91${customerPhone}`;
   const messageBody = `*OmniMind POS Receipt* 🧾\n\nHi ${transaction.customerName},\nThank you for shopping with us! Here are your transaction details:\n\n*Receipt No:* ${transaction.transactionNumber}\n*Items Purchased:* ${transaction.itemsCount}\n*Total Amount Paid:* ${fmtINR(transaction.totalAmount)}\n\nHave a great day!`;
 
@@ -43,15 +45,15 @@ export async function sendCustomerBillWhatsApp(
   let logId = "";
   try {
     const log = // @ts-ignore
- await prisma.messageLog.create({
+    await prisma.messageLog.create({
       data: {
-              channel: "WHATSAPP",
-              recipientName: transaction.customerName,
-              recipientPhone: formattedPhone,
-              messageType: "BILL",
-              body: messageBody,
-              status: "PENDING",
-            } as any,
+        channel: "WHATSAPP",
+        recipientName: transaction.customerName,
+        recipientPhone: formattedPhone,
+        messageType: "BILL",
+        body: messageBody,
+        status: "PENDING",
+      } as any,
     });
     logId = log.id;
   } catch (dbErr) {
@@ -132,7 +134,9 @@ export async function sendOwnerStockAlertWhatsApp(
   remainingStock: number,
   reorderLevel: number,
   sku: string,
+  workspaceId: string,
 ) {
+  const prisma = getTenantPrisma(workspaceId);
   const ownerPhone = process.env.OWNER_WHATSAPP_NUMBER || "+919876543210";
   const messageBody = `🚨 *EMERGENCY LOW STOCK ALERT* 🚨\n\n*Product:* ${productName}\n*SKU:* ${sku}\n\n*Current Stock:* ${remainingStock}\n*Reorder Threshold:* ${reorderLevel}\n\nThis product has fallen below the safety threshold. Please generate a Purchase Order immediately to avoid a complete stockout.`;
 
@@ -145,15 +149,15 @@ export async function sendOwnerStockAlertWhatsApp(
   let logId = "";
   try {
     const log = // @ts-ignore
- await prisma.messageLog.create({
+    await prisma.messageLog.create({
       data: {
-              channel: "WHATSAPP",
-              recipientName: "Aarav Mehra (Owner)",
-              recipientPhone: ownerPhone,
-              messageType: "LOW_STOCK_ALERT",
-              body: messageBody,
-              status: "PENDING",
-            } as any,
+        channel: "WHATSAPP",
+        recipientName: "Aarav Mehra (Owner)",
+        recipientPhone: ownerPhone,
+        messageType: "LOW_STOCK_ALERT",
+        body: messageBody,
+        status: "PENDING",
+      } as any,
     });
     logId = log.id;
   } catch (dbErr) {
@@ -237,7 +241,9 @@ export async function sendEodReportWhatsApp(
     anomalies: number;
   },
   recipients: string[],
+  workspaceId: string,
 ) {
+  const prisma = getTenantPrisma(workspaceId);
   const messageBody = `📊 *OmniMind End of Day Report* 📊\n\n*Date:* ${stats.date}\n\n*Gross Revenue:* ${fmtINR(stats.revenue)}\n*Net Profit:* ${fmtINR(stats.profit)}\n*Total Orders:* ${stats.orders}\n*Active Anomalies:* ${stats.anomalies}\n\nGreat work today! Open OmniMind Command Center for detailed analytics.`;
 
   for (const phone of recipients) {
@@ -252,17 +258,17 @@ export async function sendEodReportWhatsApp(
     let logId = "";
     try {
       const log = // @ts-ignore
- await prisma.messageLog.create({
+      await prisma.messageLog.create({
         data: {
-                  channel: "WHATSAPP",
-                  recipientName: phone.includes("9876543210")
-                    ? "Aarav Mehra (Owner)"
-                    : "Priya Nair (Admin)",
-                  recipientPhone: formattedPhone,
-                  messageType: "EOD_REPORT",
-                  body: messageBody,
-                  status: "PENDING",
-                } as any,
+          channel: "WHATSAPP",
+          recipientName: phone.includes("9876543210")
+            ? "Aarav Mehra (Owner)"
+            : "Priya Nair (Admin)",
+          recipientPhone: formattedPhone,
+          messageType: "EOD_REPORT",
+          body: messageBody,
+          status: "PENDING",
+        } as any,
       });
       logId = log.id;
     } catch (dbErr) {

@@ -326,7 +326,6 @@ export const createTransactionServer = createServerFn({ method: "POST" })
     });
 
     // --- WHATSAPP NOTIFICATIONS ---
-
     // 1. Send low stock alerts asynchronously
     for (const alert of result.outOfStockAlerts) {
       sendOwnerStockAlertWhatsApp(
@@ -334,6 +333,7 @@ export const createTransactionServer = createServerFn({ method: "POST" })
         alert.remainingStock,
         alert.reorderLevel,
         alert.sku,
+        user.workspaceId,
       ).catch((err) => {
         console.error("Failed to send stock alert:", err);
       });
@@ -342,14 +342,14 @@ export const createTransactionServer = createServerFn({ method: "POST" })
     // 2. Send Customer Bill
     if (data.customerId) {
       const customer = // @ts-ignore
- await prisma.customer.findUnique({ where: { id: data.customerId } as any });
+  await prisma.customer.findUnique({ where: { id: data.customerId } as any });
       if (customer && customer.phone) {
         sendCustomerBillWhatsApp(customer.phone, {
           transactionNumber: result.transaction.transactionNumber,
           totalAmount: result.transaction.totalAmount,
           itemsCount: data.items.length,
           customerName: customer.firstName,
-        }).catch((err) => {
+        }, user.workspaceId).catch((err) => {
           console.error("Failed to send customer bill:", err);
         });
       }
@@ -359,7 +359,7 @@ export const createTransactionServer = createServerFn({ method: "POST" })
         totalAmount: result.transaction.totalAmount,
         itemsCount: data.items.length,
         customerName: "Walk-in Customer",
-      }).catch((err) => {
+      }, user.workspaceId).catch((err) => {
         console.error("Failed to send walk-in customer bill:", err);
       });
     }

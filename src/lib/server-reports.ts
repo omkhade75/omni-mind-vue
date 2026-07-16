@@ -34,8 +34,8 @@ export const getPaymentReportsServer = createServerFn({ method: "POST" })
     // Note: In retail, this is rare, but we will track failed/pending transactions.
     const transactions = await prisma.transaction.findMany({
       where: {
-              paymentStatus: { in: ["Pending", "Failed"] },
-            } as any,
+        paymentStatus: { in: ["Pending", "Failed"] },
+      } as any,
       include: {
         customer: true,
       },
@@ -80,7 +80,7 @@ export const sendAllReportsWhatsAppServer = createServerFn({ method: "POST" })
     };
 
     // We'll use the existing sendEodReportWhatsApp to send a combined summary for now
-    await sendEodReportWhatsApp(stats, [ownerPhone, managerPhone]);
+    await sendEodReportWhatsApp(stats, [ownerPhone, managerPhone], user.workspaceId);
 
     return { success: true };
   });

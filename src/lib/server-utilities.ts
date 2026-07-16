@@ -1,10 +1,15 @@
 // @ts-nocheck
 import { createServerFn } from "@tanstack/react-start";
-import { prisma } from "./server/prisma";
+import { getTenantPrisma } from "./server/prisma";
+import { getSecureSessionUser } from "./server-auth";
 
 export const getUtilitiesServer = createServerFn({ method: "POST" })
   .validator((data: { activeDate?: string; role: string; email: string }) => data)
   .handler(async ({ data }) => {
+    const user = await getSecureSessionUser();
+    if (!user) throw new Error("Unauthorized");
+    const prisma = getTenantPrisma(user.workspaceId);
+
     const activeDate = data.activeDate ? new Date(data.activeDate) : new Date();
     const todayStr = activeDate.toISOString().split("T")[0];
 
@@ -70,6 +75,10 @@ export const addUtilityReadingServer = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data }) => {
+    const user = await getSecureSessionUser();
+    if (!user) throw new Error("Unauthorized");
+    const prisma = getTenantPrisma(user.workspaceId);
+
     return await prisma.$transaction(async (tx) => {
       let meter = await tx.utilityMeter.findFirst({
         where: { type: data.type, zone: data.zone } as any,
@@ -122,19 +131,27 @@ export const editUtilityReadingServer = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data }) => {
+    const user = await getSecureSessionUser();
+    if (!user) throw new Error("Unauthorized");
+    const prisma = getTenantPrisma(user.workspaceId);
+
     return await prisma.utilityReading.update({
       where: { id: data.id } as any,
       data: {
-              readingDate: new Date(data.date),
-              value: data.value,
-              cost: data.cost,
-            } as any,
+        readingDate: new Date(data.date),
+        value: data.value,
+        cost: data.cost,
+      } as any,
     });
   });
 
 export const deleteUtilityReadingServer = createServerFn({ method: "POST" })
   .validator((data: { id: string; role: string; email: string }) => data)
   .handler(async ({ data }) => {
+    const user = await getSecureSessionUser();
+    if (!user) throw new Error("Unauthorized");
+    const prisma = getTenantPrisma(user.workspaceId);
+
     return await prisma.utilityReading.delete({
       where: { id: data.id } as any,
     });

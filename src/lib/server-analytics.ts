@@ -339,7 +339,7 @@ export const dispatchEodReportServer = createServerFn({ method: "POST" })
     const ownerPhone = waConfig.ownerWhatsAppNumber || "+919876543210";
     const managerPhone = waConfig.managerWhatsAppNumber || "+919876543211";
 
-    await sendEodReportWhatsApp(stats, [ownerPhone, managerPhone]);
+    await sendEodReportWhatsApp(stats, [ownerPhone, managerPhone], user.workspaceId);
 
     return { success: true, stats };
   });
