@@ -235,7 +235,17 @@ export const approveRegistrationServer = createServerFn({ method: "POST" })
 
     // Send Welcome Email outside of the transactional block
     try {
-      const appUrl = process.env.APP_URL || "http://localhost:3000";
+      let appUrl = process.env.APP_URL;
+      if (!appUrl) {
+        try {
+          const req = getRequest();
+          const url = new URL(req.url);
+          appUrl = url.origin;
+        } catch (e) {
+          appUrl = "http://localhost:3000";
+        }
+      }
+
       await sendSystemEmail({
         to: registration.ownerEmail,
         subject: `Welcome to OmniMind AI: ${registration.companyName} Approved!`,
@@ -537,7 +547,17 @@ export const resendWelcomeEmailServer = createServerFn({ method: "POST" })
     const owner = workspace.users[0];
     if (!owner) throw new Error("No owner found");
 
-    const appUrl = process.env.APP_URL || "http://localhost:3000";
+    let appUrl = process.env.APP_URL;
+    if (!appUrl) {
+      try {
+        const req = getRequest();
+        const url = new URL(req.url);
+        appUrl = url.origin;
+      } catch (e) {
+        appUrl = "http://localhost:3000";
+      }
+    }
+
     await sendSystemEmail({
       to: owner.email,
       subject: `Welcome to OmniMind AI: ${workspace.name} (Resent)`,

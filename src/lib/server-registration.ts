@@ -39,7 +39,18 @@ export const registerCompanyServer = createServerFn({ method: "POST" })
     // 3. Send Email Notification
     try {
       const adminEmail = process.env.SYSTEM_ADMIN_EMAIL || "khade8915@gmail.com";
-      const appUrl = process.env.APP_URL || "http://localhost:3000";
+      
+      let appUrl = process.env.APP_URL;
+      if (!appUrl) {
+        try {
+          const { getRequest } = await import("@tanstack/react-start/server");
+          const req = getRequest();
+          const url = new URL(req.url);
+          appUrl = url.origin;
+        } catch (e) {
+          appUrl = "http://localhost:3000";
+        }
+      }
 
       await sendSystemEmail({
         to: adminEmail,
