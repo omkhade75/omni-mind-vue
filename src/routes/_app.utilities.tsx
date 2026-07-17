@@ -54,8 +54,10 @@ function Utilities() {
   const { activeDate, utilities, forceRefresh } = useBusinessData();
   const { user } = useAuth();
 
-  const [electricityToday, setElectricityToday] = useState(12450);
-  const [waterToday, setWaterToday] = useState(8120);
+  const isGrandSquare = user?.workspaceId === "grandsquare-mall";
+
+  const [electricityToday, setElectricityToday] = useState(isGrandSquare ? 12450 : 0);
+  const [waterToday, setWaterToday] = useState(isGrandSquare ? 8120 : 0);
   const [dbAnomaly, setDbAnomaly] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -84,20 +86,21 @@ function Utilities() {
     load();
   }, [user, activeDate, utilities]);
 
-  const isMay5 = activeDate === "2026-05-05" || dbAnomaly;
+  const isMay5 = isGrandSquare && (activeDate === "2026-05-05" || dbAnomaly);
 
   const hourly = useMemo(() => {
+    const hasData = isGrandSquare || utilities.length > 0;
     return Array.from({ length: 24 }, (_, h) => {
       const isAnomalyHour = h >= 1 && h <= 4;
-      const normal = h < 9 ? 8 : h < 22 ? 24 + Math.sin(h / 3) * 6 : 10;
-      const actual = normal + (isAnomalyHour && isMay5 ? 14 : (Math.random() - 0.5) * 1.5);
+      const normal = hasData ? (h < 9 ? 8 : h < 22 ? 24 + Math.sin(h / 3) * 6 : 10) : 0;
+      const actual = hasData ? (normal + (isAnomalyHour && isMay5 ? 14 : (Math.random() - 0.5) * 1.5)) : 0;
       return {
         h: `${h}:00`,
         normal: Math.round(normal * 10) / 10,
         actual: Math.round(actual * 10) / 10,
       };
     });
-  }, [isMay5]);
+  }, [isMay5, isGrandSquare, utilities]);
 
   const monthly = useMemo(() => {
     return Array.from({ length: 3 }, (_, i) => {
@@ -111,14 +114,14 @@ function Utilities() {
       return {
         m: ["March", "April", "May"][i],
         electricity: Math.round(
-          (elecReadings.reduce((sum, u) => sum + u.consumption, 0) || 360000) / 1000,
+          (elecReadings.reduce((sum, u) => sum + u.consumption, 0) || (isGrandSquare ? 360000 : 0)) / 1000,
         ), // kWh in thousands
         water: Math.round(
-          (waterReadings.reduce((sum, u) => sum + u.consumption, 0) || 240000) / 1000,
+          (waterReadings.reduce((sum, u) => sum + u.consumption, 0) || (isGrandSquare ? 240000 : 0)) / 1000,
         ), // Liters in thousands
       };
     });
-  }, [utilities]);
+  }, [utilities, isGrandSquare]);
 
   const handleAddReading = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,7 +194,7 @@ function Utilities() {
           v={`${fmtNum(waterToday)} L`}
           icon={<Droplets className="h-4 w-4" />}
         />
-        <Kpi label="Peak Hour" v={isMay5 ? "02:00" : "19:00"} />
+        <Kpi label="Peak Hour" v={isGrandSquare ? (isMay5 ? "02:00" : "19:00") : (electricityToday > 0 ? "19:00" : "N/A")} />
       </div>
 
       <SectionCard
@@ -305,9 +308,13 @@ function Utilities() {
               <Sparkles className="h-3.5 w-3.5" /> Recommended AI Action
             </div>
             <p className="mt-1 text-foreground/90 leading-relaxed">
-              {isMay5
-                ? "Dispatch CoolTech maintenance team to inspect compressor systems and ventilation dampers in Zone B. Expected monthly savings: ₹38.4K."
-                : "Schedule automated cleaning of solar power generation panels on rooftop to maintain high baseline output efficiency."}
+              {isGrandSquare
+                ? (isMay5
+                    ? "Dispatch CoolTech maintenance team to inspect compressor systems and ventilation dampers in Zone B. Expected monthly savings: ₹38.4K."
+                    : "Schedule automated cleaning of solar power generation panels on rooftop to maintain high baseline output efficiency.")
+                : (electricityToday > 0
+                    ? "Monitor daily telemetry readings. AI is analyzing consumption baselines to detect potential anomalies."
+                    : "No recommended actions at this time. Record utility telemetry readings to initialize AI insights.")}
             </p>
           </div>
         </SectionCard>

@@ -633,10 +633,12 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const departmentRevenue =
     departmentRevenueList.length > 0
       ? departmentRevenueList
-      : [
-          { name: "Fashion", value: 124000, margin: 22.4, color: "var(--chart-1)" },
-          { name: "Electronics", value: 108000, margin: 12.1, color: "var(--chart-2)" },
-        ];
+      : (isGrandSquare
+          ? [
+              { name: "Fashion", value: 124000, margin: 22.4, color: "var(--chart-1)" },
+              { name: "Electronics", value: 108000, margin: 12.1, color: "var(--chart-2)" },
+            ]
+          : []);
 
   // Executive Summary
   const executiveBrief: ExecutiveBriefData = {

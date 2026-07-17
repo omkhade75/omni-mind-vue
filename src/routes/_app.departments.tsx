@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/page-header";
 import { useBusinessData } from "@/lib/business-context";
+import { useAuth } from "@/lib/auth-context";
 import { fmtINR } from "@/lib/mock-data";
 import { TrendingUp } from "lucide-react";
 
@@ -28,17 +29,20 @@ const ALL_DEPARTMENTS = [
 ];
 
 function Departments() {
-  const { departmentRevenue } = useBusinessData();
+  const { user } = useAuth();
+  const isGrandSquare = user?.workspaceId === "grandsquare-mall";
+  const { departmentRevenue, staff } = useBusinessData();
 
   // Merge the standard 10 departments list with actual dynamic sales from database
   const departmentsData = ALL_DEPARTMENTS.map((dept) => {
     const dynamicData = departmentRevenue.find((d) => d.name === dept.name);
+    const actualStaffCount = staff.filter((s: any) => s.dept === dept.name).length;
     return {
       name: dept.name,
       value: dynamicData ? dynamicData.value : 0,
       margin: dept.margin,
       color: dept.color,
-      staff: dept.defaultStaff,
+      staff: isGrandSquare ? dept.defaultStaff : actualStaffCount,
     };
   }).sort((a, b) => b.value - a.value);
 
