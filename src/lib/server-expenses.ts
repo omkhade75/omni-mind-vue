@@ -58,14 +58,12 @@ export const addExpenseServer = createServerFn({ method: "POST" })
     const user = await requireAuth();
     const prisma = getTenantPrisma(user.workspaceId);
     return await prisma.$transaction(async (tx) => {
-      let category = // @ts-ignore
- await tx.expenseCategory.findUnique({
-        where: { name: data.category } as any,
+      let category = await tx.expenseCategory.findFirst({
+        where: { name: data.category, workspaceId: user.workspaceId },
       });
       if (!category) {
-        category = // @ts-ignore
- await tx.expenseCategory.create({
-          data: { name: data.category } as any,
+        category = await tx.expenseCategory.create({
+          data: { name: data.category, workspaceId: user.workspaceId },
         });
       }
 
@@ -141,14 +139,12 @@ export const editExpenseServer = createServerFn({ method: "POST" })
     const user = await requireAuth();
     const prisma = getTenantPrisma(user.workspaceId);
     return await prisma.$transaction(async (tx) => {
-      let category = // @ts-ignore
- await tx.expenseCategory.findUnique({
-        where: { name: data.category } as any,
+      let category = await tx.expenseCategory.findFirst({
+        where: { name: data.category, workspaceId: user.workspaceId },
       });
       if (!category) {
-        category = // @ts-ignore
- await tx.expenseCategory.create({
-          data: { name: data.category } as any,
+        category = await tx.expenseCategory.create({
+          data: { name: data.category, workspaceId: user.workspaceId },
         });
       }
 

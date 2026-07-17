@@ -97,26 +97,27 @@ export const addSupplier = createServerFn({ method: "POST" })
     const count = await prisma.supplier.count();
     const supplierCode = `SUP-${String(count + 101).padStart(3, "0")}`;
 
-    const supplier = // @ts-ignore
- await prisma.supplier.create({
+    const supplier = await prisma.supplier.create({
       data: {
-              supplierCode,
-              name: payload.name,
-              contactPerson: payload.contactPerson,
-              email: payload.email,
-              phone: payload.phone,
-              address: payload.address,
-              paymentTerms: payload.paymentTerms,
-              leadTimeDays: payload.leadTimeDays,
-              onTimeDeliveryRate: 100.0,
-              qualityScore: 100.0,
-              riskScore: 0.0,
-              status: "Active",
-            } as any,
+        supplierCode,
+        name: payload.name,
+        contactPerson: payload.contactPerson,
+        email: payload.email,
+        phone: payload.phone,
+        address: payload.address,
+        paymentTerms: payload.paymentTerms,
+        leadTimeDays: payload.leadTimeDays,
+        onTimeDeliveryRate: 100.0,
+        qualityScore: 100.0,
+        riskScore: 0.0,
+        status: "Active",
+        workspaceId: authUser.workspaceId,
+      },
     });
 
-    const user = // @ts-ignore
- await prisma.user.findUnique({ where: { email: payload.emailUser } as any });
+    const user = await prisma.user.findFirst({
+      where: { email: payload.emailUser, workspaceId: authUser.workspaceId },
+    });
     if (user) {
       // @ts-ignore
       await prisma.auditLog.create({
@@ -186,8 +187,9 @@ export const editSupplierServer = createServerFn({ method: "POST" })
             } as any,
     });
 
-    const user = // @ts-ignore
- await prisma.user.findUnique({ where: { email: payload.emailUser } as any });
+    const user = await prisma.user.findFirst({
+      where: { email: payload.emailUser, workspaceId: authUser.workspaceId },
+    });
     if (user) {
       // @ts-ignore
       await prisma.auditLog.create({
@@ -236,8 +238,9 @@ export const archiveSupplierServer = createServerFn({ method: "POST" })
       data: { status: "Archived" } as any,
     });
 
-    const user = // @ts-ignore
- await prisma.user.findUnique({ where: { email: payload.emailUser } as any });
+    const user = await prisma.user.findFirst({
+      where: { email: payload.emailUser, workspaceId: authUser.workspaceId },
+    });
     if (user) {
       // @ts-ignore
       await prisma.auditLog.create({
@@ -383,8 +386,9 @@ export const createPurchaseOrder = createServerFn({ method: "POST" })
             } as any,
     });
 
-    const user = // @ts-ignore
- await prisma.user.findUnique({ where: { email: payload.createdBy } as any });
+    const user = await prisma.user.findFirst({
+      where: { email: payload.createdBy, workspaceId: authUser.workspaceId },
+    });
     if (user) {
       // @ts-ignore
       await prisma.auditLog.create({
@@ -419,8 +423,9 @@ export const updatePurchaseOrderStatusServer = createServerFn({ method: "POST" }
       data: { status: payload.status } as any,
     });
 
-    const user = // @ts-ignore
- await prisma.user.findUnique({ where: { email: payload.emailUser } as any });
+    const user = await prisma.user.findFirst({
+      where: { email: payload.emailUser, workspaceId: authUser.workspaceId },
+    });
     if (user) {
       // @ts-ignore
       await prisma.auditLog.create({
@@ -533,8 +538,9 @@ export const receivePurchaseOrderGoodsServer = createServerFn({ method: "POST" }
       if (po.status === "Draft" || po.status === "Submitted")
         throw new Error("PO must be Ordered or Partially_Received");
 
-      const user = // @ts-ignore
- await tx.user.findUnique({ where: { email: payload.receivedByEmail } as any });
+      const user = await tx.user.findFirst({
+        where: { email: payload.receivedByEmail, workspaceId: authUser.workspaceId },
+      });
       if (!user) throw new Error("User not found");
 
       // Create GoodsReceipt
