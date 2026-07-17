@@ -17,11 +17,11 @@ import { useNavigate } from "@tanstack/react-router";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "OmniMind AI — Mall Intelligence & Decision OS" },
+      { title: "OmniMind AI — Business Intelligence & Decision OS" },
       {
         name: "description",
         content:
-          "OmniMind AI transforms mall operations data into predictive insights, AI recommendations, and evidence-backed decisions.",
+          "OmniMind AI transforms business operations data into predictive insights, AI recommendations, and evidence-backed decisions.",
       },
     ],
   }),
@@ -233,10 +233,10 @@ function LandingPage() {
         {/* Role badges */}
         <section className="mx-auto max-w-3xl px-6 pb-20 text-center sm:px-10">
           <p className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
-            Built for every level of mall management
+            Built for every level of business management
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-3">
-            {["Mall Owner", "Admin", "Floor Manager"].map((r) => (
+            {["Store Owner", "Admin", "Manager"].map((r) => (
               <span
                 key={r}
                 className="rounded-full border border-hairline bg-surface/80 px-4 py-1.5 text-xs font-medium"
@@ -250,7 +250,7 @@ function LandingPage() {
         {/* Footer CTA */}
         <footer className="border-t border-hairline bg-surface/30 py-8 text-center">
           <p className="text-xs text-muted-foreground">
-            © 2026 OmniMind AI · Mall Decision Intelligence OS
+            © 2026 OmniMind AI · Enterprise Decision Intelligence OS
           </p>
         </footer>
       </div>
