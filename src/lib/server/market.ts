@@ -49,7 +49,7 @@ export class MarketIntelligence {
 
       // Fetch cash ledger balance as benchmark
       const cashAccount = // @ts-ignore
- await prisma.ledgerAccount.findUnique({
+ await prisma.ledgerAccount.findFirst({
         where: { code: "1000" } as any, // Cash
       });
 

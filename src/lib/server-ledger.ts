@@ -47,7 +47,7 @@ export async function seedLedgerAccounts(tx: any) {
   const cashAc =
     existingAccounts.find((a: any) => a.code === "1000") ||
     (// @ts-ignore
-await tx.ledgerAccount.findUnique({ where: { code: "1000" } as any }));
+await tx.ledgerAccount.findFirst({ where: { code: "1000" } as any }));
 
   if (cashAc) {
     const entriesCount = await tx.ledgerEntry.count({
@@ -97,7 +97,7 @@ export async function recordDoubleEntry(
   // 3. Create Entries
   for (const db of data.debits) {
     const account = // @ts-ignore
- await tx.ledgerAccount.findUnique({ where: { code: db.code } as any });
+ await tx.ledgerAccount.findFirst({ where: { code: db.code } as any });
     if (!account) throw new Error(`Ledger account ${db.code} not found.`);
 
     // @ts-ignore
@@ -116,7 +116,7 @@ export async function recordDoubleEntry(
 
   for (const cr of data.credits) {
     const account = // @ts-ignore
- await tx.ledgerAccount.findUnique({ where: { code: cr.code } as any });
+ await tx.ledgerAccount.findFirst({ where: { code: cr.code } as any });
     if (!account) throw new Error(`Ledger account ${cr.code} not found.`);
 
     // @ts-ignore

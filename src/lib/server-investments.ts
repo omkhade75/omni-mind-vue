@@ -64,7 +64,7 @@ export const investCorporateCashServer = createServerFn({ method: "POST" })
 
       // 2. Verify cash balance in General Ledger (code: 1000)
       const cashAccount = // @ts-ignore
- await tx.ledgerAccount.findUnique({
+ await tx.ledgerAccount.findFirst({
         where: { code: "1000" } as any,
         include: { entries: true },
       });

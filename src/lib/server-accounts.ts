@@ -78,7 +78,7 @@ export const getAccountsDataServer = createServerFn({ method: "POST" })
     // 5. Fetch General Cash Ledger Account Balance (Code 1000)
     await seedLedgerAccounts(prisma);
     const cashAccount = // @ts-ignore
- await prisma.ledgerAccount.findUnique({
+ await prisma.ledgerAccount.findFirst({
       where: { code: "1000" } as any,
       include: { entries: true },
     });
@@ -154,7 +154,7 @@ export const createFixedDepositServer = createServerFn({ method: "POST" })
 
       // Verify cash balance
       const cashAccount = // @ts-ignore
- await tx.ledgerAccount.findUnique({
+ await tx.ledgerAccount.findFirst({
         where: { code: "1000" } as any,
         include: { entries: true },
       });
@@ -265,7 +265,7 @@ export const repayLoanServer = createServerFn({ method: "POST" })
 
       // Verify cash balance
       const cashAccount = // @ts-ignore
- await tx.ledgerAccount.findUnique({
+ await tx.ledgerAccount.findFirst({
         where: { code: "1000" } as any,
         include: { entries: true },
       });
@@ -341,7 +341,7 @@ export const payPurchaseOrderServer = createServerFn({ method: "POST" })
 
       // 4. Verify cash balance in General Ledger
       const cashAccount = // @ts-ignore
- await tx.ledgerAccount.findUnique({
+ await tx.ledgerAccount.findFirst({
         where: { code: "1000" } as any,
         include: { entries: true },
       });
