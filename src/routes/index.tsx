@@ -150,15 +150,15 @@ function LandingPage() {
         {/* Hero */}
         <section className="mx-auto max-w-5xl px-6 pt-16 pb-20 text-center sm:px-10 sm:pt-24 sm:pb-28">
           <p className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.15em] text-primary">
-            <Sparkles className="h-3 w-3" /> Decision Intelligence for Modern Malls
+            <Sparkles className="h-3 w-3" /> Decision Intelligence for Modern Businesses
           </p>
           <h1 className="mt-6 font-display text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl md:text-6xl">
-            From mall data to <span className="gradient-text">intelligent decisions</span>.
+            From business data to <span className="gradient-text">intelligent decisions</span>.
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
             OmniMind AI unifies sales, inventory, customers, suppliers, and utilities into a single
             decision surface — with predictive analytics and evidence-backed AI recommendations
-            designed for owners, admins, and floor managers.
+            designed for owners, admins, and store managers.
           </p>
 
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -177,7 +177,7 @@ function LandingPage() {
           </div>
 
           <p className="mt-4 text-xs text-muted-foreground">
-            Deployed at GrandSquare Mall · Pune, Maharashtra
+            Trusted by enterprise retail businesses & multi-department stores
           </p>
         </section>
 

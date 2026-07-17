@@ -126,21 +126,21 @@ function LoginPage() {
             </div>
             <div>
               <p className="text-sm font-semibold tracking-tight">OmniMind AI</p>
-              <p className="text-[11px] text-muted-foreground">Mall Intelligence OS</p>
+              <p className="text-[11px] text-muted-foreground">Enterprise Intelligence OS</p>
             </div>
           </div>
 
           <div className="max-w-lg">
             <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-primary">
-              Decision Intelligence for Modern Malls
+              Decision Intelligence for Modern Businesses
             </p>
             <h1 className="mt-4 font-display text-4xl font-semibold leading-[1.1] tracking-tight xl:text-5xl">
-              From mall data to <span className="gradient-text">intelligent decisions</span>.
+              From business data to <span className="gradient-text">intelligent decisions</span>.
             </h1>
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
               OmniMind AI unifies sales, inventory, customers, suppliers, and utilities into a
               single decision surface — with predictive analytics and evidence-backed AI
-              recommendations designed for owners, admins, and floor managers.
+              recommendations designed for owners, admins, and store managers.
             </p>
 
             <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">

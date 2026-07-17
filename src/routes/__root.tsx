@@ -78,36 +78,36 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "OmniMind AI — Mall Intelligence & Decision OS" },
+      { title: "OmniMind AI — Business Intelligence & Decision OS" },
       {
         name: "description",
         content:
-          "OmniMind AI transforms mall operations data into predictive insights, AI recommendations, and evidence-backed decisions for owners, admins, and managers.",
+          "OmniMind AI transforms business operations data into predictive insights, AI recommendations, and evidence-backed decisions for owners, admins, and managers.",
       },
       { name: "author", content: "OmniMind AI" },
-      { property: "og:title", content: "OmniMind AI — Mall Intelligence & Decision OS" },
+      { property: "og:title", content: "OmniMind AI — Business Intelligence & Decision OS" },
       {
         property: "og:description",
         content:
-          "From mall data to intelligent decisions. Analytics, forecasting, and AI decisions for modern malls.",
+          "From business data to intelligent decisions. Analytics, forecasting, and AI decisions for modern businesses.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "OmniMind AI — Mall Intelligence & Decision OS" },
+      { name: "twitter:title", content: "OmniMind AI — Business Intelligence & Decision OS" },
       {
         name: "description",
         content:
-          "OmniMall Insights is an AI-powered mall intelligence platform for decision-making.",
+          "OmniMind Insights is an AI-powered business intelligence platform for decision-making.",
       },
       {
         property: "og:description",
         content:
-          "OmniMall Insights is an AI-powered mall intelligence platform for decision-making.",
+          "OmniMind Insights is an AI-powered business intelligence platform for decision-making.",
       },
       {
         name: "twitter:description",
         content:
-          "OmniMall Insights is an AI-powered mall intelligence platform for decision-making.",
+          "OmniMind Insights is an AI-powered business intelligence platform for decision-making.",
       },
     ],
     links: [
