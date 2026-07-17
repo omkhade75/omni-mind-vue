@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, ShieldCheck, Sparkles, TrendingUp, Zap, Loader2 } from "lucide-react";
+import { Eye, EyeOff, ShieldCheck, Sparkles, TrendingUp, Zap, Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,12 +58,7 @@ function LoginPage() {
     }
   };
 
-  // If already authenticated, redirect
-  useEffect(() => {
-    if (!loading && user) {
-      navigate({ to: getRedirectTarget(user), replace: true });
-    }
-  }, [loading, user, navigate]);
+
 
   const handleFormLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,6 +99,17 @@ function LoginPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
+      {/* Back button */}
+      <div className="absolute left-6 top-6 z-50">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Home
+        </Link>
+      </div>
+
       {/* Backdrop */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -left-40 top-0 h-[520px] w-[520px] rounded-full bg-primary/15 blur-[120px]" />
