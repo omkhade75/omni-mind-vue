@@ -270,6 +270,17 @@ OmniMind implements a **role-based access control (RBAC)** system:
 - Sensitive financial data fenced behind authentication layer
 - Audit log of all critical operations
 
+### Seeded Demo Accounts & Credentials
+
+To test the system immediately, you can log in using one of the pre-seeded accounts:
+
+| Role | Email | Password | Scope & Access |
+|---|---|---|---|
+| **Super Admin** | `khade8915@gmail.com` | `123456789` | Full System Administration (manage tenant registrations, review approvals, monitor platform logs) |
+| **Shop Owner (Demo)** | `om123@gmail.com` | `demo` | Owner of "GrandSquare Mall" Pune (full access to POS, inventory, finance, analytics, and time machine with loaded demo data) |
+
+*Note: New users can also register as a new shop owner directly on the homepage. They will need to be approved by the Super Admin before logging in.*
+
 ---
 
 ## Getting Started
