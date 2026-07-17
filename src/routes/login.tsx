@@ -121,8 +121,8 @@ function LoginPage() {
         {/* Left: brand story */}
         <div className="hidden flex-col justify-between p-10 lg:flex xl:p-14">
           <div className="flex items-center gap-2">
-            <div className="grid h-9 w-9 place-items-center rounded-lg gradient-primary">
-              <Sparkles className="h-4 w-4 text-primary-foreground" />
+            <div className="grid h-9 w-9 place-items-center rounded-lg bg-transparent overflow-hidden">
+              <img src="/logo.png" className="h-full w-full object-contain" alt="OmniMind AI" />
             </div>
             <div>
               <p className="text-sm font-semibold tracking-tight">OmniMind AI</p>

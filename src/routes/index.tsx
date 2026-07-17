@@ -123,12 +123,12 @@ function LandingPage() {
         {/* Header */}
         <header className="flex items-center justify-between px-6 py-4 sm:px-10 sm:py-6">
           <div className="flex items-center gap-2.5">
-            <div className="grid h-9 w-9 place-items-center rounded-lg gradient-primary">
-              <Sparkles className="h-4 w-4 text-primary-foreground" />
+            <div className="grid h-9 w-9 place-items-center rounded-lg bg-transparent overflow-hidden">
+              <img src="/logo.png" className="h-full w-full object-contain" alt="OmniMind AI" />
             </div>
             <div>
               <p className="text-sm font-semibold tracking-tight">OmniMind AI</p>
-              <p className="text-[10px] text-muted-foreground">Mall Intelligence OS</p>
+              <p className="text-[10px] text-muted-foreground">Enterprise Intelligence OS</p>
             </div>
           </div>
           <div className="flex items-center gap-4">

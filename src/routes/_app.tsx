@@ -426,8 +426,8 @@ function AppShell() {
 
 
         <div className="relative hairline-b flex items-center gap-3 px-4 py-5">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg gradient-primary shadow-md shadow-primary/20">
-            <Sparkles className="h-4 w-4 text-primary-foreground" />
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-transparent overflow-hidden">
+            <img src="/logo.png" className="h-full w-full object-contain" alt="OmniMind AI" />
           </div>
           {!collapsed && (
             <div className="min-w-0">
