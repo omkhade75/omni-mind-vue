@@ -278,6 +278,7 @@ To test the system immediately, you can log in using one of the pre-seeded accou
 |---|---|---|---|
 | **Super Admin** | `khade8915@gmail.com` | `123456789` | Full System Administration (manage tenant registrations, review approvals, monitor platform logs) |
 | **Shop Owner (Demo)** | `om123@gmail.com` | `demo` | Owner of "GrandSquare Mall" Pune (full access to POS, inventory, finance, analytics, and time machine with loaded demo data) |
+| **Shop Owner (New / Clean)** | `vaishnav@gmail.com` | `123456789` | Owner of a clean workspace (starts with zero data, ideal for testing clean onboarding flow) |
 
 *Note: New users can also register as a new shop owner directly on the homepage. They will need to be approved by the Super Admin before logging in.*
 
