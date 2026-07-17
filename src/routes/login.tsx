@@ -81,8 +81,8 @@ function LoginPage() {
 
   const handleAdminLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (adminEmail !== "om1234@gmail.com" || adminPassword !== "123456789") {
-      toast.error("Incorrect admin credentials. Please enter om1234@gmail.com and 123456789.");
+    if (adminEmail !== "khade8915@gmail.com" || adminPassword !== "123456789") {
+      toast.error("Incorrect admin credentials. Please enter khade8915@gmail.com and 123456789.");
       return;
     }
     setAdminSubmitting(true);
@@ -255,7 +255,7 @@ function LoginPage() {
           <DialogHeader>
             <DialogTitle>System Admin Login</DialogTitle>
             <DialogDescription>
-              Please enter username as <span className="font-semibold text-primary">om1234@gmail.com</span> and password <span className="font-semibold text-primary">123456789</span>.
+              Please enter username as <span className="font-semibold text-primary">khade8915@gmail.com</span> and password <span className="font-semibold text-primary">123456789</span>.
             </DialogDescription>
           </DialogHeader>
 
@@ -267,7 +267,7 @@ function LoginPage() {
                 type="email"
                 value={adminEmail}
                 onChange={(e) => setAdminEmail(e.target.value)}
-                placeholder="om1234@gmail.com"
+                placeholder="khade8915@gmail.com"
                 required
               />
             </div>

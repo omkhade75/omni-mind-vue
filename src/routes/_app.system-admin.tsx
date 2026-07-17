@@ -29,7 +29,16 @@ import {
 import { impersonateTenantServer } from "@/lib/server-auth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 
+import { redirect } from "@tanstack/react-router";
+
 export const Route = createFileRoute("/_app/system-admin")({
+  beforeLoad: async () => {
+    const { getCurrentSessionServer } = await import("@/lib/server-auth");
+    const res = await getCurrentSessionServer();
+    if (!res.user || !res.user.isSystemAdmin || res.user.email !== "khade8915@gmail.com") {
+      throw redirect({ to: "/command-center" });
+    }
+  },
   head: () => ({
     meta: [{ title: "System Admin — OmniMind AI" }],
   }),
@@ -71,10 +80,10 @@ function SystemAdminPage() {
   const [loadingAudits, setLoadingAudits] = useState(false);
 
   useEffect(() => {
-    if (user && !user.isSystemAdmin) {
+    if (user && (!user.isSystemAdmin || user.email !== "khade8915@gmail.com")) {
       toast.error("Unauthorized access.");
       navigate({ to: "/command-center" });
-    } else if (user && user.isSystemAdmin) {
+    } else if (user && user.isSystemAdmin && user.email === "khade8915@gmail.com") {
       fetchData();
       fetchWorkspaces();
       fetchAudits();

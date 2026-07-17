@@ -30,7 +30,7 @@ async function main() {
 
   console.log(`✅ Default Workspace initialized: ${workspace.name} (${workspace.id})`);
 
-  // 2. Ensure the requested demo owner account exists
+  // 2. Ensure the requested demo owner account exists (Just a shop owner, isSystemAdmin = false)
   const ownerEmail = "om123@gmail.com";
   const ownerPassword = "123456789";
   const passwordHash = await bcrypt.hash(ownerPassword, 10);
@@ -45,7 +45,7 @@ async function main() {
     update: {
       passwordHash,
       role: "OWNER",
-      isSystemAdmin: true,
+      isSystemAdmin: false,
       workspaceId: workspace.id,
       status: "Active"
     },
@@ -54,13 +54,43 @@ async function main() {
       email: ownerEmail,
       passwordHash,
       role: "OWNER",
-      isSystemAdmin: true,
+      isSystemAdmin: false,
       workspaceId: workspace.id,
       status: "Active"
     },
   });
 
-  console.log(`✅ System Admin / Owner provisioned: ${owner.email}`);
+  console.log(`✅ Demo Owner provisioned: ${owner.email}`);
+
+  // Ensure the super admin account exists
+  const superAdminEmail = "khade8915@gmail.com";
+  const superAdminHash = await bcrypt.hash("123456789", 10);
+  const superAdmin = await prisma.user.upsert({
+    where: {
+      email_workspaceId: {
+        email: superAdminEmail,
+        workspaceId: workspace.id,
+      }
+    },
+    update: {
+      passwordHash: superAdminHash,
+      role: "OWNER",
+      isSystemAdmin: true,
+      workspaceId: workspace.id,
+      status: "Active"
+    },
+    create: {
+      name: "System Admin",
+      email: superAdminEmail,
+      passwordHash: superAdminHash,
+      role: "OWNER",
+      isSystemAdmin: true,
+      workspaceId: workspace.id,
+      status: "Active"
+    }
+  });
+
+  console.log(`✅ Super Admin provisioned: ${superAdmin.email}`);
 
   // 3. Migrate all existing models to this workspace
   const modelsToMigrate = [

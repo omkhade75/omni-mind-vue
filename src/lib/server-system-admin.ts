@@ -9,7 +9,7 @@ import { Prisma } from "@prisma/client";
 // Middleware to ensure only SYSTEM_ADMIN can run these functions
 async function requireSystemAdmin() {
   const sessionUser = await getSecureSessionUser();
-  if (!sessionUser || !sessionUser.isSystemAdmin) {
+  if (!sessionUser || !sessionUser.isSystemAdmin || sessionUser.email !== "khade8915@gmail.com") {
     throw new Error("Unauthorized. System Admin access required.");
   }
   return sessionUser;

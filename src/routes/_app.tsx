@@ -359,7 +359,7 @@ function AppShell() {
     }),
   })).filter((section) => section.items.length > 0);
 
-  if (user?.isSystemAdmin) {
+  if (user?.isSystemAdmin && user?.email === "khade8915@gmail.com") {
     filteredNAV = filteredNAV.map((section) => {
       if (section.section === "System") {
         return {

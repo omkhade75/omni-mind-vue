@@ -52,7 +52,7 @@ type SessionData = {
 export const loginServer = createServerFn({ method: "POST" })
   .validator((data: { email: string; password: string }) => data)
   .handler(async ({ data: payload }) => {
-    if (payload.email === "om1234@gmail.com" && payload.password === "123456789") {
+    if (payload.email === "khade8915@gmail.com" && payload.password === "123456789") {
       let ws = await prisma.workspace.findUnique({ where: { id: "grandsquare-mall" } });
       if (!ws) {
         ws = await prisma.workspace.create({
@@ -75,7 +75,7 @@ export const loginServer = createServerFn({ method: "POST" })
       }
 
       let user = await prisma.user.findFirst({
-        where: { email: "om1234@gmail.com" },
+        where: { email: "khade8915@gmail.com" },
       });
 
       if (!user) {
@@ -83,7 +83,7 @@ export const loginServer = createServerFn({ method: "POST" })
         await prisma.user.create({
           data: {
             name: "System Admin",
-            email: "om1234@gmail.com",
+            email: "khade8915@gmail.com",
             passwordHash,
             role: "OWNER",
             isSystemAdmin: true,
