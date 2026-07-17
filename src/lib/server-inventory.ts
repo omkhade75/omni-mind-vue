@@ -62,9 +62,8 @@ export const mutateInventoryServer = createServerFn({ method: "POST" })
 
     const result = await prisma.$transaction(async (tx) => {
       // Fetch current stock at source
-      const sourceStock = // @ts-ignore
- await tx.inventoryStock.findUnique({
-        where: { productId_locationId: { productId: data.productId, locationId: data.locationId } } as any,
+      const sourceStock = await tx.inventoryStock.findFirst({
+        where: { productId: data.productId, locationId: data.locationId, workspaceId: user.workspaceId },
       });
 
       const currentSourceQty = sourceStock ? sourceStock.quantityOnHand : 0;
@@ -81,19 +80,25 @@ export const mutateInventoryServer = createServerFn({ method: "POST" })
       }
 
       // Update source location
-      const updatedSource = // @ts-ignore
- await tx.inventoryStock.upsert({
-        where: { productId_locationId: { productId: data.productId, locationId: data.locationId } } as any,
+      const updatedSource = await tx.inventoryStock.upsert({
+        where: {
+          productId_locationId_workspaceId: {
+            productId: data.productId,
+            locationId: data.locationId,
+            workspaceId: user.workspaceId,
+          },
+        },
         update: {
           quantityOnHand: { decrement: isReduction ? data.quantity : -data.quantity },
           availableQty: { decrement: isReduction ? data.quantity : -data.quantity },
         },
         create: {
-                  productId: data.productId,
-                  locationId: data.locationId,
-                  quantityOnHand: isReduction ? -data.quantity : data.quantity,
-                  availableQty: isReduction ? -data.quantity : data.quantity,
-                } as any,
+          productId: data.productId,
+          locationId: data.locationId,
+          quantityOnHand: isReduction ? -data.quantity : data.quantity,
+          availableQty: isReduction ? -data.quantity : data.quantity,
+          workspaceId: user.workspaceId,
+        },
       });
 
       // Write source movement
@@ -113,21 +118,25 @@ export const mutateInventoryServer = createServerFn({ method: "POST" })
 
       // Handle transfer target location
       if (data.movementType === "TRANSFER" && data.targetLocationId) {
-        // @ts-ignore
         await tx.inventoryStock.upsert({
           where: {
-                      productId_locationId: { productId: data.productId, locationId: data.targetLocationId },
-                    } as any,
+            productId_locationId_workspaceId: {
+              productId: data.productId,
+              locationId: data.targetLocationId,
+              workspaceId: user.workspaceId,
+            },
+          },
           update: {
             quantityOnHand: { increment: data.quantity },
             availableQty: { increment: data.quantity },
           },
           create: {
-                      productId: data.productId,
-                      locationId: data.targetLocationId,
-                      quantityOnHand: data.quantity,
-                      availableQty: data.quantity,
-                    } as any,
+            productId: data.productId,
+            locationId: data.targetLocationId,
+            quantityOnHand: data.quantity,
+            availableQty: data.quantity,
+            workspaceId: user.workspaceId,
+          },
         });
 
         // @ts-ignore

@@ -271,18 +271,16 @@ export const addCustomerServer = createServerFn({ method: "POST" })
     const user = await requireAuth();
     const prisma = getTenantPrisma(user.workspaceId);
     // Validate email uniqueness
-    const existingEmail = // @ts-ignore
- await prisma.customer.findUnique({
-      where: { email: data.email } as any,
+    const existingEmail = await prisma.customer.findFirst({
+      where: { email: data.email, workspaceId: user.workspaceId },
     });
     if (existingEmail) {
       throw new Error(`A customer with email ${data.email} already exists.`);
     }
 
     // Validate phone uniqueness
-    const existingPhone = // @ts-ignore
- await prisma.customer.findUnique({
-      where: { phone: data.phone } as any,
+    const existingPhone = await prisma.customer.findFirst({
+      where: { phone: data.phone, workspaceId: user.workspaceId },
     });
     if (existingPhone) {
       throw new Error(`A customer with phone number ${data.phone} already exists.`);
@@ -291,22 +289,22 @@ export const addCustomerServer = createServerFn({ method: "POST" })
     const customerCode = `CUST-${Math.floor(10000 + Math.random() * 90000)}`;
 
     const newCust = await prisma.$transaction(async (tx) => {
-      const c = // @ts-ignore
- await tx.customer.create({
+      const c = await tx.customer.create({
         data: {
-                  customerCode,
-                  firstName: data.firstName,
-                  lastName: data.lastName,
-                  email: data.email,
-                  phone: data.phone,
-                  loyaltyTier: data.loyaltyTier,
-                  customerType: data.customerType || "B2C",
-                  preferredDepartmentId: data.preferredDepartmentId || null,
-                  notes: data.notes || null,
-                  status: "Active",
-                  churnRisk: "Low",
-                  loyaltyPoints: 0,
-                } as any,
+          customerCode,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          phone: data.phone,
+          loyaltyTier: data.loyaltyTier,
+          customerType: data.customerType || "B2C",
+          preferredDepartmentId: data.preferredDepartmentId || null,
+          notes: data.notes || null,
+          status: "Active",
+          churnRisk: "Low",
+          loyaltyPoints: 0,
+          workspaceId: user.workspaceId,
+        },
       });
 
       // Write AuditLog
@@ -366,17 +364,15 @@ export const editCustomerServer = createServerFn({ method: "POST" })
     const user = await requireAuth();
     const prisma = getTenantPrisma(user.workspaceId);
     // Validate uniqueness except for current customer
-    const existingEmail = // @ts-ignore
- await prisma.customer.findUnique({
-      where: { email: data.email } as any,
+    const existingEmail = await prisma.customer.findFirst({
+      where: { email: data.email, workspaceId: user.workspaceId },
     });
     if (existingEmail && existingEmail.id !== data.id) {
       throw new Error(`Email ${data.email} is already in use by another customer.`);
     }
 
-    const existingPhone = // @ts-ignore
- await prisma.customer.findUnique({
-      where: { phone: data.phone } as any,
+    const existingPhone = await prisma.customer.findFirst({
+      where: { phone: data.phone, workspaceId: user.workspaceId },
     });
     if (existingPhone && existingPhone.id !== data.id) {
       throw new Error(`Phone number ${data.phone} is already in use by another customer.`);

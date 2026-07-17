@@ -204,52 +204,54 @@ export const addProductServer = createServerFn({ method: "POST" })
     const user = await requireAuth();
     const prisma = getTenantPrisma(user.workspaceId);
     // Unique check
-    const existingSku = // @ts-ignore
- await prisma.product.findUnique({ where: { sku: data.sku } as any });
+    const existingSku = await prisma.product.findFirst({
+      where: { sku: data.sku, workspaceId: user.workspaceId },
+    });
     if (existingSku) {
       throw new Error(`Product SKU ${data.sku} already exists.`);
     }
-    const existingBarcode = // @ts-ignore
- await prisma.product.findUnique({ where: { barcode: data.barcode } as any });
+    const existingBarcode = await prisma.product.findFirst({
+      where: { barcode: data.barcode, workspaceId: user.workspaceId },
+    });
     if (existingBarcode) {
       throw new Error(`Product Barcode ${data.barcode} already exists.`);
     }
 
     const result = await prisma.$transaction(async (tx) => {
       // 1. Create Product
-      const product = // @ts-ignore
- await tx.product.create({
+      const product = await tx.product.create({
         data: {
-                  id: data.sku,
-                  sku: data.sku,
-                  barcode: data.barcode,
-                  name: data.name,
-                  description: data.description || null,
-                  categoryId: data.categoryId,
-                  departmentId: data.departmentId,
-                  brand: data.brand,
-                  sellingPrice: data.sellingPrice,
-                  costPrice: data.costPrice,
-                  taxRate: data.taxRate || 18.0,
-                  reorderLevel: data.reorderLevel,
-                  reorderQuantity: data.reorderLevel * 2,
-                  unit: data.unit || "units",
-                  status: data.status || "Active",
-                } as any,
+          id: data.sku,
+          sku: data.sku,
+          barcode: data.barcode,
+          name: data.name,
+          description: data.description || null,
+          categoryId: data.categoryId,
+          departmentId: data.departmentId,
+          brand: data.brand,
+          sellingPrice: data.sellingPrice,
+          costPrice: data.costPrice,
+          taxRate: data.taxRate || 18.0,
+          reorderLevel: data.reorderLevel,
+          reorderQuantity: data.reorderLevel * 2,
+          unit: data.unit || "units",
+          status: data.status || "Active",
+          workspaceId: user.workspaceId,
+        },
       });
 
       // 2. Create Stock lines
       const locations = await tx.inventoryLocation.findMany();
       for (const loc of locations) {
         const qty = loc.id === data.locationId ? data.initialStock : 0;
-        // @ts-ignore
         await tx.inventoryStock.create({
           data: {
-                      productId: product.id,
-                      locationId: loc.id,
-                      quantityOnHand: qty,
-                      availableQty: qty,
-                    } as any,
+            productId: product.id,
+            locationId: loc.id,
+            quantityOnHand: qty,
+            availableQty: qty,
+            workspaceId: user.workspaceId,
+          },
         });
       }
 

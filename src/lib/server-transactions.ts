@@ -227,18 +227,18 @@ export const createTransactionServer = createServerFn({ method: "POST" })
 
       // 5. Decrement InventoryStock
       for (const stUpdate of stockUpdates) {
-        // @ts-ignore
         await tx.inventoryStock.update({
           where: {
-                      productId_locationId: {
-                        productId: stUpdate.productId,
-                        locationId: stUpdate.locationId,
-                      },
-                    } as any,
+            productId_locationId_workspaceId: {
+              productId: stUpdate.productId,
+              locationId: stUpdate.locationId,
+              workspaceId: user.workspaceId,
+            },
+          },
           data: {
-                      quantityOnHand: { decrement: stUpdate.qty },
-                      availableQty: { decrement: stUpdate.qty },
-                    } as any,
+            quantityOnHand: { decrement: stUpdate.qty },
+            availableQty: { decrement: stUpdate.qty },
+          },
         });
       }
 

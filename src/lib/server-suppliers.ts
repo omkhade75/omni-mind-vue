@@ -578,34 +578,31 @@ export const receivePurchaseOrderGoodsServer = createServerFn({ method: "POST" }
         });
 
         // Add inventory stocks
-        const stock = // @ts-ignore
- await tx.inventoryStock.findUnique({
+        const stock = await tx.inventoryStock.findFirst({
           where: {
-                      productId_locationId: {
-                        productId: itemToReceive.productId,
-                        locationId: warehouse.id,
-                      },
-                    } as any,
+            productId: itemToReceive.productId,
+            locationId: warehouse.id,
+            workspaceId: authUser.workspaceId,
+          },
         });
 
         if (stock) {
-          // @ts-ignore
           await tx.inventoryStock.update({
-            where: { id: stock.id } as any,
+            where: { id: stock.id },
             data: {
-                          quantityOnHand: stock.quantityOnHand + itemToReceive.quantity,
-                          availableQty: stock.availableQty + itemToReceive.quantity,
-                        } as any,
+              quantityOnHand: stock.quantityOnHand + itemToReceive.quantity,
+              availableQty: stock.availableQty + itemToReceive.quantity,
+            },
           });
         } else {
-          // @ts-ignore
           await tx.inventoryStock.create({
             data: {
-                          productId: itemToReceive.productId,
-                          locationId: warehouse.id,
-                          quantityOnHand: itemToReceive.quantity,
-                          availableQty: itemToReceive.quantity,
-                        } as any,
+              productId: itemToReceive.productId,
+              locationId: warehouse.id,
+              quantityOnHand: itemToReceive.quantity,
+              availableQty: itemToReceive.quantity,
+              workspaceId: authUser.workspaceId,
+            },
           });
         }
 
