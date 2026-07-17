@@ -328,6 +328,11 @@ function AppShell() {
 
     // Role-based route guard
     if (user) {
+      if (user.email === "khade8915@gmail.com" && pathname !== "/system-admin") {
+        navigate({ to: "/system-admin", replace: true });
+        return;
+      }
+
       const restrictedPaths = ["/settings", "/tax", "/data-import", "/income", "/departments"];
       if (user.role === "manager" && restrictedPaths.some((p) => pathname.startsWith(p))) {
         toast.error("Access Denied: You do not have permissions to view this page.");
@@ -360,18 +365,15 @@ function AppShell() {
   })).filter((section) => section.items.length > 0);
 
   if (user?.isSystemAdmin && user?.email === "khade8915@gmail.com") {
-    filteredNAV = filteredNAV.map((section) => {
-      if (section.section === "System") {
-        return {
-          ...section,
-          items: [
-            ...section.items,
-            { to: "/system-admin", label: "System Admin Portal", icon: ShieldAlert },
-          ],
-        };
-      }
-      return section;
-    });
+    // Super Admin should ONLY see System Admin Portal tab
+    filteredNAV = [
+      {
+        section: "System",
+        items: [
+          { to: "/system-admin", label: "System Admin Portal", icon: ShieldAlert },
+        ],
+      },
+    ];
   }
 
   const currentLabel =

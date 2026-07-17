@@ -373,9 +373,11 @@ function SystemAdminPage() {
         title="Enterprise System Administration"
         subtitle="Manage multitenant provisioning, license keys, tenant impersonation, backups, and onboarding approvals."
         actions={
-          <Button variant="outline" onClick={() => navigate({ to: "/command-center" })}>
-            ← Back to Shop Dashboard
-          </Button>
+          user?.email !== "khade8915@gmail.com" ? (
+            <Button variant="outline" onClick={() => navigate({ to: "/command-center" })}>
+              ← Back to Shop Dashboard
+            </Button>
+          ) : null
         }
       />
 
