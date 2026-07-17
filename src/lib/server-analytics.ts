@@ -93,6 +93,9 @@ export const getAnomaliesServer = createServerFn({ method: "POST" })
     });
 
     if (anomalies.length === 0) {
+      if (user.workspaceId !== "grandsquare-mall") {
+        return [];
+      }
       // Seed initial anomalies in database so it is populated via PostgreSQL
       const seeded = [
         // @ts-ignore
@@ -166,6 +169,9 @@ export const getRecommendationsServer = createServerFn({ method: "POST" })
     });
 
     if (recs.length === 0) {
+      if (user.workspaceId !== "grandsquare-mall") {
+        return [];
+      }
       // Seed initial recommendations in database
       const seeded = [
         // @ts-ignore
@@ -250,7 +256,8 @@ export const getForecastingServer = createServerFn({ method: "POST" })
       take: 100,
     });
     const totalAmount = txns.reduce((sum, t) => sum + Number(t.totalAmount), 0);
-    const avgRevenue = txns.length > 0 ? (totalAmount / txns.length) * 15 : 150000;
+    const isGrandSquare = user.workspaceId === "grandsquare-mall";
+    const avgRevenue = txns.length > 0 ? (totalAmount / txns.length) * 15 : (isGrandSquare ? 150000 : 0);
 
     // Scenario modifiers
     let multiplier = 1.0;

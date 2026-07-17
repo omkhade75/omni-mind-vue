@@ -16,6 +16,7 @@ import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Sparkles, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { useBusinessData } from "@/lib/business-context";
 import { getForecastingServer } from "@/lib/server-analytics";
 
 export const Route = createFileRoute("/_app/forecasting")({
@@ -41,6 +42,7 @@ const SCENARIOS = [
 
 function Forecasting() {
   const { user } = useAuth();
+  const { transactions } = useBusinessData();
   const [scenario, setScenario] = useState("Normal");
   const [horizon, setHorizon] = useState("7d");
   const [forecastData, setForecastData] = useState<any[]>([]);
@@ -181,9 +183,12 @@ function Forecasting() {
   const explanation = getScenarioExplanation();
 
   const getForecastStats = () => {
-    let baseFootfall = 34200;
-    let baseOrders = 13820;
-    let baseInventory = 14200000;
+    const isGrandSquare = user?.workspaceId === "grandsquare-mall";
+    const totalTxnsAmount = transactions.reduce((sum: number, t: any) => sum + (t.total || 0), 0);
+
+    let baseFootfall = isGrandSquare ? 34200 : transactions.length * 60;
+    let baseOrders = isGrandSquare ? 13820 : transactions.length * 30;
+    let baseInventory = isGrandSquare ? 14200000 : Math.round(totalTxnsAmount * 0.8);
 
     // Horizon factor
     let horizonMult = 1.0;
@@ -192,30 +197,31 @@ function Forecasting() {
 
     // Scenario factor
     let scenarioMult = 1.0;
-    let changeFootfall = "+9.4%";
-    let changeOrders = "+6.1%";
-    let changeInventory = "+11.8%";
+    const hasData = isGrandSquare || transactions.length > 0;
+    let changeFootfall = hasData ? "+9.4%" : "0%";
+    let changeOrders = hasData ? "+6.1%" : "0%";
+    let changeInventory = hasData ? "+11.8%" : "0%";
 
     if (scenario === "Festival Demand") {
       scenarioMult = 1.35;
-      changeFootfall = "+24.5%";
-      changeOrders = "+21.2%";
-      changeInventory = "+28.4%";
+      changeFootfall = hasData ? "+24.5%" : "0%";
+      changeOrders = hasData ? "+21.2%" : "0%";
+      changeInventory = hasData ? "+28.4%" : "0%";
     } else if (scenario === "Promotion Campaign") {
       scenarioMult = 1.2;
-      changeFootfall = "+18.2%";
-      changeOrders = "+15.6%";
-      changeInventory = "+19.8%";
+      changeFootfall = hasData ? "+18.2%" : "0%";
+      changeOrders = hasData ? "+15.6%" : "0%";
+      changeInventory = hasData ? "+19.8%" : "0%";
     } else if (scenario === "Rainy Weekend") {
       scenarioMult = 0.8;
-      changeFootfall = "-12.4%";
-      changeOrders = "-14.1%";
-      changeInventory = "-8.2%";
+      changeFootfall = hasData ? "-12.4%" : "0%";
+      changeOrders = hasData ? "-14.1%" : "0%";
+      changeInventory = hasData ? "-8.2%" : "0%";
     } else if (scenario === "Supplier Delay") {
       scenarioMult = 0.85;
-      changeFootfall = "-4.2%";
-      changeOrders = "-8.8%";
-      changeInventory = "-15.5%";
+      changeFootfall = hasData ? "-4.2%" : "0%";
+      changeOrders = hasData ? "-8.8%" : "0%";
+      changeInventory = hasData ? "-15.5%" : "0%";
     }
 
     const footfallVal = Math.round(baseFootfall * horizonMult * scenarioMult);

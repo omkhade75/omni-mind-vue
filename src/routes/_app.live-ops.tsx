@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { DEPARTMENTS } from "@/lib/mock-data";
 import { useBusinessData } from "@/lib/business-context";
+import { useAuth } from "@/lib/auth-context";
 import {
   Area,
   AreaChart,
@@ -54,6 +55,9 @@ export function LiveOps() {
     return () => clearInterval(id);
   }, []);
 
+  const { user } = useAuth();
+  const isGrandSquare = user?.workspaceId === "grandsquare-mall";
+
   const {
     activeDate,
     transactions,
@@ -69,15 +73,22 @@ export function LiveOps() {
   const dayTxns = transactions.filter((t) => t.date.split("T")[0] === activeDateStr);
 
   // 1. Footfall & Checkouts pseudo-fluctuations
-  const footfallFluctuation =
-    Math.floor(Math.sin(t / 10000) * 15) + Math.floor(Math.cos(t / 5000) * 8);
-  const displayFootfall = (1842 + footfallFluctuation + dayTxns.length * 5).toLocaleString("en-IN");
+  const footfallFluctuation = isGrandSquare
+    ? Math.floor(Math.sin(t / 10000) * 15) + Math.floor(Math.cos(t / 5000) * 8)
+    : 0;
+  const baseFootfall = isGrandSquare ? 1842 : 0;
+  const displayFootfall = (baseFootfall + footfallFluctuation + dayTxns.length * 5).toLocaleString("en-IN");
 
-  const checkoutFluctuation = Math.abs(Math.floor(Math.sin(t / 8000) * 2));
-  const displayCheckouts = `${18 + checkoutFluctuation} / 22`;
+  const checkoutFluctuation = isGrandSquare ? Math.abs(Math.floor(Math.sin(t / 8000) * 2)) : 0;
+  const baseCheckoutsActive = isGrandSquare ? 18 : 0;
+  const baseCheckoutsTotal = isGrandSquare ? 22 : 0;
+  const displayCheckouts = isGrandSquare
+    ? `${baseCheckoutsActive + checkoutFluctuation} / ${baseCheckoutsTotal}`
+    : `${dayTxns.length > 0 ? Math.min(1, dayTxns.length) : 0} / ${baseCheckoutsTotal || 22}`;
 
-  const staffFluctuation = Math.floor(Math.sin(t / 15000) * 3);
-  const displayStaff = (staff.length || 142) + staffFluctuation;
+  const staffFluctuation = isGrandSquare ? Math.floor(Math.sin(t / 15000) * 3) : 0;
+  const baseStaff = isGrandSquare ? 142 : 0;
+  const displayStaff = (staff.length || baseStaff) + staffFluctuation;
 
   // 2. Sales this hour: base 1.42L + any today sales in the current hour
   const currentHour = new Date().getHours();
@@ -90,10 +101,12 @@ export function LiveOps() {
       }
     })
     .reduce((sum, t) => sum + (t.total || 0), 0);
-  const displaySalesThisHour = `₹${((142000 + salesThisHourVal) / 100000).toFixed(2)}L`;
+  const baseSalesThisHour = isGrandSquare ? 142000 : 0;
+  const displaySalesThisHour = `₹${((baseSalesThisHour + salesThisHourVal) / 100000).toFixed(2)}L`;
 
   // 3. Txn/min: base 14.2 + increment based on daily checkouts
-  const displayTxnMin = (14.2 + dayTxns.length * 0.1).toFixed(1);
+  const baseTxnMin = isGrandSquare ? 14.2 : 0.0;
+  const displayTxnMin = (baseTxnMin + dayTxns.length * 0.1).toFixed(1);
 
   // 4. Live Sales - hourly chart data overlay
   const hourlySalesChart = Array.from({ length: 14 }, (_, i) => {
@@ -110,7 +123,7 @@ export function LiveOps() {
       .reduce((sum, t) => sum + (t.total || 0), 0);
     
     // Add baseline for display aesthetics
-    const baselineSales = Math.round(15000 + Math.sin(hourNum / 2) * 5000);
+    const baselineSales = isGrandSquare ? Math.round(15000 + Math.sin(hourNum / 2) * 5000) : 0;
     return {
       hour: hourStr,
       sales: baselineSales + liveSales,
@@ -172,31 +185,34 @@ export function LiveOps() {
 
   // 6. Departments live visitor fluctuations
   const getDeptVisitors = (index: number) => {
-    const fluctuation = Math.floor(Math.sin((t + index * 1200) / 4000) * 8);
+    const fluctuation = isGrandSquare
+      ? Math.floor(Math.sin((t + index * 1200) / 4000) * 8)
+      : 0;
     // Overlay base department visitors with real transactions count
     const deptName = DEPARTMENTS[index];
     const deptTxnsCount = transactions.filter((tx) => tx.dept === deptName).length;
-    return 120 + index * 42 + fluctuation + deptTxnsCount * 2;
+    const baseVisitors = isGrandSquare ? 120 + index * 42 : 0;
+    return baseVisitors + fluctuation + deptTxnsCount * 2;
   };
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Live Operations"
-        subtitle="Real-time pulse of GrandSquare Mall"
+        subtitle={isGrandSquare ? "Real-time pulse of GrandSquare Mall" : "Real-time pulse of your workspace"}
         actions={
           <div className="flex items-center gap-1.5 rounded-md border border-success/30 bg-success/10 px-2 py-1 text-[11px] font-medium text-success">
             <Circle className="h-2 w-2 animate-pulse fill-success text-success" />
-            Mall Open · Live
+            {isGrandSquare ? "Mall Open · Live" : "System Online · Live"}
           </div>
         }
       />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
-        <Live label="Footfall now" v={displayFootfall} delta="+12/min" />
+        <Live label="Footfall now" v={displayFootfall} delta={isGrandSquare ? "+12/min" : undefined} />
         <Live label="Active checkouts" v={displayCheckouts} />
-        <Live label="Queue pressure" v="Moderate" tone="warning" />
-        <Live label="Sales this hour" v={displaySalesThisHour} tone="success" />
+        <Live label="Queue pressure" v={isGrandSquare ? "Moderate" : "Low"} tone={isGrandSquare ? "warning" : undefined} />
+        <Live label="Sales this hour" v={displaySalesThisHour} tone={dayTxns.length > 0 ? "success" : undefined} />
         <Live label="Txn/min" v={displayTxnMin} />
         <Live label="Active staff" v={displayStaff.toString()} />
       </div>

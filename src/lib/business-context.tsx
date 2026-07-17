@@ -118,6 +118,12 @@ const BusinessDataContext = createContext<BusinessDataCtx | undefined>(undefined
 export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
 
+  useEffect(() => {
+    if (user?.workspaceId) {
+      db.setWorkspace(user.workspaceId);
+    }
+  }, [user]);
+
   // Drawer states
   const [activeProductId, setActiveProductId] = useState<string | null>(null);
   const [activeCustomerId, setActiveCustomerId] = useState<string | null>(null);
@@ -456,7 +462,16 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const recommendations = db.getRecommendations();
   const anomalies = db.getAnomalies();
   const purchaseOrders = db.getPurchaseOrders();
-  const dailySnapshot = db.getDailySnapshot(activeDate);
+  const isGrandSquare = user?.workspaceId === "grandsquare-mall";
+  const rawDailySnapshot = db.getDailySnapshot(activeDate);
+  const dailySnapshot = isGrandSquare
+    ? rawDailySnapshot
+    : {
+        ...rawDailySnapshot,
+        footfall: rawDailySnapshot.orders * 2,
+        newCustomers: rawDailySnapshot.orders > 0 ? Math.min(rawDailySnapshot.orders, 2) : 0,
+        returningCustomers: rawDailySnapshot.orders > 0 ? Math.max(0, rawDailySnapshot.orders - 2) : 0,
+      };
 
   // --- Scoping Logic (Role-Based and Date-Based) ---
   const activeDateObj = new Date(activeDate);

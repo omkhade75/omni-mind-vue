@@ -27,6 +27,7 @@ import {
   YAxis,
 } from "recharts";
 import { useBusinessData } from "@/lib/business-context";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/_app/time-machine")({
   head: () => ({
@@ -44,6 +45,8 @@ export const Route = createFileRoute("/_app/time-machine")({
 
 export function TimeMachine() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isGrandSquare = user?.workspaceId === "grandsquare-mall";
   const { activeDate, changeDate, products, openProduct360, transactions } = useBusinessData();
 
   const parsedDate = new Date(activeDate);
@@ -56,28 +59,47 @@ export function TimeMachine() {
       if (!cell) return null;
       const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(cell.day).padStart(2, "0")}`;
       const dayTxns = transactions.filter((t: any) => t.date.split("T")[0] === dateStr);
-      if (dayTxns.length > 0) {
-        const actualRevenue = dayTxns.reduce(
-          (sum: number, t: any) => (t.status === "Completed" ? sum + t.total : sum),
-          0,
-        );
+      
+      const actualRevenue = dayTxns.reduce(
+        (sum: number, t: any) => (t.status === "Completed" ? sum + t.total : sum),
+        0,
+      );
+
+      if (isGrandSquare) {
+        const displayRevenue = cell.revenue + actualRevenue;
         const state =
-          actualRevenue > 200000
+          displayRevenue > 200000
             ? "peak"
-            : actualRevenue > 150000
+            : displayRevenue > 150000
               ? "good"
-              : actualRevenue > 110000
+              : displayRevenue > 110000
                 ? "avg"
                 : "low";
         return {
           ...cell,
-          revenue: actualRevenue,
+          revenue: displayRevenue,
           state,
         };
+      } else {
+        const state =
+          actualRevenue === 0
+            ? "none"
+            : actualRevenue > 200000
+              ? "peak"
+              : actualRevenue > 150000
+                ? "good"
+                : actualRevenue > 110000
+                  ? "avg"
+                  : "low";
+        return {
+          ...cell,
+          revenue: actualRevenue,
+          state,
+          event: undefined, // Clear showcase events for other tenants
+        };
       }
-      return cell;
     });
-  }, [month, year, transactions]);
+  }, [month, year, transactions, isGrandSquare]);
 
   const handleSelectDay = (day: number) => {
     const formatted = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -200,6 +222,8 @@ function Legend({ color, label }: { color: string; label: string }) {
 
 function DateSnapshot() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isGrandSquare = user?.workspaceId === "grandsquare-mall";
   const {
     activeDate,
     dailySnapshot,
@@ -234,7 +258,7 @@ function DateSnapshot() {
     const rev = txns.reduce((sum, t) => (t.status === "Completed" ? sum + t.total : sum), 0);
     return {
       hour: hourStr,
-      revenue: rev || Math.round(revenue * (h >= 18 && h <= 21 ? 0.15 : 0.05)),
+      revenue: rev || (isGrandSquare ? Math.round(revenue * (h >= 18 && h <= 21 ? 0.15 : 0.05)) : 0),
     };
   });
 
@@ -251,11 +275,11 @@ function DateSnapshot() {
     const rev = txns.reduce((sum, t) => (t.status === "Completed" ? sum + t.total : sum), 0);
     return {
       name: d,
-      v: rev || Math.round(revenue * (d === "Fashion" ? 0.32 : d === "Electronics" ? 0.22 : 0.1)),
+      v: rev || (isGrandSquare ? Math.round(revenue * (d === "Fashion" ? 0.32 : d === "Electronics" ? 0.22 : 0.1)) : 0),
     };
   });
 
-  const isMay5 = activeDate === "2026-05-05";
+  const isMay5 = isGrandSquare && activeDate === "2026-05-05";
   const explanationText = isMay5
     ? `Gross Revenue was ₹3.14L (21.4% above average), driven by Fashion and Electronics after 6 PM. New Customers acquired: 14. Anomaly Alert: HVAC Zone B energy draw spike (+163%) detected overnight. Critical Action: Approve dairy reorder recommendation for Amul Milk.`
     : `Gross Revenue was ${fmtINR(revenue)} with ${orders} completed orders. Footfall was estimated at ${fmtNum(footfall)} visitors, with ${newCustomers} new customer registrations. Operations remained stable with average queue length below 3.`;

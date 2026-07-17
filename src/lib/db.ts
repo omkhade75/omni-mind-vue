@@ -1231,14 +1231,23 @@ export function seedDatabase(): Schema {
 
 class SeededDatabase {
   public schema: Schema;
+  private workspaceId: string = "";
 
   constructor() {
     this.schema = this.loadFromStorage();
   }
 
+  public setWorkspace(workspaceId: string) {
+    if (this.workspaceId !== workspaceId) {
+      this.workspaceId = workspaceId;
+      this.schema = this.loadFromStorage();
+    }
+  }
+
   private loadFromStorage(): Schema {
     if (typeof window !== "undefined") {
-      const stored = window.localStorage.getItem("omnimind_db");
+      const key = this.workspaceId ? `omnimind_db_${this.workspaceId}` : "omnimind_db";
+      const stored = window.localStorage.getItem(key);
       if (stored) {
         try {
           return JSON.parse(stored);
@@ -1255,7 +1264,8 @@ class SeededDatabase {
   public save(schema: Schema) {
     this.schema = schema;
     if (typeof window !== "undefined") {
-      window.localStorage.setItem("omnimind_db", JSON.stringify(schema));
+      const key = this.workspaceId ? `omnimind_db_${this.workspaceId}` : "omnimind_db";
+      window.localStorage.setItem(key, JSON.stringify(schema));
     }
   }
 
